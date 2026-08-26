@@ -40,6 +40,7 @@
     "eslint": "^9.39.5",
     "eslint-config-expo": "^57.0.1",
     "eslint-config-prettier": "^10.1.8",
+    "patch-package": "^8.0.1",
     "prettier": "^3.9.6",
     "tsx": "^4.23.12",
     "typescript": "~6.0.3",
@@ -57,7 +58,8 @@
     "test:watch": "vitest",
     "build:bible": "tsx scripts/build-bible-db.ts",
     "db:generate": "drizzle-kit generate",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "postinstall": "patch-package"
   },
   "private": true
 }

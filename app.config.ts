@@ -1,6 +1,9 @@
 import type { ExpoConfig } from 'expo/config';
 
-import { palette } from './src/theme/palette';
+// The Expo config loader can't import sibling .ts modules, so the two
+// surface colors are duplicated from src/theme/palette.ts — keep in sync.
+const surfaceLight = '#FBFAF7'; // vellum
+const surfaceDark = '#10131A'; // night lapis-black
 
 // Bundle id / package are placeholders until the human decides the final id
 // (docs/08-roadmap.md open question 1 — affects the Family Controls
@@ -23,7 +26,7 @@ const config: ExpoConfig = {
   android: {
     package: 'app.meno.client',
     adaptiveIcon: {
-      backgroundColor: palette.light.surface,
+      backgroundColor: surfaceLight,
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -40,10 +43,10 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: palette.light.surface,
+        backgroundColor: surfaceLight,
         image: './assets/images/splash-icon.png',
         imageWidth: 76,
-        dark: { backgroundColor: palette.dark.surface },
+        dark: { backgroundColor: surfaceDark },
       },
     ],
   ],
