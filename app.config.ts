@@ -5,9 +5,8 @@ import type { ExpoConfig } from 'expo/config';
 const surfaceLight = '#FBFAF7'; // vellum
 const surfaceDark = '#10131A'; // night lapis-black
 
-// Bundle id / package are placeholders until the human decides the final id
-// (docs/08-roadmap.md open question 1 — affects the Family Controls
-// entitlement request; decide before M0 ends).
+// Bundle id decided 2026-08-26: com.rhoadsdev.meno (also the id to use for
+// the Family Controls entitlement request and its extension targets).
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
@@ -17,14 +16,14 @@ const config: ExpoConfig = {
   scheme: 'meno',
   userInterfaceStyle: 'automatic',
   ios: {
-    bundleIdentifier: 'app.meno.client',
+    bundleIdentifier: 'com.rhoadsdev.meno',
     icon: './assets/expo.icon',
     supportsTablet: false,
     // Universal-link scaffold; domain pending (docs/08-roadmap.md open question 4).
     associatedDomains: ['applinks:meno.app'],
   },
   android: {
-    package: 'app.meno.client',
+    package: 'com.rhoadsdev.meno',
     adaptiveIcon: {
       backgroundColor: surfaceLight,
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -54,6 +53,12 @@ const config: ExpoConfig = {
     typedRoutes: true,
     reactCompiler: true,
   },
+  extra: {
+    eas: {
+      projectId: '6473c486-4b56-4c2c-9365-2ca7eeef6729',
+    },
+  },
+  owner: 'rhoadsjustin',
 };
 
 export default config;
