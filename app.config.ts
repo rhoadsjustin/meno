@@ -21,7 +21,6 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.rhoadsdev.meno',
     appleTeamId: 'Z8825H46UN',
-    icon: './assets/expo.icon',
     supportsTablet: false,
     // Universal links deferred: the associated-domains entitlement blocks
     // local dev signing (wildcard team profile lacks the capability) and the
