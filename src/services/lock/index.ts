@@ -65,8 +65,20 @@ export async function getAuthorizationStatus(): Promise<LockAuthStatus> {
 export async function requestAuthorization(): Promise<LockAuthStatus> {
   const mod = getLockModule();
   if (!mod) return 'unavailable';
-  const status = await mod.requestAuthorization('individual');
+  await mod.requestAuthorization('individual');
+  // The native status can lag behind the user's grant (package quirk) —
+  // poll until it settles instead of reading once.
+  const status = await mod.pollAuthorizationStatus({ pollIntervalMs: 500, maxAttempts: 40 });
   return normalizeStatus(status);
+}
+
+/** Fires when Screen Time authorization changes while the app is alive. */
+export function onAuthStatusChange(listener: (status: LockAuthStatus) => void): { remove: () => void } {
+  const mod = getLockModule();
+  if (!mod) return { remove: () => {} };
+  return mod.onAuthorizationStatusChange((event) =>
+    listener(normalizeStatus(event.authorizationStatus))
+  );
 }
 
 function normalizeStatus(status: unknown): LockAuthStatus {

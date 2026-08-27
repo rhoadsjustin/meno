@@ -5,7 +5,7 @@
  */
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { loadLockConfig, saveLockConfig } from '@/services/db/repos/lock';
@@ -16,6 +16,7 @@ import {
   isLockAvailable,
   killSwitch,
   LOCK_SELECTION_ID,
+  onAuthStatusChange,
   requestAuthorization,
   startFirstPickupMode,
   startScheduleMode,
@@ -50,7 +51,22 @@ export function LockSetup() {
       setRelockMinutes(c.relockMinutes ?? 30);
       setHasSelection(c.activitySelectionToken != null);
     });
+    // The grant dialog is a system sheet; catch the status whichever way it
+    // lands — live event, or a re-read when the app foregrounds again.
+    const statusSub = onAuthStatusChange(setAuthStatus);
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void getAuthorizationStatus().then(setAuthStatus);
+    });
+    return () => {
+      statusSub.remove();
+      appStateSub.remove();
+    };
   }, []);
+
+  // Advance automatically once authorization lands while on the auth step.
+  useEffect(() => {
+    if (step === 'authorize' && authStatus === 'approved') setStep('pick');
+  }, [step, authStatus]);
 
   const authorize = useCallback(async () => {
     setBusy(true);
