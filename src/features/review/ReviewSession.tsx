@@ -109,6 +109,8 @@ export function ReviewSession() {
       });
       await recordReviewResult(entry.item, outcome.accuracy);
       await secureToday();
+      const { refreshBadges } = await import('@/services/db/repos/badges');
+      void refreshBadges();
       setAccuracies((a) => [...a, outcome.accuracy]);
       void Haptics.notificationAsync(
         outcome.accuracy >= 0.9

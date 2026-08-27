@@ -14,6 +14,7 @@ import {
   type Goal,
 } from '@/services/db/repos/goals';
 import { countDueReviews } from '@/services/db/repos/reviews';
+import { stitchPlan } from '@/services/db/repos/stitch';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
@@ -39,6 +40,7 @@ export default function TodayScreen() {
   const [data, setData] = useState<TodayData | null>(null);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
   const [dueCount, setDueCount] = useState(0);
+  const [stitchDue, setStitchDue] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
@@ -57,7 +59,12 @@ export default function TodayScreen() {
           }
           return;
         }
-        const [chunk, chunks] = await Promise.all([currentChunk(goal.id), chunksForGoal(goal.id)]);
+        const [chunk, chunks, stitch] = await Promise.all([
+          currentChunk(goal.id),
+          chunksForGoal(goal.id),
+          stitchPlan(goal.id),
+        ]);
+        if (!cancelled) setStitchDue(stitch.due);
         let chunkText = '';
         if (chunk) {
           const verses = await getPassage(goal.translationId, {
@@ -158,6 +165,22 @@ export default function TodayScreen() {
             onPress={() => router.push('/goal-wizard')}
             style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
             <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>New goal</Text>
+          </Pressable>
+        </Card>
+      )}
+
+      {stitchDue && data && (
+        <Card>
+          <Pressable accessibilityRole="button" onPress={() => router.push(`/stitch/${data.goal.id}`)}>
+            <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              Stitch it together
+            </Text>
+            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              Recite everything you’ve learned so far as one passage.
+            </Text>
+            <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              Begin stitch
+            </Text>
           </Pressable>
         </Card>
       )}

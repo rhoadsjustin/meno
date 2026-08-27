@@ -141,6 +141,8 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       if (outcome.tierCleared) {
         await applyTierCleared(chunk, session.tier);
         await clearActiveSession();
+        const { refreshBadges } = await import('@/services/db/repos/badges');
+        void refreshBadges();
       }
 
       setPhase({

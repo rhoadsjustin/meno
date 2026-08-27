@@ -86,6 +86,7 @@ export default function RootLayout() {
         <Stack.Screen name="practice/[goalId]" options={{ headerShown: false }} />
         <Stack.Screen name="review/index" options={{ headerShown: false }} />
         <Stack.Screen name="reader/[osis]" options={{ headerShown: false }} />
+        <Stack.Screen name="stitch/[goalId]" options={{ headerShown: false }} />
         <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
         <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: true }} />
       </Stack>

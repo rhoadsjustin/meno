@@ -96,6 +96,8 @@ export function UnlockScreen() {
       });
     }
     await secureToday(); // recite-to-unlock counts toward the streak (04 §4)
+    const { refreshBadges } = await import('@/services/db/repos/badges');
+    void refreshBadges();
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPhase({ kind: 'success', accuracy });
     // Brief success (<1.5s), then out of the way (04 §4).
