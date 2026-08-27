@@ -52,21 +52,21 @@ export function LockSetup() {
       setHasSelection(c.activitySelectionToken != null);
     });
     // The grant dialog is a system sheet; catch the status whichever way it
-    // lands — live event, or a re-read when the app foregrounds again.
-    const statusSub = onAuthStatusChange(setAuthStatus);
+    // lands — live event, or a re-read when the app foregrounds again — and
+    // advance past the auth step as soon as it's approved.
+    const applyStatus = (status: LockAuthStatus) => {
+      setAuthStatus(status);
+      if (status === 'approved') setStep((s) => (s === 'authorize' ? 'pick' : s));
+    };
+    const statusSub = onAuthStatusChange(applyStatus);
     const appStateSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void getAuthorizationStatus().then(setAuthStatus);
+      if (state === 'active') void getAuthorizationStatus().then(applyStatus);
     });
     return () => {
       statusSub.remove();
       appStateSub.remove();
     };
   }, []);
-
-  // Advance automatically once authorization lands while on the auth step.
-  useEffect(() => {
-    if (step === 'authorize' && authStatus === 'approved') setStep('pick');
-  }, [step, authStatus]);
 
   const authorize = useCallback(async () => {
     setBusy(true);
