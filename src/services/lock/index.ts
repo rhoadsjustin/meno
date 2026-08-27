@@ -121,7 +121,9 @@ export function configureShield(reference: string, verseText: string | null): vo
               title: reference || 'Recite to unlock',
               body: 'Tap here to recite and continue.',
               sound: 'default',
-              interruptionLevel: 'timeSensitive',
+              // The package's Swift supports 'timeSensitive' but its TS
+              // union hasn't caught up.
+              interruptionLevel: 'timeSensitive' as unknown as 'active',
               userInfo: { url: '/unlock' },
             },
           },
