@@ -87,6 +87,10 @@ export default function RootLayout() {
           name="goal-wizard"
           options={{ presentation: 'modal', headerShown: false }}
         />
+        <Stack.Screen
+          name="onboarding"
+          options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
+        />
         <Stack.Screen name="practice/[goalId]" options={{ headerShown: false }} />
         <Stack.Screen name="review/index" options={{ headerShown: false }} />
         <Stack.Screen name="reader/[osis]" options={{ headerShown: false }} />

@@ -48,6 +48,15 @@ export default function TodayScreen() {
       let cancelled = false;
       (async () => {
         const goal = await activeGoal();
+        // First launch: run onboarding before anything else.
+        if (!goal) {
+          const { onboardingDone } = await import('@/services/db/repos/appFlags');
+          if (!(await onboardingDone()) && !cancelled) {
+            router.push('/onboarding');
+            setLoaded(true);
+            return;
+          }
+        }
         const streakNow = await currentStreakDisplay();
         const due = await countDueReviews();
         if (!cancelled) setDueCount(due);

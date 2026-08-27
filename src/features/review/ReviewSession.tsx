@@ -23,6 +23,7 @@ import { recordAttempt } from '@/services/db/repos/attempts';
 import { dueReviewItems, recordReviewResult, type ReviewItem } from '@/services/db/repos/reviews';
 import { secureToday } from '@/services/db/repos/streaks';
 import type { GradeResult } from '@/services/grading';
+import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { WordFeedback } from '@/features/practice/WordFeedback';
@@ -35,8 +36,9 @@ type QueueEntry = {
   reference: string;
   text: string;
   translationId: string;
-  /** Review mode alternates Speak/Type (docs/03 §6). */
-  mode: 'type' | 'speak';
+  /** Alternates Speak/Type; every 4th successful review of a chunk drops to
+   * Blanks 75 to keep sessions short (docs/03 §6). */
+  mode: 'type' | 'speak' | 'blanks75';
 };
 
 type Phase =
@@ -84,7 +86,12 @@ export function ReviewSession() {
             reference: formatRange(range),
             text: verses.map((v) => v.text).join(' '),
             translationId,
-            mode: entries.length % 2 === 0 ? 'speak' : 'type',
+            mode:
+              item.repetitions > 0 && item.repetitions % 4 === 3
+                ? 'blanks75'
+                : entries.length % 2 === 0
+                  ? 'speak'
+                  : 'type',
           });
         }
         setQueue(entries);
@@ -175,7 +182,21 @@ export function ReviewSession() {
               <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 Review · {queue[phase.index].reference}
               </Text>
-              {queue[phase.index].mode === 'speak' ? (
+              {queue[phase.index].mode === 'blanks75' ? (
+                <BlanksRound
+                  key={phase.index}
+                  text={queue[phase.index].text}
+                  density={0.75}
+                  chunkId={queue[phase.index].chunkId}
+                  attemptNo={phase.index}
+                  onDone={(o) =>
+                    void finishRound(phase.index, {
+                      ...o,
+                      result: { words: [], insertions: [], accuracy: o.accuracy },
+                    })
+                  }
+                />
+              ) : queue[phase.index].mode === 'speak' ? (
                 <SpeakRound
                   key={phase.index}
                   text={queue[phase.index].text}

@@ -54,6 +54,7 @@ export function TypeRound({
       />
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled: input.trim().length === 0 }}
         disabled={input.trim().length === 0}
         onPress={submit}
         style={[

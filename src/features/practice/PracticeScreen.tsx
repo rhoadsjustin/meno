@@ -40,6 +40,7 @@ import {
   tierDef,
   type SessionState,
 } from '@/services/practice';
+import { Dissolution } from '@/features/practice/Dissolution';
 import { WordFeedback } from '@/features/practice/WordFeedback';
 import { ArrangeRound } from '@/features/practice/rounds/ArrangeRound';
 import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
@@ -58,6 +59,7 @@ type Phase =
       accuracy: number;
       passed: boolean;
       tierCleared: boolean;
+      memorized: boolean;
       suggestDropTier: boolean;
       result?: GradeResult;
     };
@@ -132,14 +134,9 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       });
       await secureToday(); // any completed practice item counts (docs/06 §1)
 
-      if (outcome.passed) {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
-
+      let memorized = false;
       if (outcome.tierCleared) {
-        await applyTierCleared(chunk, session.tier);
+        ({ memorized } = await applyTierCleared(chunk, session.tier));
         await clearActiveSession();
         const { refreshBadges } = await import('@/services/db/repos/badges');
         void refreshBadges();
@@ -147,11 +144,25 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         void publishWidgetSnapshot();
       }
 
+      // Haptics per 07 §8: pass = success, tier-up = medium, memorized =
+      // success ×2, miss = soft buzz.
+      if (memorized) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 300);
+      } else if (outcome.tierCleared) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } else if (outcome.passed) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+
       setPhase({
         kind: 'feedback',
         accuracy: input.accuracy ?? (input.selfPass ? 1 : 0),
         passed: outcome.passed,
         tierCleared: outcome.tierCleared,
+        memorized,
         suggestDropTier: outcome.suggestDropTier,
         result: input.result,
       });
@@ -245,6 +256,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
           {phase.kind === 'feedback' && session && (
             <>
               <Text
+                accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
                 style={[
                   styles.accuracy,
                   {
@@ -258,14 +270,19 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
                 ]}>
                 {Math.round(phase.accuracy * 100)}%
               </Text>
+              {phase.tierCleared && (
+                <Dissolution text={text} reference={reference} memorized={phase.memorized} />
+              )}
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {phase.tierCleared
-                  ? `${tierDef(session.tier).name} cleared`
-                  : phase.passed
-                    ? 'Round passed'
-                    : 'Not quite — the slipped words are marked below'}
+                {phase.memorized
+                  ? 'Memorized'
+                  : phase.tierCleared
+                    ? `${tierDef(session.tier).name} cleared`
+                    : phase.passed
+                      ? 'Round passed'
+                      : 'Not quite — the slipped words are marked below'}
               </Text>
-              {phase.result && <WordFeedback result={phase.result} />}
+              {phase.result && !phase.tierCleared && <WordFeedback result={phase.result} />}
               {phase.suggestDropTier && (
                 <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                   Want to rebuild the foundation? You can drop back a tier any time — no penalty.

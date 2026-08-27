@@ -134,7 +134,7 @@ export async function currentChunk(goalId: string): Promise<Chunk | undefined> {
  * a Tier 5 or 6 pass at ≥95% on two separate days (attempts are the audit
  * trail). Creates the chunk's review item when it becomes memorized.
  */
-export async function applyTierCleared(chunk: Chunk, clearedTier: number): Promise<void> {
+export async function applyTierCleared(chunk: Chunk, clearedTier: number): Promise<{ memorized: boolean }> {
   const newTier = Math.max(chunk.tier, clearedTier);
   const memorized = clearedTier >= 5 && (await hasTwoDayMastery(chunk.id));
   await db
@@ -158,6 +158,7 @@ export async function applyTierCleared(chunk: Chunk, clearedTier: number): Promi
       await db.update(tables.chunks).set({ status: 'active' }).where(eq(tables.chunks.id, next.id));
     }
   }
+  return { memorized };
 }
 
 /** ≥95% Type/Speak attempts on at least two distinct local days (03 §1). */

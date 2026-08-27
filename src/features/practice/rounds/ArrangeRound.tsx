@@ -55,7 +55,9 @@ export function ArrangeRound({
         {placed.map((tile, i) => (
           <Pressable
             key={`${tile}-${i}`}
-            accessibilityLabel={`Placed phrase: ${round.phrases[tile]}. Tap to remove.`}
+            accessibilityRole="button"
+            accessibilityLabel={`Position ${i + 1}: ${round.phrases[tile]}`}
+            accessibilityHint="Double-tap to remove this phrase"
             onPress={() => unplace(i)}
             style={[styles.tile, { backgroundColor: colors.lapisWash, borderColor: colors.lapis }]}>
             <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>
@@ -71,6 +73,7 @@ export function ArrangeRound({
             key={tile}
             accessibilityRole="button"
             accessibilityLabel={`Phrase: ${round.phrases[tile]}`}
+            accessibilityHint="Double-tap to place this phrase next"
             onPress={() => place(tile)}
             style={[styles.tile, { backgroundColor: colors.surfaceRaised, borderColor: colors.separator }]}>
             <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>

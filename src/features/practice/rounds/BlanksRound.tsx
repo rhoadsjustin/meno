@@ -97,8 +97,19 @@ export function BlanksRound({
           return (
             <Pressable
               key={i}
-              accessibilityLabel={resolved ? t.word : 'blank'}
-              accessibilityHint={isActive ? 'Long-press to reveal (counts as missed)' : undefined}
+              accessibilityRole={isActive ? 'button' : 'text'}
+              accessibilityLabel={
+                resolved
+                  ? `${t.word}, ${blankState}`
+                  : isActive
+                    ? 'blank, answer with the choices below'
+                    : 'blank'
+              }
+              accessibilityHint={
+                isActive && !resolved
+                  ? 'Long-press to reveal the word — it will be counted as missed'
+                  : undefined
+              }
               onLongPress={isActive ? () => settle('missed') : undefined}
               style={[
                 styles.pill,
@@ -125,6 +136,8 @@ export function BlanksRound({
             <Pressable
               key={choice}
               accessibilityRole="button"
+              accessibilityLabel={`Choice: ${choice}`}
+              accessibilityHint="Double-tap to fill the current blank"
               onPress={() => settle(choice === tokens[activeIndex].word ? 'correct' : 'wrong')}
               style={[styles.chip, { borderColor: colors.lapis }]}>
               <Text style={[styles.chipText, { color: colors.lapis, fontFamily: fonts?.ui }]}>

@@ -9,7 +9,7 @@ import {
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getTranslation } from '@/services/bible';
 import { gradeSpoken, type GradeResult } from '@/services/grading';
@@ -75,6 +75,7 @@ export function SpeakRound({
   });
 
   const beginListening = useCallback(async () => {
+    AccessibilityInfo.announceForAccessibility('Listening. Recite the passage, then tap to finish.');
     setSpeechError(null);
     const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!result.granted) {
@@ -95,6 +96,7 @@ export function SpeakRound({
   }, [translationId, contextualStrings]);
 
   const finishListening = useCallback(() => {
+    AccessibilityInfo.announceForAccessibility('Finished listening.');
     setMicState('processing');
     ExpoSpeechRecognitionModule.stop();
   }, []);
