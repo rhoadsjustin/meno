@@ -43,6 +43,23 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-sqlite',
     [
+      'expo-speech-recognition',
+      {
+        microphonePermission:
+          'Meno uses the microphone so you can recite verses aloud. Audio is processed on this device and never leaves your phone.',
+        speechRecognitionPermission:
+          'Meno transcribes your recitation on this device to check it against the verse. Nothing is sent to a server.',
+      },
+    ],
+    'expo-notifications',
+    [
+      'react-native-device-activity',
+      {
+        appleTeamId: 'Z8825H46UN',
+        appGroup: 'group.com.rhoadsdev.meno',
+      },
+    ],
+    [
       'expo-splash-screen',
       {
         backgroundColor: surfaceLight,

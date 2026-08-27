@@ -45,6 +45,7 @@ import { ArrangeRound } from '@/features/practice/rounds/ArrangeRound';
 import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { FirstLettersRound } from '@/features/practice/rounds/FirstLettersRound';
 import { ReadRound } from '@/features/practice/rounds/ReadRound';
+import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
@@ -65,7 +66,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
 
-  const [, setGoal] = useState<Goal | null>(null);
+  const [goal, setGoal] = useState<Goal | null>(null);
   const [chunk, setChunk] = useState<Chunk | null>(null);
   const [text, setText] = useState('');
   const [session, setSession] = useState<SessionState | null>(null);
@@ -231,6 +232,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
                 session={session}
                 text={text}
                 reference={reference}
+                translationId={goal?.translationId ?? 'web'}
                 onFinish={finishRound}
               />
             </>
@@ -285,11 +287,13 @@ function RoundBody({
   session,
   text,
   reference,
+  translationId,
   onFinish,
 }: {
   session: SessionState;
   text: string;
   reference: string;
+  translationId: string;
   onFinish: (input: {
     accuracy?: number;
     selfPass?: boolean;
@@ -327,8 +331,14 @@ function RoundBody({
     case 'type':
       return <TypeRound text={text} reference={reference} onDone={(o) => onFinish(o)} />;
     case 'speak':
-      // M3 — until then Speak falls back to Type.
-      return <TypeRound text={text} reference={reference} onDone={(o) => onFinish(o)} />;
+      return (
+        <SpeakRound
+          text={text}
+          reference={reference}
+          translationId={translationId}
+          onDone={(o) => onFinish(o)}
+        />
+      );
   }
 }
 

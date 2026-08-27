@@ -1,8 +1,12 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { AppState, useColorScheme, Text, View } from 'react-native';
 
 import { useMigrations } from '@/services/db';
+import { maybePresentUnlock } from '@/services/lock';
+import { rescheduleAll } from '@/services/notifications';
 import { palette } from '@/theme/tokens';
 
 const menoLightTheme = {
@@ -33,6 +37,29 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const { success, error } = useMigrations();
 
+  useEffect(() => {
+    if (!success) return;
+    // Notification taps deep-link into the right screen.
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const url = response.notification.request.content.data?.url;
+      if (typeof url === 'string') router.push(url as never);
+    });
+    // On every foreground: refresh local schedules and, if a shield sent
+    // the user here, present the unlock quiz.
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void rescheduleAll();
+        void maybePresentUnlock();
+      }
+    });
+    void rescheduleAll();
+    void maybePresentUnlock();
+    return () => {
+      responseSub.remove();
+      appStateSub.remove();
+    };
+  }, [success]);
+
   if (error) {
     // A failed migration means user data is unreadable — surface it rather
     // than rendering screens against a broken schema.
@@ -56,6 +83,8 @@ export default function RootLayout() {
         <Stack.Screen name="practice/[goalId]" options={{ headerShown: false }} />
         <Stack.Screen name="review/index" options={{ headerShown: false }} />
         <Stack.Screen name="reader/[osis]" options={{ headerShown: false }} />
+        <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
+        <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: true }} />
       </Stack>
     </ThemeProvider>
   );

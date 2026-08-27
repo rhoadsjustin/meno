@@ -23,6 +23,7 @@ import { recordAttempt } from '@/services/db/repos/attempts';
 import { dueReviewItems, recordReviewResult, type ReviewItem } from '@/services/db/repos/reviews';
 import { secureToday } from '@/services/db/repos/streaks';
 import type { GradeResult } from '@/services/grading';
+import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { WordFeedback } from '@/features/practice/WordFeedback';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
@@ -33,6 +34,9 @@ type QueueEntry = {
   chunkId: string;
   reference: string;
   text: string;
+  translationId: string;
+  /** Review mode alternates Speak/Type (docs/03 §6). */
+  mode: 'type' | 'speak';
 };
 
 type Phase =
@@ -79,6 +83,8 @@ export function ReviewSession() {
             chunkId: chunk.id,
             reference: formatRange(range),
             text: verses.map((v) => v.text).join(' '),
+            translationId,
+            mode: entries.length % 2 === 0 ? 'speak' : 'type',
           });
         }
         setQueue(entries);
@@ -95,7 +101,7 @@ export function ReviewSession() {
       const entry = queue[index];
       await recordAttempt({
         chunkId: entry.chunkId,
-        mode: 'type',
+        mode: entry.mode,
         accuracy: outcome.accuracy,
         durationMs: Date.now() - startedAt,
         missedWords: outcome.missedWords,
@@ -167,12 +173,22 @@ export function ReviewSession() {
               <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 Review · {queue[phase.index].reference}
               </Text>
-              <TypeRound
-                key={phase.index}
-                text={queue[phase.index].text}
-                reference={queue[phase.index].reference}
-                onDone={(o) => void finishRound(phase.index, o)}
-              />
+              {queue[phase.index].mode === 'speak' ? (
+                <SpeakRound
+                  key={phase.index}
+                  text={queue[phase.index].text}
+                  reference={queue[phase.index].reference}
+                  translationId={queue[phase.index].translationId}
+                  onDone={(o) => void finishRound(phase.index, o)}
+                />
+              ) : (
+                <TypeRound
+                  key={phase.index}
+                  text={queue[phase.index].text}
+                  reference={queue[phase.index].reference}
+                  onDone={(o) => void finishRound(phase.index, o)}
+                />
+              )}
             </>
           )}
 
