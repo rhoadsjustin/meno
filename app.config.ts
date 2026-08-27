@@ -71,7 +71,15 @@ const config: ExpoConfig = {
           'Meno transcribes your recitation on this device to check it against the verse. Nothing is sent to a server.',
       },
     ],
-    'expo-notifications',
+    [
+      'expo-notifications',
+      {
+        // Android small icon (white alpha mask) + accent; iOS notifications
+        // always use the app icon — nothing to configure there.
+        icon: './assets/images/notification-icon.png',
+        color: '#2244AA',
+      },
+    ],
     [
       'react-native-device-activity',
       {
