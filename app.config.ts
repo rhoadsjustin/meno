@@ -10,7 +10,7 @@ const surfaceDark = '#10131A'; // night lapis-black
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
-  version: '0.1.0',
+  version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   // 'device-activity' is the hardcoded scheme the ShieldAction extension's
@@ -22,6 +22,24 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.rhoadsdev.meno',
     appleTeamId: 'Z8825H46UN',
     supportsTablet: false,
+    infoPlist: {
+      // Standard HTTPS only — export-compliance exempt (skips the ASC
+      // encryption questionnaire on every build).
+      ITSAppUsesNonExemptEncryption: false,
+    },
+    // App-level privacy manifest (ship checklist, docs/08): no tracking, no
+    // data collection; UserDefaults use (app group) declared with CA92.1.
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyCollectedDataTypes: [],
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+        },
+      ],
+    },
     // Universal links deferred: the associated-domains entitlement blocks
     // local dev signing (wildcard team profile lacks the capability) and the
     // meno.app domain isn't live. Re-add before M8:
