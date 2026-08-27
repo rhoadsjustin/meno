@@ -35,6 +35,9 @@ export function getLockModule(): DeviceActivityModule | null {
     return null;
   }
   try {
+    // Runtime require so the app still runs where the native module is
+    // absent (simulator, Android, builds without the entitlement).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     cachedModule = require('react-native-device-activity') as DeviceActivityModule;
   } catch {
     cachedModule = null;
