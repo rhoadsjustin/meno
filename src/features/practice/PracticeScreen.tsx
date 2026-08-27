@@ -143,6 +143,8 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         await clearActiveSession();
         const { refreshBadges } = await import('@/services/db/repos/badges');
         void refreshBadges();
+        const { publishWidgetSnapshot } = await import('@/services/widgets');
+        void publishWidgetSnapshot();
       }
 
       setPhase({

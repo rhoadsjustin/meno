@@ -63,6 +63,30 @@ const config: ExpoConfig = {
       },
     ],
     [
+      'expo-widgets',
+      {
+        bundleIdentifier: 'com.rhoadsdev.meno.widgets',
+        groupIdentifier: 'group.com.rhoadsdev.meno',
+        widgets: [
+          {
+            name: 'MenoWidget',
+            displayName: 'Meno',
+            description: 'Your current verse — dissolving as you learn it.',
+            ios: {
+              supportedFamilies: [
+                'systemSmall',
+                'systemMedium',
+                'systemLarge',
+                'accessoryCircular',
+                'accessoryRectangular',
+                'accessoryInline',
+              ],
+            },
+          },
+        ],
+      },
+    ],
+    [
       'expo-splash-screen',
       {
         backgroundColor: surfaceLight,

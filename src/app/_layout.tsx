@@ -7,6 +7,7 @@ import { AppState, useColorScheme, Text, View } from 'react-native';
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
+import { publishWidgetSnapshot } from '@/services/widgets';
 import { palette } from '@/theme/tokens';
 
 const menoLightTheme = {
@@ -52,6 +53,9 @@ export default function RootLayout() {
         void rescheduleAll();
         void maybePresentUnlock();
         void refreshShieldForCurrentVerse();
+      } else if (state === 'background') {
+        // Publish the widget snapshot on every app close (05 §1).
+        void publishWidgetSnapshot();
       }
     });
     void rescheduleAll();
