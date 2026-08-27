@@ -45,3 +45,6 @@ example
 # Meno
 .DS_Store
 scripture-memory-docs/
+
+# secrets
+.env

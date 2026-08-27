@@ -35,7 +35,17 @@ export const TRANSLATIONS: readonly Translation[] = [
     isDownloaded: true,
     attribution: 'American Standard Version (ASV), public domain.',
   },
-  // Licensed API translations (ESV first — docs/00-decisions.md) arrive in M6.
+  {
+    id: 'esv',
+    abbrev: 'ESV',
+    name: 'English Standard Version',
+    languageCode: 'en-US',
+    licenseType: 'api_cached',
+    source: 'esv_api',
+    isDownloaded: false,
+    attribution:
+      'Scripture quotations are from the ESV® Bible, copyright © 2001 by Crossway. Used by permission. All rights reserved.',
+  },
 ];
 
 export const DEFAULT_TRANSLATION_ID = 'web';

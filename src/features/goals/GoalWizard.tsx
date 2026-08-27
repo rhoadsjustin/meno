@@ -21,7 +21,7 @@ import {
   formatRange,
   getBook,
   getChapterVerseCount,
-  TRANSLATIONS,
+  availableTranslations,
 } from '@/services/bible';
 import type { RefRange } from '@/services/bible/types';
 import { createGoal, previewGoal, type GoalPreview } from '@/services/db/repos/goals';
@@ -126,7 +126,7 @@ export function GoalWizard() {
 
         {step === 'translation' && (
           <View style={styles.section}>
-            {TRANSLATIONS.map((t) => {
+            {availableTranslations().map((t) => {
               const selected = t.id === translationId;
               return (
                 <Pressable
@@ -145,7 +145,10 @@ export function GoalWizard() {
                     {t.name}
                   </Text>
                   <Text style={[styles.optionSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                    {t.abbrev} · {t.licenseType === 'public_domain' ? 'Offline, no restrictions' : t.attribution}
+                    {t.abbrev} ·{' '}
+                    {t.licenseType === 'public_domain'
+                      ? 'Offline, no restrictions'
+                      : 'Fetched once, then kept offline · © Crossway'}
                   </Text>
                 </Pressable>
               );
