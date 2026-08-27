@@ -138,10 +138,22 @@ export function configureShield(reference: string, verseText: string | null): vo
 }
 
 let lastUnlockPushAt = 0;
+let unlockMountCount = 0;
 
-/** Routes into the unlock quiz, debounced — the notification tap and the
- * foreground shield check can both fire within the same second. */
+/** Called by UnlockScreen on mount/unmount so presentUnlock never stacks a
+ * second instance (foreground checks re-fire while shields stay active). */
+export function registerUnlockMount(): () => void {
+  unlockMountCount += 1;
+  return () => {
+    unlockMountCount = Math.max(0, unlockMountCount - 1);
+  };
+}
+
+/** Routes into the unlock quiz — at most one instance, ever. The debounce
+ * covers the push→mount gap when the notification tap and the foreground
+ * shield check fire within the same second. */
 export function presentUnlock(): void {
+  if (unlockMountCount > 0) return;
   const now = Date.now();
   if (now - lastUnlockPushAt < 3000) return;
   lastUnlockPushAt = now;

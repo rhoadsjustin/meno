@@ -96,7 +96,9 @@ export default function RootLayout() {
         <Stack.Screen name="reader/[osis]" options={{ headerShown: false }} />
         <Stack.Screen name="stitch/[goalId]" options={{ headerShown: false }} />
         <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
-        <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: true }} />
+        {/* No swipe-back: leaving the unlock quiz goes through its own
+            buttons (Override / close), never a half-dismissed gesture. */}
+        <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
     </ThemeProvider>
   );

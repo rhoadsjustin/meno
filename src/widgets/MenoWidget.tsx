@@ -6,7 +6,7 @@
  * app state, no module-scope constants).
  */
 import { HStack, Spacer, Text, VStack } from '@expo/ui/swift-ui';
-import { font, foregroundStyle, widgetURL } from '@expo/ui/swift-ui/modifiers';
+import { containerBackground, font, foregroundStyle, widgetURL } from '@expo/ui/swift-ui/modifiers';
 import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 
 export type MenoWidgetProps = {
@@ -34,11 +34,13 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
   const gold = '#A8802E';
   const inkFaint = '#6E7280';
   const family = environment.widgetFamily;
+  // iOS 17+ requires the containerBackground API for home screen widgets.
+  const bg = environment.colorScheme === 'dark' ? '#10131A' : '#FBFAF7';
   const flame = props.streakActiveToday ? '🔥' : '·';
 
   if (family === 'accessoryCircular') {
     return (
-      <VStack modifiers={[widgetURL('meno://')]}>
+      <VStack modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 20, weight: 'bold', design: 'serif' })]}>
           {String(props.streak)}
         </Text>
@@ -49,7 +51,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'accessoryInline') {
     return (
-      <Text modifiers={[widgetURL('meno://')]}>
+      <Text modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
         {props.verseRef} · {String(props.streak)}
         {flame}
       </Text>
@@ -58,7 +60,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'accessoryRectangular') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno://')]}>
+      <VStack alignment="leading" modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>{props.verseRef}</Text>
         <Text modifiers={[font({ size: 11, design: 'monospaced' })]}>
           {props.memorized ? 'You know this one.' : props.displayText}
@@ -69,7 +71,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'systemSmall') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno://')]}>
+      <VStack alignment="leading" modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
         <HStack>
           <Text modifiers={[font({ size: 26, weight: 'bold', design: 'serif' })]}>
             {String(props.streak)}
@@ -121,7 +123,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'systemMedium') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno://practice')]}>
+      <VStack alignment="leading" modifiers={[widgetURL('meno://practice'), containerBackground(bg, 'widget')]}>
         <HStack>
           <Spacer />
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(lapis)]}>
@@ -144,7 +146,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
     .map((c) => (c === '1' ? '■' : '□'))
     .join(' ');
   return (
-    <VStack alignment="leading" modifiers={[widgetURL('meno://')]}>
+    <VStack alignment="leading" modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
       <HStack>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>Meno</Text>
         <Spacer />

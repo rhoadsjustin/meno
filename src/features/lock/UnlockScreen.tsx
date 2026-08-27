@@ -14,7 +14,7 @@ import { activeGoal, chunksForGoal, currentChunk, type Chunk } from '@/services/
 import { loadLockConfig, recordLockEvent } from '@/services/db/repos/lock';
 import { secureToday } from '@/services/db/repos/streaks';
 import { recordAttempt } from '@/services/db/repos/attempts';
-import { clearShields, scheduleRelock } from '@/services/lock';
+import { clearShields, registerUnlockMount, scheduleRelock } from '@/services/lock';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
@@ -32,6 +32,9 @@ export function UnlockScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
+
+  // Single-instance guard: while mounted, presentUnlock() is a no-op.
+  useEffect(() => registerUnlockMount(), []);
   const [verse, setVerse] = useState<{
     chunk: Chunk | null;
     reference: string;
