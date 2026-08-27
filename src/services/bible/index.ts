@@ -15,7 +15,9 @@ export * from '@/services/bible/refs';
 export { TRANSLATIONS, DEFAULT_TRANSLATION_ID, getTranslation, mayPersistText } from '@/services/bible/registry';
 export type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
 
-const BUNDLED_DB_NAME = 'bundled-bibles.db';
+// Bump the version suffix whenever bundled.db contents change, so devices
+// that already imported an older copy re-import the new one.
+const BUNDLED_DB_NAME = 'bundled-bibles-v2.db';
 
 let bundledDbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -26,7 +28,7 @@ let bundledDbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 function openBundledDb(): Promise<SQLite.SQLiteDatabase> {
   bundledDbPromise ??= (async () => {
     await SQLite.importDatabaseFromAssetAsync(BUNDLED_DB_NAME, {
-      assetId: require('@/assets/bibles/web.db'),
+      assetId: require('@/assets/bibles/bundled.db'),
     });
     return SQLite.openDatabaseAsync(BUNDLED_DB_NAME);
   })();

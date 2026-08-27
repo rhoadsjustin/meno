@@ -15,8 +15,27 @@ export const TRANSLATIONS: readonly Translation[] = [
     isDownloaded: true,
     attribution: 'World English Bible (WEB), public domain.',
   },
-  // KJV and ASV are bundled later in M2 (goal wizard supports WEB/KJV/ASV).
-  // Licensed API translations (ESV, NIV, …) arrive in M6.
+  {
+    id: 'kjv',
+    abbrev: 'KJV',
+    name: 'King James Version',
+    languageCode: 'en-GB',
+    licenseType: 'public_domain',
+    source: 'bundled',
+    isDownloaded: true,
+    attribution: 'King James Version (KJV), public domain.',
+  },
+  {
+    id: 'asv',
+    abbrev: 'ASV',
+    name: 'American Standard Version',
+    languageCode: 'en-US',
+    licenseType: 'public_domain',
+    source: 'bundled',
+    isDownloaded: true,
+    attribution: 'American Standard Version (ASV), public domain.',
+  },
+  // Licensed API translations (ESV first — docs/00-decisions.md) arrive in M6.
 ];
 
 export const DEFAULT_TRANSLATION_ID = 'web';

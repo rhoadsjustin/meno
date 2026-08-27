@@ -48,7 +48,7 @@ describe('chunkPassage (synthetic)', () => {
   });
 });
 
-const dbPath = join(__dirname, '..', '..', '..', '..', 'assets', 'bibles', 'web.db');
+const dbPath = join(__dirname, '..', '..', '..', '..', 'assets', 'bibles', 'bundled.db');
 
 describe.skipIf(!existsSync(dbPath))('chunkPassage on real WEB text (M1 acceptance)', () => {
   const db = new Database(dbPath, { readonly: true });
