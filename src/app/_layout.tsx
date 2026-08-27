@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { AppState, useColorScheme, Text, View } from 'react-native';
 
 import { useMigrations } from '@/services/db';
-import { maybePresentUnlock } from '@/services/lock';
+import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
 import { palette } from '@/theme/tokens';
 
@@ -42,7 +42,8 @@ export default function RootLayout() {
     // Notification taps deep-link into the right screen.
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const url = response.notification.request.content.data?.url;
-      if (typeof url === 'string') router.push(url as never);
+      if (url === '/unlock') presentUnlock();
+      else if (typeof url === 'string') router.push(url as never);
     });
     // On every foreground: refresh local schedules and, if a shield sent
     // the user here, present the unlock quiz.
@@ -50,10 +51,12 @@ export default function RootLayout() {
       if (state === 'active') {
         void rescheduleAll();
         void maybePresentUnlock();
+        void refreshShieldForCurrentVerse();
       }
     });
     void rescheduleAll();
     void maybePresentUnlock();
+    void refreshShieldForCurrentVerse();
     return () => {
       responseSub.remove();
       appStateSub.remove();

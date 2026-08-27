@@ -3,6 +3,7 @@
  * native app picker → mode + override style → done. Only reachable on a
  * physical iOS device with the native module present.
  */
+import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -79,6 +80,9 @@ export function LockSetup() {
   const finish = useCallback(async () => {
     setBusy(true);
     try {
+      // The shield's "Recite to unlock" bounce arrives as a tappable
+      // notification, so notification permission is part of setup.
+      await Notifications.requestPermissionsAsync();
       // Shield copy reflects the current verse (04 §3).
       const goal = await activeGoal();
       let reference = 'Meno';

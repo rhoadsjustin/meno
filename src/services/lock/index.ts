@@ -109,7 +109,23 @@ export function configureShield(reference: string, verseText: string | null): vo
     {
       primary: {
         behavior: 'close',
-        actions: [{ type: 'openApp' }],
+        actions: [
+          // Shield extensions can't open apps directly on modern iOS (the
+          // NSExtensionContext.open trick is dead) — the sanctioned bounce
+          // is a time-sensitive notification the user taps into the quiz.
+          { type: 'openApp' }, // harmless no-op where blocked; direct open where it still works
+          {
+            type: 'sendNotification',
+            payload: {
+              identifier: 'meno-unlock',
+              title: reference || 'Recite to unlock',
+              body: 'Tap here to recite and continue.',
+              sound: 'default',
+              interruptionLevel: 'timeSensitive',
+              userInfo: { url: '/unlock' },
+            },
+          },
+        ],
       },
       secondary: {
         behavior: 'close',
@@ -117,6 +133,17 @@ export function configureShield(reference: string, verseText: string | null): vo
       },
     }
   );
+}
+
+let lastUnlockPushAt = 0;
+
+/** Routes into the unlock quiz, debounced — the notification tap and the
+ * foreground shield check can both fire within the same second. */
+export function presentUnlock(): void {
+  const now = Date.now();
+  if (now - lastUnlockPushAt < 3000) return;
+  lastUnlockPushAt = now;
+  router.push('/unlock');
 }
 
 /** Applies shields to the user's selection immediately. */
@@ -266,6 +293,34 @@ export async function maybePresentUnlock(): Promise<void> {
   const config = await loadLockConfig();
   if (!config.enabled) return;
   if (shieldsActive()) {
-    router.push('/unlock');
+    presentUnlock();
+  }
+}
+
+/**
+ * Re-publishes the shield config (appearance + actions) with the user's
+ * current verse. Called on app foreground so the shield always shows the
+ * verse being learned (04 §3) and picks up action changes after updates.
+ */
+export async function refreshShieldForCurrentVerse(): Promise<void> {
+  if (!isLockAvailable()) return;
+  const { loadLockConfig } = await import('@/services/db/repos/lock');
+  const config = await loadLockConfig();
+  if (!config.enabled) return;
+  try {
+    const { activeGoal, currentChunk } = await import('@/services/db/repos/goals');
+    const { formatRange, getPassage } = await import('@/services/bible');
+    const goal = await activeGoal();
+    if (!goal) return configureShield('Meno', null);
+    const chunk = await currentChunk(goal.id);
+    if (!chunk) return configureShield('Meno', null);
+    const range = {
+      start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
+      end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
+    };
+    const verses = await getPassage(goal.translationId, range);
+    configureShield(formatRange(range), verses.map((v) => v.text).join(' '));
+  } catch {
+    // Shield refresh is best-effort; the existing config keeps working.
   }
 }
