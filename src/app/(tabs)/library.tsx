@@ -120,15 +120,17 @@ export default function LibraryScreen() {
               <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 Your passages in progress will live here.
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/goal-wizard')}
-                style={styles.practiceLink}>
-                <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                  Start a goal
-                </Text>
-              </Pressable>
             </Card>
+          )}
+          {loaded && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/goal-wizard')}
+              style={[styles.newGoal, { borderColor: colors.lapis }]}>
+              <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                {items.some(({ goal }) => goal.status === 'active') ? '+ New goal' : 'Start a goal'}
+              </Text>
+            </Pressable>
           )}
         </>
       )}
@@ -216,6 +218,14 @@ const styles = StyleSheet.create({
   },
   cell: { width: 16, height: 16, borderRadius: 4 },
   practiceLink: { marginTop: spacing.md, alignSelf: 'flex-start' },
+  newGoal: {
+    borderWidth: 1.5,
+    borderRadius: radius.capsule,
+    borderCurve: 'continuous',
+    borderStyle: 'dashed',
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
   practiceLinkText: { fontSize: 15, fontWeight: '600' },
   memorizedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   healthDot: { width: 10, height: 10, borderRadius: 5 },
