@@ -26,6 +26,13 @@ const config: ExpoConfig = {
       // Standard HTTPS only — export-compliance exempt (skips the ASC
       // encryption questionnaire on every build).
       ITSAppUsesNonExemptEncryption: false,
+      // ITMS-90683: a bundled image framework references the Photos APIs,
+      // so Apple requires these strings even though Meno never reads or
+      // saves photos. Keep them honest.
+      NSPhotoLibraryUsageDescription:
+        'Meno does not access your photo library. This notice is required by a bundled image framework.',
+      NSPhotoLibraryAddUsageDescription:
+        'Meno does not save to your photo library. This notice is required by a bundled image framework.',
     },
     // App-level privacy manifest (ship checklist, docs/08): no tracking, no
     // data collection; UserDefaults use (app group) declared with CA92.1.
