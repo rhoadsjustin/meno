@@ -147,7 +147,7 @@ export function LockSetup() {
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setStep('authorize')}
+              onPress={() => setStep(authStatus === 'approved' ? 'pick' : 'authorize')}
               style={[styles.primary, { backgroundColor: colors.lapis }]}>
               <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
             </Pressable>
