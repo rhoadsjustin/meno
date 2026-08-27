@@ -33,10 +33,16 @@ export function selectBlanks(
   const rand = mulberry32(hashSeed(chunkId, density, attemptNo));
 
   const indices = words.map((_, i) => i);
-  const content = indices.filter((i) => !STOPWORDS.has(words[i].toLowerCase()));
-  const stop = indices.filter((i) => STOPWORDS.has(words[i].toLowerCase()));
 
-  // Content words first (shuffled), then stopwords if we still need more.
-  const ordered = [...shuffle(content, rand), ...shuffle(stop, rand)];
+  // 25%: prefer content words (stopwords only if the pool runs out).
+  // 50/75%: uniformly random across all words (03 §1).
+  let ordered: number[];
+  if (density <= 0.3) {
+    const content = indices.filter((i) => !STOPWORDS.has(words[i].toLowerCase()));
+    const stop = indices.filter((i) => STOPWORDS.has(words[i].toLowerCase()));
+    ordered = [...shuffle(content, rand), ...shuffle(stop, rand)];
+  } else {
+    ordered = shuffle(indices, rand);
+  }
   return ordered.slice(0, count).sort((a, b) => a - b);
 }
