@@ -6,6 +6,8 @@ import { Card } from '@/components/card';
 import { Screen } from '@/components/screen';
 import { formatRange, getTranslation } from '@/services/bible';
 import { chunksForGoal, listGoals, type Chunk, type Goal } from '@/services/db/repos/goals';
+import { itemHealth, reviewItemForChunk } from '@/services/db/repos/reviews';
+import type { Health } from '@/services/scheduler';
 import { useThemeColors, fonts, radius, spacing, type ThemeColors } from '@/theme';
 
 type Segment = 'inProgress' | 'memorized';
@@ -15,6 +17,7 @@ export default function LibraryScreen() {
   const colors = useThemeColors();
   const [segment, setSegment] = useState<Segment>('inProgress');
   const [items, setItems] = useState<GoalWithChunks[]>([]);
+  const [healthByChunk, setHealthByChunk] = useState<Record<string, Health>>({});
   const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
@@ -25,8 +28,16 @@ export default function LibraryScreen() {
         const withChunks = await Promise.all(
           goals.map(async (goal) => ({ goal, chunks: await chunksForGoal(goal.id) }))
         );
+        const health: Record<string, Health> = {};
+        for (const { chunks } of withChunks) {
+          for (const c of chunks.filter((c) => c.status === 'memorized')) {
+            const item = await reviewItemForChunk(c.id);
+            if (item) health[c.id] = itemHealth(item);
+          }
+        }
         if (!cancelled) {
           setItems(withChunks);
+          setHealthByChunk(health);
           setLoaded(true);
         }
       })().catch(() => setLoaded(true));
@@ -127,7 +138,12 @@ export default function LibraryScreen() {
           {memorizedChunks.map(({ goal, chunk }) => (
             <Card key={chunk.id}>
               <View style={styles.memorizedRow}>
-                <View style={[styles.healthDot, { backgroundColor: colors.lapis }]} />
+                <View
+                  style={[
+                    styles.healthDot,
+                    { backgroundColor: healthColor(healthByChunk[chunk.id] ?? 'fresh', colors) },
+                  ]}
+                />
                 <View style={styles.memorizedText}>
                   <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
                     {formatRange({
@@ -136,7 +152,8 @@ export default function LibraryScreen() {
                     })}
                   </Text>
                   <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                    {getTranslation(goal.translationId).abbrev} · fresh
+                    {getTranslation(goal.translationId).abbrev} ·{' '}
+                    {healthLabel(healthByChunk[chunk.id] ?? 'fresh')}
                   </Text>
                 </View>
               </View>
@@ -156,6 +173,15 @@ export default function LibraryScreen() {
       )}
     </Screen>
   );
+}
+
+/** Health dot: fresh lapis / fading inkFaint / at-risk error (07 §6). */
+function healthColor(health: Health, colors: ThemeColors): string {
+  return health === 'fresh' ? colors.lapis : health === 'fading' ? colors.inkFaint : colors.error;
+}
+
+function healthLabel(health: Health): string {
+  return health === 'fresh' ? 'fresh' : health === 'fading' ? 'fading' : 'at risk';
 }
 
 /** lapisWash → lapis by tier; gold when memorized (docs/07 §6). */

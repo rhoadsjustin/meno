@@ -13,6 +13,7 @@ import {
   type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
+import { countDueReviews } from '@/services/db/repos/reviews';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
@@ -37,6 +38,7 @@ export default function TodayScreen() {
   const colors = useThemeColors();
   const [data, setData] = useState<TodayData | null>(null);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
+  const [dueCount, setDueCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
@@ -45,6 +47,8 @@ export default function TodayScreen() {
       (async () => {
         const goal = await activeGoal();
         const streakNow = await currentStreakDisplay();
+        const due = await countDueReviews();
+        if (!cancelled) setDueCount(due);
         if (!goal) {
           if (!cancelled) {
             setData(null);
@@ -158,6 +162,22 @@ export default function TodayScreen() {
         </Card>
       )}
 
+      {dueCount > 0 && (
+        <Card>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/review')}>
+            <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              Due for review
+            </Text>
+            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              {dueCount} {dueCount === 1 ? 'verse is' : 'verses are'} ready to be kept fresh.
+            </Text>
+            <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              Review {dueCount}
+            </Text>
+          </Pressable>
+        </Card>
+      )}
+
       {data && (
         <Pressable
           accessibilityRole="link"
@@ -202,5 +222,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   readingLink: { fontSize: 15, paddingHorizontal: spacing.xs },
+  reviewLink: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
   ember: { fontSize: 17, fontWeight: '600' },
 });

@@ -17,10 +17,13 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: 'com.rhoadsdev.meno',
+    appleTeamId: 'Z8825H46UN',
     icon: './assets/expo.icon',
     supportsTablet: false,
-    // Universal-link scaffold; domain pending (docs/08-roadmap.md open question 4).
-    associatedDomains: ['applinks:meno.app'],
+    // Universal links deferred: the associated-domains entitlement blocks
+    // local dev signing (wildcard team profile lacks the capability) and the
+    // meno.app domain isn't live. Re-add before M8:
+    // associatedDomains: ['applinks:meno.app'],
   },
   android: {
     package: 'com.rhoadsdev.meno',

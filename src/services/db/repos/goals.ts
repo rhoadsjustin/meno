@@ -2,7 +2,7 @@
  * Goal + chunk persistence and orchestration. Screens stay thin; anything
  * touching both Scripture and the database goes through here.
  */
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
 import { getPassage } from '@/services/bible';
@@ -129,20 +129,27 @@ export async function currentChunk(goalId: string): Promise<Chunk | undefined> {
 }
 
 /**
- * Applies a cleared tier to a chunk: bumps tier/status, and unlocks the
- * next chunk once Tier 3 is reached (docs/03 §5).
+ * Applies a cleared tier to a chunk: bumps tier/status, unlocks the next
+ * chunk once Tier 3 is reached, and marks Memorized per docs/03 §1 —
+ * a Tier 5 or 6 pass at ≥95% on two separate days (attempts are the audit
+ * trail). Creates the chunk's review item when it becomes memorized.
  */
 export async function applyTierCleared(chunk: Chunk, clearedTier: number): Promise<void> {
   const newTier = Math.max(chunk.tier, clearedTier);
-  const memorized = newTier >= 6;
+  const memorized = clearedTier >= 5 && (await hasTwoDayMastery(chunk.id));
   await db
     .update(tables.chunks)
     .set({
-      tier: newTier,
+      tier: memorized ? 6 : newTier,
       status: memorized ? 'memorized' : 'learning',
       memorizedAt: memorized ? new Date() : null,
     })
     .where(eq(tables.chunks.id, chunk.id));
+
+  if (memorized) {
+    const { ensureReviewItem } = await import('@/services/db/repos/reviews');
+    await ensureReviewItem(chunk.id);
+  }
 
   if (newTier >= 3) {
     const siblings = await chunksForGoal(chunk.goalId);
@@ -151,6 +158,27 @@ export async function applyTierCleared(chunk: Chunk, clearedTier: number): Promi
       await db.update(tables.chunks).set({ status: 'active' }).where(eq(tables.chunks.id, next.id));
     }
   }
+}
+
+/** ≥95% Type/Speak attempts on at least two distinct local days (03 §1). */
+async function hasTwoDayMastery(chunkId: string): Promise<boolean> {
+  const rows = await db
+    .select({ createdAt: tables.attempts.createdAt })
+    .from(tables.attempts)
+    .where(
+      and(
+        eq(tables.attempts.chunkId, chunkId),
+        inArray(tables.attempts.mode, ['type', 'speak']),
+        gte(tables.attempts.accuracy, 0.95)
+      )
+    );
+  const days = new Set(
+    rows.map((r) => {
+      const d = r.createdAt;
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    })
+  );
+  return days.size >= 2;
 }
 
 /** Sub-line copy like "Chunk 4 of 12 · Blanks 50" (docs/07 §6). */

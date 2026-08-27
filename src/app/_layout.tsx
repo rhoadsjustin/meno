@@ -54,6 +54,7 @@ export default function RootLayout() {
           options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen name="practice/[goalId]" options={{ headerShown: false }} />
+        <Stack.Screen name="review/index" options={{ headerShown: false }} />
         <Stack.Screen name="reader/[osis]" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
