@@ -13,7 +13,10 @@ const config: ExpoConfig = {
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'meno',
+  // 'device-activity' is the hardcoded scheme the ShieldAction extension's
+  // "openApp" action opens (react-native-device-activity Shared.swift) —
+  // it must resolve to this app for "Recite to unlock" to work.
+  scheme: ['meno', 'device-activity'],
   userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: 'com.rhoadsdev.meno',
