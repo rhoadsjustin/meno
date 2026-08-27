@@ -10,7 +10,7 @@
 import { Platform } from 'react-native';
 
 import { formatRange, getPassage, getTranslation, mayPersistText } from '@/services/bible';
-import { activeGoal, chunksForGoal, currentChunk } from '@/services/db/repos/goals';
+import { activeGoal, currentChunk } from '@/services/db/repos/goals';
 import { dueReviewItems, countDueReviews } from '@/services/db/repos/reviews';
 import { loadStats } from '@/services/db/repos/stats';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
