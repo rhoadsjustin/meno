@@ -42,9 +42,10 @@ export function tierDef(tier: number): TierDef {
   return def;
 }
 
-/** The tier a chunk practices next (its tier value + 1, capped at Speak). */
+/** The tier a chunk practices next (its highest-cleared + 1, capped at
+ * Speak). A fresh chunk has highestCleared = -1 and starts at Read. */
 export function nextTier(highestCleared: number): number {
-  return Math.min(highestCleared + 1, 6);
+  return Math.min(Math.max(highestCleared + 1, 0), 6);
 }
 
 /** Blanks density for a blanks mode. */

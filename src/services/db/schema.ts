@@ -62,8 +62,8 @@ export const chunks = sqliteTable(
     endBookId: text('endBookId').notNull(),
     endChapter: integer('endChapter').notNull(),
     endVerse: integer('endVerse').notNull(),
-    /** Highest tier passed, 0–6; 6 = memorized. */
-    tier: integer('tier').notNull().default(0),
+    /** Highest tier passed, 0–6; -1 = none yet (fresh chunk); 6 = memorized. */
+    tier: integer('tier').notNull().default(-1),
     status: text('status', { enum: ['locked', 'active', 'learning', 'memorized'] })
       .notNull()
       .default('locked'),

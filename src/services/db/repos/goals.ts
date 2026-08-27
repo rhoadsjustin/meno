@@ -2,7 +2,7 @@
  * Goal + chunk persistence and orchestration. Screens stay thin; anything
  * touching both Scripture and the database goes through here.
  */
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
 import { getPassage } from '@/services/bible';
@@ -67,7 +67,8 @@ export async function createGoal(input: {
       endBookId: c.end.bookId,
       endChapter: c.end.chapter,
       endVerse: c.end.verse,
-      tier: 0,
+      tier: -1, // nothing passed yet — first practice starts at Read
+
       // First chunk starts active; the rest unlock when their predecessor
       // reaches Tier 3 (docs/03 §5).
       status: c.orderIndex === 0 ? ('active' as const) : ('locked' as const),
@@ -106,22 +107,25 @@ export async function chunksForGoal(goalId: string): Promise<Chunk[]> {
     .orderBy(asc(tables.chunks.orderIndex));
 }
 
-/** The chunk the user practices next: lowest unlocked, not memorized. */
+/**
+ * The chunk the user practices next: the lowest-order unfinished chunk
+ * (active or learning). Once review sessions exist (M3), the session queue
+ * pulls older learning chunks through reviews instead and this can favor
+ * the newest unlocked chunk.
+ */
 export async function currentChunk(goalId: string): Promise<Chunk | undefined> {
   const rows = await db
     .select()
     .from(tables.chunks)
-    .where(and(eq(tables.chunks.goalId, goalId), eq(tables.chunks.status, 'active')))
+    .where(
+      and(
+        eq(tables.chunks.goalId, goalId),
+        inArray(tables.chunks.status, ['active', 'learning'])
+      )
+    )
     .orderBy(asc(tables.chunks.orderIndex))
     .limit(1);
-  if (rows[0]) return rows[0];
-  const learning = await db
-    .select()
-    .from(tables.chunks)
-    .where(and(eq(tables.chunks.goalId, goalId), eq(tables.chunks.status, 'learning')))
-    .orderBy(asc(tables.chunks.orderIndex))
-    .limit(1);
-  return learning[0];
+  return rows[0];
 }
 
 /**

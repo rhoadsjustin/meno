@@ -51,12 +51,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="goal-wizard"
-          options={{
-            presentation: 'formSheet',
-            headerShown: false,
-            sheetAllowedDetents: [0.85],
-            sheetCornerRadius: 24,
-          }}
+          options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen name="practice/[goalId]" options={{ headerShown: false }} />
         <Stack.Screen name="reader/[osis]" options={{ headerShown: false }} />
