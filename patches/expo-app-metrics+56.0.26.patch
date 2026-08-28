@@ -1,0 +1,13 @@
+diff --git a/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift b/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift
+index 5f0b1f3..d291a02 100644
+--- a/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift
++++ b/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift
+@@ -16,7 +16,7 @@ protocol NetworkPathObserverDelegate: AnyObject, Sendable {
+  */
+ final class NetworkPathObserver: Sendable {
+   private let monitor = NWPathMonitor()
+-  private weak let delegate: NetworkPathObserverDelegate?
++  private nonisolated(unsafe) weak var delegate: NetworkPathObserverDelegate?
+   private let queue = DispatchQueue(label: "expo.appmetrics.networkPath")
+ 
+   init(delegate: NetworkPathObserverDelegate) {
