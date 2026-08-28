@@ -93,7 +93,9 @@ no web access, no gambling). Result: **4+**.
 
 ## App Privacy section
 
-Already covered: **Data Not Collected**, tracking: No.
+- **Diagnostics → Crash Data + Performance Data**: collected, **not linked
+  to identity**, not used for tracking (EAS Observe).
+- Everything else: not collected. Tracking: **No**.
 
 ## Copyright
 

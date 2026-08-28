@@ -3,7 +3,8 @@
 _Effective: August 27, 2026_
 
 Meno is built so that your practice of Scripture stays between you and God.
-The short version: **we don't collect your data — any of it.**
+The short version: **no personal data is ever collected** — only anonymous
+crash and performance diagnostics, described below.
 
 ## What stays on your device
 
@@ -14,8 +15,8 @@ Everything Meno knows about you lives only on your phone:
 - **Recitation audio never leaves your phone.** When you recite a verse
   aloud, speech recognition runs entirely on-device using Apple's on-device
   recognition. No audio and no transcripts are sent to us or anyone else.
-- Meno has no accounts, no sign-in, no analytics, no advertising, and no
-  third-party tracking of any kind.
+- Meno has no accounts, no sign-in, no advertising, and no third-party
+  tracking of any kind.
 
 ## Screen Time ("Recite to Unlock")
 
@@ -36,6 +37,15 @@ cached on your device under Crossway's license. That request contains only
 the passage reference (for example, "Philippians 1") and our API key —
 no personal information, no identifiers, nothing about you.
 
+## Anonymous diagnostics
+
+To keep Meno stable, the app sends anonymous crash reports and performance
+measurements (such as launch time and screen-load time) to Expo's EAS
+Observe service. These diagnostics contain technical details only — error
+messages, device model, OS version — and are never linked to your identity.
+They contain no Scripture progress, no recitations, and nothing you typed
+or said.
+
 ## Notifications
 
 Review reminders and pop quizzes are scheduled locally on your device.
@@ -52,7 +62,7 @@ No push-notification service is used and nothing is transmitted.
 
 ## Children
 
-Meno collects no data from anyone, including children. The app is rated 4+.
+Meno collects no personal data from anyone, including children. The app is rated 4+.
 
 ## Changes
 
