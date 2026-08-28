@@ -80,12 +80,11 @@ Fallback if collision: "Meno: Hide the Word".)
 
 (94 chars)
 
-## URLs
+## URLs (live)
 
-- Support URL: (required — host `privacy-policy.html`'s sibling page or a
-  GitHub repo/issues link)
+- Privacy Policy URL: **https://rhoadsjustin.github.io/meno/ship/privacy-policy.html**
+- Support URL: **https://github.com/rhoadsjustin/meno/issues**
 - Marketing URL: optional
-- Privacy Policy URL: (required — host `docs/ship/privacy-policy.html`)
 
 ## Age rating questionnaire
 
