@@ -95,6 +95,9 @@ const config: ExpoConfig = {
       {
         appleTeamId: 'Z8825H46UN',
         appGroup: 'group.com.rhoadsdev.meno',
+        // Our targets/ folder carries local edits (extension icons) — don't
+        // let prebuild overwrite it from the package's bundled copies.
+        copyToTargetFolder: false,
       },
     ],
     [

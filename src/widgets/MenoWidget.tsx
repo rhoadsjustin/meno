@@ -123,7 +123,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'systemMedium') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno:///practice'), containerBackground(bg, 'widget')]}>
+      <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <HStack>
           <Spacer />
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(lapis)]}>
