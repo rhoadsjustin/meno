@@ -70,6 +70,7 @@ const config: ExpoConfig = {
     // Fixes the TestFlight dyld crash: guarantees ExpoModulesJSI.framework
     // is embedded when CocoaPods' fresh-checkout classification misses it.
     './plugins/withEmbedJsiFramework',
+    './plugins/withExtensionAppIcon',
     'expo-router',
     'expo-sqlite',
     [
