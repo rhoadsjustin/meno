@@ -67,6 +67,9 @@ const config: ExpoConfig = {
     favicon: './assets/images/favicon.png',
   },
   plugins: [
+    // Fixes the TestFlight dyld crash: guarantees ExpoModulesJSI.framework
+    // is embedded when CocoaPods' fresh-checkout classification misses it.
+    './plugins/withEmbedJsiFramework',
     'expo-router',
     'expo-sqlite',
     [
