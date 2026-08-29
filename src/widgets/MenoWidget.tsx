@@ -40,7 +40,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'accessoryCircular') {
     return (
-      <VStack modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
+      <VStack modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 20, weight: 'bold', design: 'serif' })]}>
           {String(props.streak)}
         </Text>
@@ -51,7 +51,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'accessoryInline') {
     return (
-      <Text modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
+      <Text modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         {props.verseRef} · {String(props.streak)}
         {flame}
       </Text>
@@ -60,7 +60,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'accessoryRectangular') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
+      <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>{props.verseRef}</Text>
         <Text modifiers={[font({ size: 11, design: 'monospaced' })]}>
           {props.memorized ? 'You know this one.' : props.displayText}
@@ -71,7 +71,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'systemSmall') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
+      <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <HStack>
           <Text modifiers={[font({ size: 26, weight: 'bold', design: 'serif' })]}>
             {String(props.streak)}
@@ -123,7 +123,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
 
   if (family === 'systemMedium') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno://practice'), containerBackground(bg, 'widget')]}>
+      <VStack alignment="leading" modifiers={[widgetURL('meno:///practice'), containerBackground(bg, 'widget')]}>
         <HStack>
           <Spacer />
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(lapis)]}>
@@ -146,7 +146,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
     .map((c) => (c === '1' ? '■' : '□'))
     .join(' ');
   return (
-    <VStack alignment="leading" modifiers={[widgetURL('meno://'), containerBackground(bg, 'widget')]}>
+    <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
       <HStack>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>Meno</Text>
         <Spacer />
