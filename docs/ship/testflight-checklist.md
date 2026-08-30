@@ -36,10 +36,14 @@ npx eas-cli build -p ios --profile production --submit
 
 ## 2. ASC → App Privacy (nutrition labels)
 
-- **Data collection: “Data Not Collected.”** Everything (goals, attempts,
-  streaks, recitation audio/transcripts) stays on-device in SQLite.
-  No analytics SDK, no accounts, no third-party code that phones home.
+- **Data collection: Diagnostics only** (updated 2026-08-29 when EAS
+  Observe shipped): Crash Data + Performance Data, **not linked** to
+  identity, purpose App Functionality/Analytics. Everything personal
+  (goals, attempts, streaks, recitation audio/transcripts) stays on-device
+  in SQLite. No accounts.
 - Tracking: **No.**
+- If the anonymous usage counter from docs/09 ever ships, add Usage Data →
+  Product Interaction (not linked) in the same release — see 09 §4.
 - The one network call is Scripture text download (ESV API) — keyed by
   passage reference only, no user identifiers. Reference-only queries are
   not "data collection" in ASC's taxonomy.
