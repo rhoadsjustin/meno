@@ -36,6 +36,8 @@ export async function createGoal(input: {
   range: RefRange;
   title: string;
   targetDate?: Date;
+  /** Set when this goal was created by joining a shared challenge (06 §5). */
+  challengeId?: string;
 }): Promise<Goal> {
   const plan = await previewGoal(input.translationId, input.range);
   const goalId = Crypto.randomUUID();
@@ -54,6 +56,7 @@ export async function createGoal(input: {
     createdAt: now,
     targetDate: input.targetDate ?? null,
     status: 'active',
+    challengeId: input.challengeId ?? null,
   });
 
   await db.insert(tables.chunks).values(
@@ -82,6 +85,21 @@ export async function createGoal(input: {
 
 export async function getGoal(id: string): Promise<Goal | undefined> {
   const rows = await db.select().from(tables.goals).where(eq(tables.goals.id, id)).limit(1);
+  return rows[0];
+}
+
+/** Marks a goal as a shared challenge; the code goes into its links. */
+export async function setGoalChallengeId(goalId: string, code: string): Promise<void> {
+  await db.update(tables.goals).set({ challengeId: code }).where(eq(tables.goals.id, goalId));
+}
+
+/** Join-time dedupe: has this device already joined the challenge? */
+export async function goalByChallengeId(code: string): Promise<Goal | undefined> {
+  const rows = await db
+    .select()
+    .from(tables.goals)
+    .where(eq(tables.goals.challengeId, code))
+    .limit(1);
   return rows[0];
 }
 

@@ -148,6 +148,7 @@ function RootLayout() {
           name="goal-wizard"
           options={{ presentation: 'modal', headerShown: false }}
         />
+        <Stack.Screen name="challenge" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen
           name="onboarding"
           options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}

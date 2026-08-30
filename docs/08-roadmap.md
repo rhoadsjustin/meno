@@ -45,6 +45,7 @@ Build in order. Each milestone ends with its acceptance criteria passing on a **
 ## M8 — Social (Phase 2)
 - Supabase: Sign in with Apple, sync per 02 §6, challenges + boards + invites per 06 §5, universal links.
 - ✅ Two devices complete a shared challenge flow end-to-end.
+- **Shipped early (backendless slice, 2026-08-30):** challenge links per 06 §5 "Create"/"Join" minus board/nudges/QR — `src/services/challenges/` codec (refs only, license-safe), "Share challenge" on library goal cards, `meno://challenge` join screen creating the goal locally with the shared `challengeId`. Custom scheme only until the universal-link domain lands; recipients need the app installed.
 
 ## Ship checklist (v1 = M0–M6)
 - Privacy manifest + nutrition labels (mic, speech, no tracking); App Review notes for Family Controls; TestFlight beta with ≥10 users for 2 weeks; crash-free ≥99.5%.

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card } from '@/components/card';
 import { Screen } from '@/components/screen';
 import { formatRange, getTranslation } from '@/services/bible';
+import { shareGoalChallenge } from '@/services/challenges';
 import { chunksForGoal, listGoals, type Chunk, type Goal } from '@/services/db/repos/goals';
 import { itemHealth, reviewItemForChunk } from '@/services/db/repos/reviews';
 import type { Health } from '@/services/scheduler';
@@ -102,14 +103,25 @@ export default function LibraryScreen() {
                     />
                   ))}
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => router.push(`/practice/${goal.id}`)}
-                  style={[styles.practiceLink]}>
-                  <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                    Practice
-                  </Text>
-                </Pressable>
+                <View style={styles.actionsRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push(`/practice/${goal.id}`)}
+                    style={[styles.practiceLink]}>
+                    <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                      Practice
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Share ${goal.title} as a challenge`}
+                    onPress={() => shareGoalChallenge(goal).catch(() => {})}
+                    style={[styles.practiceLink]}>
+                    <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                      Share challenge
+                    </Text>
+                  </Pressable>
+                </View>
               </Card>
             ))}
           {loaded && items.filter(({ goal }) => goal.status === 'active').length === 0 && (
@@ -217,6 +229,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   cell: { width: 16, height: 16, borderRadius: 4 },
+  actionsRow: { flexDirection: 'row', gap: spacing.xl },
   practiceLink: { marginTop: spacing.md, alignSelf: 'flex-start' },
   newGoal: {
     borderWidth: 1.5,
