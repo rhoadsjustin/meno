@@ -66,10 +66,15 @@ Fallback if collision: "Meno: Hide the Word".)
 > is fetched once per passage and kept offline, used by permission of
 > Crossway.
 >
+> MEMORIZE TOGETHER
+> Share any passage as a challenge link — a friend taps it and gets the
+> same goal, same target date, on their own phone.
+>
 > QUIETLY YOURS
-> No account. No ads. No analytics. Everything — your goals, your progress,
-> your recitations — stays on your phone. Recitation audio is processed
-> entirely on-device and never recorded or uploaded.
+> No account. No ads. No tracking. Everything — your goals, your progress,
+> your recitations — stays on your phone; the only thing Meno ever sends
+> is an anonymous crash report. Recitation audio is processed entirely
+> on-device and never recorded or uploaded.
 >
 > Meno (μένω): to remain, to abide. "If you abide in me, and my words abide
 > in you…" — John 15:7
@@ -82,7 +87,8 @@ Fallback if collision: "Meno: Hide the Word".)
 
 ## URLs (live)
 
-- Privacy Policy URL: **https://rhoadsjustin.github.io/meno/ship/privacy-policy.html**
+- Privacy Policy URL: **https://rhoadsjustin.github.io/meno/privacy-policy.html**
+  (the old `/ship/...` path is dead since Pages moved to the orphan branch)
 - Support URL: **https://github.com/rhoadsjustin/meno/issues**
 - Marketing URL: optional
 

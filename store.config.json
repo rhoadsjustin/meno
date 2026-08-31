@@ -1,0 +1,67 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "version": "1.0",
+    "copyright": "© 2026 Justin Rhoads",
+    "categories": [
+      "REFERENCE",
+      "LIFESTYLE"
+    ],
+    "release": {
+      "automaticRelease": false
+    },
+    "info": {
+      "en-US": {
+        "title": "Meno — Scripture Memory",
+        "subtitle": "Hide Scripture in your heart",
+        "promoText": "Pick a passage. Climb from reading to reciting. Keep it for good — with surprise pop quizzes, home screen widgets, and an optional app lock.",
+        "description": "Meno helps you memorize Scripture — and keep it.\n\nPick a passage: a single verse, a psalm, or whole chapters. Meno breaks it into small, day-sized pieces and walks each one up a ladder of practice modes:\n\n• Read — settle into the words\n• First letters — recite from a letter cipher\n• Fill in the blanks — 25%, 50%, then 75% of the words removed\n• Arrange — rebuild the passage from shuffled phrases\n• Type — write it from memory\n• Speak — recite it aloud, checked on your device\n\nAs a verse solidifies in memory, its text visibly dissolves from the screen — first letters, then just the reference. That's the whole idea: it lives in you, not the app.\n\nKEEP IT FRESH\nMemorized verses come back for spaced-repetition reviews right before you'd forget them. Optional pop quizzes arrive out of the blue (never more than two a day, never at night) — thirty seconds that keep a verse yours for good. Stitch sessions regularly ask you to recite everything so far as one passage, so chapters hold together, not just fragments.\n\nRECITE TO UNLOCK\nChoose apps you'd rather open less, and Meno will ask you to recite your current verse before they open. It's a door, not a wall: an override button always works, instantly, no questions asked. Your app choices never leave your device — Apple's Screen Time framework keeps them private even from us.\n\nALWAYS IN FRONT OF YOU\nHome screen and Lock Screen widgets show your current verse at its current level of dissolution, along with your streak and due reviews.\n\nMEMORIZE TOGETHER\nShare any passage as a challenge link — a friend taps it and gets the same goal, same target date, on their own phone.\n\nFOUR TRANSLATIONS\nWorld English Bible, King James Version, and American Standard Version are built in and work fully offline. The English Standard Version (ESV®) is fetched once per passage and kept offline, used by permission of Crossway.\n\nQUIETLY YOURS\nNo account. No ads. No tracking. Everything — your goals, your progress, your recitations — stays on your phone; the only thing Meno ever sends is an anonymous crash report. Recitation audio is processed entirely on-device and never recorded or uploaded.\n\nMeno (μένω): to remain, to abide. \"If you abide in me, and my words abide in you…\" — John 15:7",
+        "keywords": [
+          "bible",
+          "verse",
+          "memorize",
+          "scripture",
+          "memory",
+          "kjv",
+          "esv",
+          "christian",
+          "faith",
+          "devotional",
+          "widget",
+          "memorization"
+        ],
+        "privacyPolicyUrl": "https://rhoadsjustin.github.io/meno/privacy-policy.html",
+        "supportUrl": "https://github.com/rhoadsjustin/meno/issues"
+      }
+    },
+    "advisory": {
+      "ageRatingOverride": "NONE",
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "kidsAgeBand": null,
+      "koreaAgeRatingOverride": "NONE",
+      "lootBox": false,
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": false,
+      "ageAssurance": false,
+      "ageRatingOverrideV2": "NONE",
+      "developerAgeRatingInfoUrl": null,
+      "gunsOrOtherWeapons": "NONE",
+      "healthOrWellnessTopics": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "userGeneratedContent": false
+    }
+  }
+}
