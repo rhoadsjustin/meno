@@ -1,0 +1,31 @@
+# Practice a fresh chunk: Read round (tier 0), then the First Letters
+# self-graded round (tier 1), verifying the feedback screens between.
+appId: com.rhoadsdev.meno
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- runFlow: ../helpers/create-goal.yml
+- tapOn: "Practice"
+# Round header is "<reference> · <tier name>".
+- extendedWaitUntil:
+    visible: ".* · Read"
+    timeout: 10000
+- assertVisible: ".*Let the words settle\\..*"
+# "I've read it twice" — matched loosely to dodge the curly apostrophe.
+- tapOn: ".*read it twice"
+- extendedWaitUntil:
+    visible: "Read cleared"
+    timeout: 10000
+- assertVisible: "\\d+%"
+- tapOn: "Continue"
+# Next tier loads in the same screen: First Letters.
+- extendedWaitUntil:
+    visible: ".* · First Letters"
+    timeout: 10000
+- tapOn: "Reveal"
+- assertVisible: "How did it go\\?"
+- tapOn: "Mostly got it"
+- extendedWaitUntil:
+    visible: "\\d+%"
+    timeout: 10000

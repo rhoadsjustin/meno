@@ -1,0 +1,15 @@
+# Reader: open from Today's continue-reading link, page forward and back.
+appId: com.rhoadsdev.meno
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- runFlow: ../helpers/create-goal.yml
+- tapOn: "Continue reading.*"
+- extendedWaitUntil:
+    visible: "John 1"
+    timeout: 10000
+- tapOn: "Next chapter"
+- assertVisible: "John 2"
+- tapOn: "Previous chapter"
+- assertVisible: "John 1"

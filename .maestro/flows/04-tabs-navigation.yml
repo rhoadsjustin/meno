@@ -1,0 +1,20 @@
+# Walk all four tabs and check each screen's key content.
+appId: com.rhoadsdev.meno
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- tapOn: "Library"
+- assertVisible: "In progress"
+- assertVisible: "No goals yet"
+- tapOn: "Stats"
+- assertVisible: ".*day streak.*"
+- assertVisible: "Badges"
+- tapOn: "Settings"
+- assertVisible: "Review reminders"
+# The row merges title + subtitle into one accessibility element.
+- assertVisible: ".*Recite to Unlock.*"
+- tapOn: "Today"
+- assertVisible: "Start a goal"

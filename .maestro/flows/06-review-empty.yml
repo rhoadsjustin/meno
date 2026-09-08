@@ -1,0 +1,17 @@
+# Review screen via deep link with nothing due.
+appId: com.rhoadsdev.meno
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- openLink: meno:///review
+# iOS asks to confirm opening a custom scheme from outside the app; the
+# dialog outlives the flow and blocks later flows if left up.
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Nothing due for review"
+    timeout: 10000
+- tapOn: "Done"
+- assertVisible: "Start a goal"

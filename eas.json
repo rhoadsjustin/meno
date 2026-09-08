@@ -11,6 +11,13 @@
         "resourceClass": "m-medium"
       }
     },
+    "e2e-test": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "environment": "production",

@@ -1,0 +1,10 @@
+# Fresh install → onboarding → empty Today tab.
+appId: com.rhoadsdev.meno
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- assertVisible: "Pick a passage to begin hiding it in your heart\\."
+- assertVisible: "Start a goal"

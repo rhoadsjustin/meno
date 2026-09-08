@@ -1,0 +1,89 @@
+name: E2E (Maestro)
+
+# Runs after each PR merges to main. Fast checks (typecheck/lint/unit tests)
+# live in ci.yml; this workflow builds the app for the iOS simulator and runs
+# the Maestro flows in .maestro/flows against it. macOS runners are free for
+# public repos.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  maestro-ios:
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      # CocoaPods 1.17 fails on ASCII-8BIT locales during pod install.
+      LANG: en_US.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build:bible
+
+      - name: Select Xcode 26
+        # The image default is Xcode 16; the project needs the iOS 26 SDK.
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)"
+
+      - name: Cache CocoaPods downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Prebuild iOS project
+        # ios/ is gitignored (CNG) — always a fresh prebuild, pods included.
+        run: npx expo prebuild --platform ios
+
+      - name: Build app for simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/Meno.xcworkspace \
+            -scheme Meno \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            build | (command -v xcbeautify >/dev/null && xcbeautify --quiet || cat)
+
+      - name: Boot simulator and install app
+        run: |
+          UDID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices[] | .[] | select(.name | test("^iPhone"))] | .[0].udid')
+          echo "Using simulator $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" ios/build/Build/Products/Release-iphonesimulator/Meno.app
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Run Maestro flows
+        run: maestro --udid "$UDID" test --format junit --output maestro-report.xml .maestro/flows
+
+      - name: Upload Maestro artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-artifacts
+          path: |
+            maestro-report.xml
+            ~/.maestro/tests
+          if-no-files-found: ignore

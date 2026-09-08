@@ -1,0 +1,19 @@
+# Subflow: walk the 4-step onboarding on a fresh install and land on the
+# empty Today tab. Assumes the app was just launched with clearState.
+appId: com.rhoadsdev.meno
+---
+# Cold start renders nothing until SQLite migrations finish, then Today's
+# focus effect redirects to onboarding — wait generously.
+- extendedWaitUntil:
+    visible: "Let the Word remain in you\\."
+    timeout: 30000
+- tapOn: "Continue"
+# Notifications step — decline so no OS permission dialog appears.
+- tapOn: "Later"
+# Widget step.
+- tapOn: "Continue"
+# Lock step — skip straight to Today.
+- tapOn: "Explore first"
+- extendedWaitUntil:
+    visible: "Nothing memorized yet"
+    timeout: 10000

@@ -1,0 +1,17 @@
+# Subflow: create a goal with all wizard defaults (John 1:1, default
+# translation). Assumes the empty Today tab is showing.
+appId: com.rhoadsdev.meno
+---
+- tapOn: "Start a goal"
+- extendedWaitUntil:
+    visible: "Choose a translation"
+    timeout: 10000
+- tapOn: "Continue"
+- assertVisible: "Choose a passage"
+- tapOn: "Continue"
+- assertVisible: "Your plan"
+- tapOn: "Start memorizing"
+# Back on Today with the new goal's practice card.
+- extendedWaitUntil:
+    visible: "Practice"
+    timeout: 10000
