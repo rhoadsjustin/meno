@@ -62,8 +62,13 @@ jobs:
 
       - name: Boot simulator and install app
         run: |
+          # Pin to an iOS 26 runtime: it matches the SDK the app is built
+          # with, and on iOS 18.x Maestro cannot dismiss the deep-link
+          # "Open in Meno?" dialog (flow 06), which then blocks later flows.
           UDID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices[] | .[] | select(.name | test("^iPhone"))] | .[0].udid')
+            | jq -r '.devices | to_entries[] | select(.key | contains("iOS-26")) | .value[] | select(.name | test("^iPhone")) | .udid' \
+            | head -n 1)
+          test -n "$UDID"
           echo "Using simulator $UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
