@@ -81,6 +81,18 @@ describe('arrange', () => {
     [oneSwap[0], oneSwap[1]] = [oneSwap[1], oneSwap[0]];
     expect(gradeArrangement(round, oneSwap)).toBeCloseTo((n - 2) / n);
   });
+
+  it('accepts identical phrases in either order (TestFlight: repeated-phrase verses)', () => {
+    const round = {
+      phrases: ['Holy, holy,', 'is the Lord,', 'Holy, holy,', 'God Almighty.'],
+      shuffledOrder: [3, 0, 2, 1],
+    };
+    // Tiles 0 and 2 are the same text — swapping them must still grade 100%.
+    expect(gradeArrangement(round, [2, 1, 0, 3])).toBe(1);
+    expect(gradeArrangement(round, [0, 1, 2, 3])).toBe(1);
+    // A genuinely wrong placement still fails.
+    expect(gradeArrangement(round, [1, 0, 2, 3])).toBeCloseTo(0.5);
+  });
 });
 
 describe('session state machine', () => {

@@ -55,11 +55,22 @@ export function buildArrangeRound(text: string, chunkId: string, attemptNo: numb
     phrases.map((_, i) => i),
     rand
   );
-  // Never present the tiles already in solved order.
-  if (phrases.length > 1 && shuffledOrder.every((v, i) => v === i)) {
+  // Never present the tiles already in solved order (by text — duplicate
+  // phrases in swapped positions still read as solved).
+  if (phrases.length > 1 && shuffledOrder.every((v, i) => phrases[v] === phrases[i])) {
     shuffledOrder = [...shuffledOrder.slice(1), shuffledOrder[0]];
   }
   return { phrases, shuffledOrder };
+}
+
+/**
+ * A placement is correct when the tile's text matches the phrase that belongs
+ * at that position — not when the tile index matches. Duplicate phrases are
+ * indistinguishable to the user, so either copy must be accepted at either slot.
+ */
+export function isPlacementCorrect(round: ArrangeRound, placedOrder: number[], position: number): boolean {
+  const tile = placedOrder[position];
+  return tile !== undefined && round.phrases[tile] === round.phrases[position];
 }
 
 /** Accuracy = fraction of tiles placed in their correct position. */
@@ -68,7 +79,7 @@ export function gradeArrangement(round: ArrangeRound, placedOrder: number[]): nu
   if (n === 0) return 1;
   let correct = 0;
   for (let i = 0; i < Math.min(n, placedOrder.length); i++) {
-    if (placedOrder[i] === i) correct++;
+    if (isPlacementCorrect(round, placedOrder, i)) correct++;
   }
   return correct / n;
 }

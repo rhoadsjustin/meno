@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { buildArrangeRound, gradeArrangement } from '@/services/practice';
+import { buildArrangeRound, gradeArrangement, isPlacementCorrect } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
 export function ArrangeRound({
@@ -40,7 +40,9 @@ export function ArrangeRound({
     const accuracy = gradeArrangement(round, placed);
     onDone({
       accuracy,
-      missedWords: placed.filter((tile, i) => tile !== i).map((tile) => round.phrases[tile]),
+      missedWords: placed
+        .filter((_, i) => !isPlacementCorrect(round, placed, i))
+        .map((tile) => round.phrases[tile]),
     });
   };
 
