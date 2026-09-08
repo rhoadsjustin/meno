@@ -26,6 +26,7 @@ The overall feel: a quiet, serious reading instrument that happens to be delight
 | `lapisWash` | #E9EEFA | #1A2440 | Tinted fills, active states |
 | `gold` | #A8802E | #D4AF37 | Memorized state ONLY: medallions, memorized checkmarks, stitch-complete moments |
 | `error` | #B3402E | #E06A56 | Wrong words in feedback |
+| `errorWash` | #F9E9E4 | #3B211C | Highlight behind missed/wrong feedback words |
 | `success` | #2E7D5B | #4CAF8E | Correct-word feedback (grading only — general success uses lapis) |
 
 Contrast: all text pairs ≥ 4.5:1. Gold on surface is used at display sizes only (≥20pt) where 3:1 suffices.
@@ -60,7 +61,7 @@ Type scale follows Apple's text styles; do not invent sizes.
   - **Arrange**: phrase tiles, spring physics on drop.
   - **Type**: full-screen editor, New York, no autocorrect, reference watermark.
   - **Speak**: large mic button; live ghost transcript beneath the reference; waveform in lapis.
-- Feedback: word-level coloring in place (correct=success green, typo=underline, missed=error), accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
+- Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
 
 ### Library
 - Segmented: **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).

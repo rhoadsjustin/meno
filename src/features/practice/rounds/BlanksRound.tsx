@@ -122,6 +122,7 @@ export function BlanksRound({
                 style={[
                   styles.pillText,
                   { color: resolved ? pillColor : 'transparent', fontFamily: fonts?.scripture },
+                  (blankState === 'wrong' || blankState === 'missed') && styles.pillTextError,
                 ]}>
                 {resolved ? t.word : t.word.replace(/./g, ' ')}
               </Text>
@@ -162,6 +163,7 @@ const styles = StyleSheet.create({
     marginVertical: 3,
   },
   pillText: { fontSize: 18, lineHeight: 26 },
+  pillTextError: { textDecorationLine: 'line-through' },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
