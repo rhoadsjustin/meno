@@ -61,6 +61,9 @@ jobs:
             build | (command -v xcbeautify >/dev/null && xcbeautify --quiet || cat)
 
       - name: Boot simulator and install app
+        # bootstatus can wait forever on a wedged runner simulator — fail
+        # fast so the retry/rerun happens within minutes, not the job budget.
+        timeout-minutes: 10
         run: |
           # Pin to an iOS 26 runtime: it matches the SDK the app is built
           # with, and on iOS 18.x Maestro cannot dismiss the deep-link
@@ -81,6 +84,7 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       - name: Run Maestro flows
+        timeout-minutes: 30
         env:
           # CI simulators start the XCTest driver slowly; the default timeout
           # aborts with IOSDriverTimeoutException before the first flow runs.
