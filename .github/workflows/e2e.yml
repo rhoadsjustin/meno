@@ -76,6 +76,10 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       - name: Run Maestro flows
+        env:
+          # CI simulators start the XCTest driver slowly; the default timeout
+          # aborts with IOSDriverTimeoutException before the first flow runs.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '240000'
         run: maestro --udid "$UDID" test --format junit --output maestro-report.xml .maestro/flows
 
       - name: Upload Maestro artifacts
