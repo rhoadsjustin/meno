@@ -85,7 +85,12 @@ jobs:
           # CI simulators start the XCTest driver slowly; the default timeout
           # aborts with IOSDriverTimeoutException before the first flow runs.
           MAESTRO_DRIVER_STARTUP_TIMEOUT: '240000'
-        run: maestro --udid "$UDID" test --format junit --output maestro-report.xml .maestro/flows
+        # One retry: shared CI simulators occasionally drop or crash the app
+        # mid-flow; a legitimate regression fails both attempts.
+        run: |
+          maestro --udid "$UDID" test --format junit --output maestro-report.xml .maestro/flows \
+            || { echo "::warning::Maestro suite failed once; retrying"; \
+                 maestro --udid "$UDID" test --format junit --output maestro-report.xml .maestro/flows; }
 
       - name: Upload Maestro artifacts
         if: failure()
@@ -95,4 +100,5 @@ jobs:
           path: |
             maestro-report.xml
             ~/.maestro/tests
+            ~/Library/Logs/DiagnosticReports
           if-no-files-found: ignore

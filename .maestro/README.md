@@ -1,8 +1,13 @@
 # Maestro E2E flows
 
-End-to-end UI tests run with [Maestro](https://docs.maestro.dev). Runnable flows
+End-to-end UI tests run with [Maestro](https://docs.maestro.dev). CI flows
 live in `flows/`; shared subflows (onboarding, goal creation) live in `helpers/`
-so the test runner doesn't execute them standalone.
+so the test runner doesn't execute them standalone; `manual/` holds flows that
+are local-only because they misbehave on CI simulators (currently the
+review deep-link flow: iOS's "Open in Meno?" scheme confirmation can appear
+tens of seconds late on slow CI machines, land after the flow gave up waiting,
+and then sit over the screen failing every later flow). Run those before a
+release: `maestro test .maestro/manual`.
 
 Each flow is self-contained: it launches with `clearState: true` and rebuilds
 whatever state it needs via the helpers, so flows can run in any order.
