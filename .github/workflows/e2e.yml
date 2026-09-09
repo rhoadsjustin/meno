@@ -61,20 +61,35 @@ jobs:
             build | (command -v xcbeautify >/dev/null && xcbeautify --quiet || cat)
 
       - name: Boot simulator and install app
-        # bootstatus can wait forever on a wedged runner simulator — fail
-        # fast so the retry/rerun happens within minutes, not the job budget.
-        timeout-minutes: 10
+        # Individual runner simulators wedge on boot (observed twice on the
+        # same device model on fresh VMs), and `simctl boot`/`bootstatus` can
+        # block forever on one. Boot in the background, poll for Booted with a
+        # bounded wait, and fall through to the next candidate device.
+        timeout-minutes: 12
         run: |
-          # Pin to an iOS 26 runtime: it matches the SDK the app is built
+          # Pin to iOS 26 runtimes: they match the SDK the app is built
           # with, and on iOS 18.x Maestro cannot dismiss the deep-link
-          # "Open in Meno?" dialog (flow 06), which then blocks later flows.
-          UDID=$(xcrun simctl list devices available --json \
-            | jq -r '.devices | to_entries[] | select(.key | contains("iOS-26")) | .value[] | select(.name | test("^iPhone")) | .udid' \
-            | head -n 1)
+          # "Open in Meno?" dialog, which then blocks later flows.
+          CANDIDATES=$(xcrun simctl list devices available --json \
+            | jq -r '.devices | to_entries[] | select(.key | contains("iOS-26")) | .value[] | select(.name | test("^iPhone")) | .udid')
+          test -n "$CANDIDATES"
+          UDID=""
+          for udid in $CANDIDATES; do
+            echo "Trying simulator $udid"
+            (xcrun simctl boot "$udid" || true) &
+            for _ in $(seq 1 36); do  # up to 3 minutes per candidate
+              state=$(xcrun simctl list devices --json \
+                | jq -r --arg u "$udid" '.devices[][] | select(.udid == $u) | .state')
+              if [ "$state" = "Booted" ]; then UDID="$udid"; break; fi
+              sleep 5
+            done
+            if [ -n "$UDID" ]; then break; fi
+            echo "Simulator $udid did not boot; trying next candidate"
+            xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+          done
           test -n "$UDID"
           echo "Using simulator $UDID"
-          xcrun simctl boot "$UDID"
-          xcrun simctl bootstatus "$UDID" -b
+          sleep 15  # let springboard settle before install
           xcrun simctl install "$UDID" ios/build/Build/Products/Release-iphonesimulator/Meno.app
           echo "UDID=$UDID" >> "$GITHUB_ENV"
 
