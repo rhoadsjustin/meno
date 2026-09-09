@@ -8,6 +8,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      ship:
+        description: 'Also build and submit to TestFlight after the suite passes'
+        type: boolean
+        default: false
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -129,7 +134,12 @@ jobs:
   testflight:
     name: Build and submit to TestFlight
     needs: [maestro-ios]
-    if: github.event_name == 'push'
+    # Gated so routine merges don't each consume an EAS build: ship by
+    # putting "[ship]" in the merge commit message, or by running the
+    # workflow manually with the ship checkbox ticked.
+    if: >-
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[ship]')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.ship)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

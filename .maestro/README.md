@@ -43,9 +43,11 @@ merges) and via manual dispatch: a `macos-15` runner prebuilds the iOS project
 (CNG — `ios/` is gitignored), builds the `Meno` scheme for the simulator with
 Xcode 26, and runs this suite. macOS runners are free while the repo is public.
 Fast checks (typecheck/lint/unit tests) stay in `.github/workflows/ci.yml`.
-When the suite passes on a merge, the `testflight` job triggers an EAS
-production build that auto-submits to TestFlight (needs the `EXPO_TOKEN`
-repo secret; each merge consumes one iOS build from the EAS quota). The
+When the suite passes, the `testflight` job triggers an EAS production
+build that auto-submits to TestFlight — gated so routine merges don't
+each consume an EAS build: include `[ship]` in the merge commit message,
+or run the workflow manually with the ship checkbox (needs the
+`EXPO_TOKEN` repo secret). The
 `e2e-test` simulator profile in `eas.json` remains handy for producing
 shareable simulator builds.
 
