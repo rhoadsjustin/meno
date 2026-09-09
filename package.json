@@ -61,6 +61,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "e2e": "bash scripts/e2e-local.sh",
     "test:watch": "vitest",
     "build:bible": "tsx scripts/build-bible-db.ts",
     "db:generate": "drizzle-kit generate",

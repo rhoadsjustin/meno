@@ -36,20 +36,31 @@ Quick pass on just the smoke-tagged flows:
 maestro test --include-tags smoke .maestro/flows
 ```
 
-## CI
+## The pre-PR gate
 
-`.github/workflows/e2e.yml` runs on every push to `main` (i.e. after each PR
-merges) and via manual dispatch: a `macos-15` runner prebuilds the iOS project
-(CNG — `ios/` is gitignored), builds the `Meno` scheme for the simulator with
-Xcode 26, and runs this suite. macOS runners are free while the repo is public.
-Fast checks (typecheck/lint/unit tests) stay in `.github/workflows/ci.yml`.
-When the suite passes, the `testflight` job triggers an EAS production
-build that auto-submits to TestFlight — gated so routine merges don't
-each consume an EAS build: include `[ship]` in the merge commit message,
-or run the workflow manually with the ship checkbox (needs the
-`EXPO_TOKEN` repo secret). The
-`e2e-test` simulator profile in `eas.json` remains handy for producing
-shareable simulator builds.
+This suite is a **local gate: run it before creating any PR.**
+
+```bash
+npm run e2e
+```
+
+The script (`scripts/e2e-local.sh`) builds the app for the simulator
+(incremental — fast after the first run), boots an iOS 26 iPhone, installs
+the build, and runs `flows/` then `manual/`. Only open the PR once it prints
+that the gate passed.
+
+We ran this suite on GitHub Actions for a while (`e2e.yml`, removed) but the
+shared macOS runners were too flaky to gate on: simulator boots wedged for
+an hour, the app crashed mid-flow on runs that pass everywhere else, and
+system dialogs landed tens of seconds late. The flows themselves are stable
+locally — if `npm run e2e` fails, treat it as a real regression.
+
+Fast checks (typecheck/lint/unit tests) run in CI on every PR and push
+(`.github/workflows/ci.yml`). Shipping to TestFlight is
+`.github/workflows/ship.yml`: put `[ship]` in the merge commit message or
+dispatch it manually (needs the `EXPO_TOKEN` repo secret). The `e2e-test`
+simulator profile in `eas.json` remains handy for producing shareable
+simulator builds.
 
 ## Conventions
 

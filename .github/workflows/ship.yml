@@ -1,0 +1,63 @@
+# Ship to TestFlight on demand. E2E verification is a LOCAL gate now
+# (`npm run e2e` before any PR — see .maestro/README.md); GitHub's shared
+# macOS simulators proved too flaky to gate releases on.
+#
+# Two ways to ship (both re-run fast checks first):
+#   - put "[ship]" in the merge commit message
+#   - Actions tab -> Ship to TestFlight -> Run workflow
+name: Ship to TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ship-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Typecheck, lint, unit tests
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ship]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:bible
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+
+  testflight:
+    name: Build and submit to TestFlight
+    needs: [checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # --no-wait: this job only triggers the build — the build and
+      # TestFlight submission run on EAS (watch at expo.dev), and each ship
+      # consumes one iOS build from the EAS plan's quota.
+      - name: Trigger EAS build and submit
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN secret is not set. Create an access token at https://expo.dev/accounts/rhoadsjustin/settings/access-tokens and add it with: gh secret set EXPO_TOKEN"
+            exit 1
+          fi
+          npx eas-cli@latest build -p ios --profile production --submit --non-interactive --no-wait

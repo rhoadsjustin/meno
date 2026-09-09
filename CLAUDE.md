@@ -21,6 +21,7 @@ Full specs live in `docs/`. Read the relevant spec before implementing any featu
 - Use development builds: `npx expo run:ios` / EAS dev client. Expo Go is not compatible (widgets, device-activity, speech).
 - Prebuild is CNG-managed: never hand-edit `ios/` or `android/` — all native config goes through app.config.ts and config plugins.
 - Screen Time features only work on a **physical device**, never the simulator. Guard them behind capability checks so the simulator still runs everything else.
+- **Pre-PR gate**: `npm run e2e` (local Maestro suite, see `.maestro/README.md`) must pass before opening any PR. CI runs only fast checks — the Maestro suite is not in CI because GitHub's shared macOS runners proved too flaky to gate on.
 
 ## Conventions
 
