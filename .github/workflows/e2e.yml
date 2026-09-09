@@ -121,3 +121,33 @@ jobs:
             ~/.maestro/tests
             ~/Library/Logs/DiagnosticReports
           if-no-files-found: ignore
+
+  # After the suite passes on a merge, trigger an EAS production build that
+  # auto-submits to TestFlight. --no-wait: this job only kicks it off — the
+  # build and submission run on EAS (watch at expo.dev), and each merge
+  # consumes one iOS build from the EAS plan's quota.
+  testflight:
+    name: Build and submit to TestFlight
+    needs: [maestro-ios]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Trigger EAS build and submit
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN secret is not set. Create an access token at https://expo.dev/accounts/rhoadsjustin/settings/access-tokens and add it with: gh secret set EXPO_TOKEN"
+            exit 1
+          fi
+          npx eas-cli@latest build -p ios --profile production --submit --non-interactive --no-wait
