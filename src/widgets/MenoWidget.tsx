@@ -1,21 +1,31 @@
 /**
  * Meno home-screen + Lock Screen widget (docs/05 §1). Purely typographic —
- * the signature is tier-based dissolution: the verse fades from the widget
- * as it solidifies in memory. All strings are precomputed by
- * services/widgets (the widget runtime is isolated: no hooks, no imports of
- * app state, no module-scope constants).
+ * the signature is dissolution: the verse fades from the widget as it
+ * solidifies in memory.
+ *
+ * Each placed instance is configurable (iOS 17+): long-press → Edit Widget →
+ * "Show verse as" picks full text, blanks at 25/50/75%, first letters, or
+ * reference only. `Match my progress` (the default) follows the tier ladder.
+ * WidgetKit owns that choice, so services/widgets ships every rendering
+ * precomputed and this layout selects one — the widget runtime is isolated:
+ * no hooks, no app state, no module-scope constants.
  */
 import { HStack, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import { containerBackground, font, foregroundStyle, widgetURL } from '@expo/ui/swift-ui/modifiers';
 import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 
-export type MenoWidgetProps = {
+import type { WidgetPracticeMode, WidgetTextVariants } from '@/services/widgets/modes';
+
+/** Set by the user in the iOS Edit Widget sheet (app.config.ts generates it). */
+export type MenoWidgetConfiguration = {
+  mode: WidgetPracticeMode;
+};
+
+export type MenoWidgetProps = WidgetTextVariants & {
   verseRef: string;
-  /** Verse display text per tier: full (0–2), blanked (3–4), first letters (5), '' (memorized). */
-  displayText: string;
-  /** True → render displayText in monospace (first-letters cipher). */
-  mono: boolean;
-  /** True → memorized: show reference-only state. */
+  /** The mode `auto` resolves to for this chunk's tier. */
+  autoMode: WidgetPracticeMode;
+  /** True → nothing left to learn in this goal. */
   memorized: boolean;
   streak: number;
   streakActiveToday: boolean;
@@ -28,7 +38,10 @@ export type MenoWidgetProps = {
   hasGoal: boolean;
 };
 
-const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironment) => {
+const MenoWidgetComponent = (
+  props: MenoWidgetProps,
+  environment: WidgetEnvironment<MenoWidgetConfiguration>
+) => {
   'widget';
   const lapis = '#2244AA';
   const gold = '#A8802E';
@@ -37,6 +50,27 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
   // iOS 17+ requires the containerBackground API for home screen widgets.
   const bg = environment.colorScheme === 'dark' ? '#10131A' : '#FBFAF7';
   const flame = props.streakActiveToday ? '🔥' : '·';
+
+  // Resolve the user's choice against the tier ladder, then pick the text.
+  // An unset configuration (a widget placed before this shipped) reads as 'auto'.
+  const chosen = environment.configuration?.mode ?? 'auto';
+  const mode = chosen === 'auto' ? props.autoMode : chosen;
+  const verseText =
+    mode === 'full'
+      ? props.textFull
+      : mode === 'blanks25'
+        ? props.textBlanks25
+        : mode === 'blanks50'
+          ? props.textBlanks50
+          : mode === 'blanks75'
+            ? props.textBlanks75
+            : mode === 'firstLetters'
+              ? props.textFirstLetters
+              : '';
+  const mono = mode === 'firstLetters';
+  // Reference-only whenever there is no text to show: the mode asked for it,
+  // the goal is finished, or the translation's license forbids persisting text.
+  const referenceOnly = verseText.length === 0;
 
   if (family === 'accessoryCircular') {
     return (
@@ -62,8 +96,8 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
     return (
       <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>{props.verseRef}</Text>
-        <Text modifiers={[font({ size: 11, design: 'monospaced' })]}>
-          {props.memorized ? 'You know this one.' : props.displayText}
+        <Text modifiers={[font({ size: 11, design: mono ? 'monospaced' : 'default' })]}>
+          {referenceOnly ? (props.memorized ? 'You know this one.' : 'From memory.') : verseText}
         </Text>
       </VStack>
     );
@@ -93,27 +127,23 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
     );
   }
 
-  // systemMedium / systemLarge: the dissolving verse.
-  const verseBlock = props.memorized ? (
+  // systemMedium / systemLarge: the verse, at the chosen level of exposure.
+  const verseBlock = referenceOnly ? (
     <VStack alignment="leading">
       <Text modifiers={[font({ size: 20, design: 'serif' }), foregroundStyle(gold)]}>
         {props.verseRef}
       </Text>
       <Text modifiers={[font({ size: 12 }), foregroundStyle(inkFaint)]}>
-        You know this one.
+        {props.memorized ? 'You know this one.' : 'From memory.'}
       </Text>
     </VStack>
   ) : (
     <VStack alignment="leading">
       <Text
         modifiers={[
-          font(
-            props.mono
-              ? { size: 13, design: 'monospaced' }
-              : { size: 15, design: 'serif' }
-          ),
+          font(mono ? { size: 13, design: 'monospaced' } : { size: 15, design: 'serif' }),
         ]}>
-        {props.displayText}
+        {verseText}
       </Text>
       <Text modifiers={[font({ size: 10 }), foregroundStyle(inkFaint)]}>
         {props.verseRef} · {props.translationAbbrev}
@@ -176,4 +206,7 @@ const MenoWidgetComponent = (props: MenoWidgetProps, environment: WidgetEnvironm
   );
 };
 
-export default createWidget<MenoWidgetProps>('MenoWidget', MenoWidgetComponent);
+export default createWidget<MenoWidgetProps, MenoWidgetConfiguration>(
+  'MenoWidget',
+  MenoWidgetComponent
+);

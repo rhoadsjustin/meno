@@ -9,9 +9,15 @@ Widgets are React components with the `'widget'` directive, rendered via Expo UI
 ```ts
 type WidgetSnapshot = {
   verseRef: string;            // "Philippians 4:6"
-  verseText: string | null;    // null if license forbids persisting (02 §5)
-  firstLetters: string;        // "B a f n, b i e…"
-  tier: number;                // drives obscuring level
+  // Every practice mode, precomputed — the widget picks one (see Configuration
+  // below). All '' if the license forbids persisting text (02 §5).
+  textFull: string;
+  textBlanks25: string;
+  textBlanks50: string;
+  textBlanks75: string;
+  textFirstLetters: string;    // "B a f n, b i e…"
+  autoMode: WidgetPracticeMode; // what the tier ladder resolves to
+  memorized: boolean;
   streak: number;
   dueCount: number;            // reviews due
   translationAbbrev: string;   // attribution
@@ -19,18 +25,46 @@ type WidgetSnapshot = {
 };
 ```
 
+### Configuration (iOS 17+) — "Show verse as"
+
+Every placed widget, home screen **and** Lock Screen, carries its own practice
+mode. Long-press → **Edit Widget** (Lock Screen: Customize → tap the widget)
+offers:
+
+| Value | Shows |
+|---|---|
+| `auto` — "Match my progress" (default) | The tier-based dissolution below |
+| `full` | Full verse text |
+| `blanks25` / `blanks50` / `blanks75` | Verse with a quarter / half / three quarters of its words blanked |
+| `firstLetters` | First letter of each word, monospaced |
+| `reference` | Reference only — recall unaided |
+
+Mechanics: `configuration.parameters.mode` in the expo-widgets plugin block of
+`app.config.ts` generates a `WidgetConfigurationIntent`; WidgetKit stores the
+per-instance choice and passes it to the layout as
+`environment.configuration.mode`. **The app cannot read it** — which is why the
+snapshot ships every rendering and the layout selects one. Switching modes is
+then instant: no app launch, no timeline rebuild. Values are mirrored by
+`WidgetPracticeMode` in `services/widgets/modes`; the two must stay in sync.
+
+Any mode whose text is empty (license withheld, or the goal finished) falls
+back to the reference-only presentation.
+
+Note: `AppIntentConfiguration` requires iOS 17, so the widget is unavailable on
+iOS 16.x even though the app's deployment target is 16.4.
+
 ### Widget family specs
 
 | Family | Content | Tap target |
 |---|---|---|
 | systemSmall | Streak flame + count, due-count pill, verse reference | Today screen |
-| systemMedium | **Current verse**, shown per-tier: full text (tiers 0–2), 50% blanked (3–4), first letters (5), reference only (6/memorized — "you know this one"), + streak in corner | `practice/[goalId]` |
+| systemMedium | **Current verse** at the configured mode, + streak in corner | `practice/[goalId]` |
 | systemLarge | Verse (as medium) + this-week grid of practice days + due reviews list (up to 3 refs) | Today |
-| accessoryRectangular (Lock Screen) | Reference + first-letters line | Today |
+| accessoryRectangular (Lock Screen) | Reference + the verse at the configured mode | Today |
 | accessoryCircular | Streak count | Today |
 | accessoryInline | "Phil 4:6 · 12🔥" | Today |
 
-- The tier-based obscuring is the signature: the widget quietly tracks your mastery — text dissolves from the home screen as it solidifies in memory.
+- The tier-based obscuring is the signature, and stays the default (`auto`): full text (tiers 0–2) → 50% blanked (3–4) → first letters (5) → reference only (6/memorized — "you know this one"). The widget quietly tracks your mastery; text dissolves from the home screen as it solidifies in memory. Choosing an explicit mode overrides the ladder — useful for drilling one level, or for keeping a finished passage on the Lock Screen as a daily blank-fill.
 - Timeline refresh policy: publish on app close; schedule one entry after local midnight so streak/day state rolls over without opening the app.
 - Dark/tinted/clear rendering modes respected via WidgetEnvironment.
 
