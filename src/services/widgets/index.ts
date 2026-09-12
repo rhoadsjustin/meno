@@ -4,6 +4,11 @@
  * timeline: now, plus one just after local midnight so streak/day state
  * rolls over without opening the app.
  *
+ * Each snapshot carries the verse in EVERY practice mode — full, blanks at
+ * 25/50/75%, first letters — because the per-instance mode lives in WidgetKit
+ * where the app can't read it (see services/widgets/modes). Changing the mode
+ * in the Edit Widget sheet then re-renders instantly, with no app launch.
+ *
  * License rule (02 §5): verse text only ships to the widget for
  * translations whose license permits persisting text.
  */
@@ -15,21 +20,10 @@ import { dueReviewItems, countDueReviews } from '@/services/db/repos/reviews';
 import { loadStats } from '@/services/db/repos/stats';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { db, tables } from '@/services/db';
-import { firstLetters, displayTokens, selectBlanks } from '@/services/practice';
+import { autoModeForTier, buildTextVariants, emptyTextVariants } from '@/services/widgets/modes';
 import { eq } from 'drizzle-orm';
 
 import type { MenoWidgetProps } from '@/widgets/MenoWidget';
-
-/** Blank out ~50% of words for the tier 3–4 dissolution stage. */
-function blanked50(text: string, seed: string): string {
-  const tokens = displayTokens(text);
-  const blanks = new Set(selectBlanks(text, 0.5, seed, 0));
-  return tokens
-    .map((t, i) =>
-      blanks.has(i) ? `${t.prefix}${'_'.repeat(Math.min(t.word.length, 6))}${t.suffix}` : `${t.prefix}${t.word}${t.suffix}`
-    )
-    .join(' ');
-}
 
 async function buildProps(): Promise<MenoWidgetProps> {
   const [streak, dueCount, stats] = await Promise.all([
@@ -39,9 +33,9 @@ async function buildProps(): Promise<MenoWidgetProps> {
   ]);
 
   const base: MenoWidgetProps = {
+    ...emptyTextVariants(),
     verseRef: '',
-    displayText: '',
-    mono: false,
+    autoMode: 'full',
     memorized: false,
     streak: streak.current,
     streakActiveToday: streak.activeToday,
@@ -84,9 +78,11 @@ async function buildProps(): Promise<MenoWidgetProps> {
   base.hasGoal = true;
 
   if (!chunk) {
-    // Everything memorized — celebrate quietly with the goal reference.
+    // Everything memorized — celebrate quietly with the goal reference. There
+    // is no chunk to render, so every mode falls back to reference-only.
     base.verseRef = goal.title;
     base.memorized = true;
+    base.autoMode = 'reference';
     return base;
   }
 
@@ -95,31 +91,18 @@ async function buildProps(): Promise<MenoWidgetProps> {
     end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
   };
   base.verseRef = formatRange(range);
+  base.memorized = chunk.tier >= 6;
+  // What 'Match my progress' shows: the tier-based dissolution of 05 §1.
+  base.autoMode = autoModeForTier(chunk.tier);
 
-  if (chunk.tier >= 6) {
-    base.memorized = true;
-    return base;
-  }
+  // Text only if the license permits persisting it (02 §5). Without it every
+  // mode degrades to reference-only — the widget reads empty text as such.
+  if (!mayPersistText(goal.translationId)) return base;
 
-  // Tier-based dissolution (05 §1): full (≤2) → 50% blanked (3–4) → first
-  // letters (5). Text only if the license permits persisting it.
-  if (!mayPersistText(goal.translationId)) {
-    base.displayText = '';
-    base.mono = false;
-    return base;
-  }
   const verses = await getPassage(goal.translationId, range);
   const text = verses.map((v) => v.text).join(' ');
-  if (chunk.tier >= 5) {
-    base.displayText = firstLetters(text);
-    base.mono = true;
-  } else if (chunk.tier >= 3) {
-    base.displayText = blanked50(text, chunk.id);
-    base.mono = false;
-  } else {
-    base.displayText = text;
-    base.mono = false;
-  }
+  // Seeded on the chunk so blank placement is stable across republishes.
+  Object.assign(base, buildTextVariants(text, chunk.id));
   return base;
 }
 

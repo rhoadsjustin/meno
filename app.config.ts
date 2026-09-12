@@ -110,7 +110,8 @@ const config: ExpoConfig = {
           {
             name: 'MenoWidget',
             displayName: 'Meno',
-            description: 'Your current verse — dissolving as you learn it.',
+            description:
+              'Your current verse — dissolving as you learn it. Edit the widget to choose how much it reveals.',
             ios: {
               supportedFamilies: [
                 'systemSmall',
@@ -120,6 +121,31 @@ const config: ExpoConfig = {
                 'accessoryRectangular',
                 'accessoryInline',
               ],
+              // Generates a WidgetConfigurationIntent so each placed widget
+              // gets an iOS "Edit Widget" sheet (docs/05 §1). Values must stay
+              // in sync with WidgetPracticeMode in services/widgets/modes —
+              // they become Swift enum cases and reach the layout as
+              // environment.configuration.mode.
+              configuration: {
+                title: 'Practice',
+                description: 'Choose how much of the verse this widget reveals.',
+                parameters: {
+                  mode: {
+                    title: 'Show verse as',
+                    type: 'enum',
+                    default: 'auto',
+                    values: [
+                      { name: 'Match my progress', value: 'auto' },
+                      { name: 'Full text', value: 'full' },
+                      { name: 'Blanks — a quarter', value: 'blanks25' },
+                      { name: 'Blanks — half', value: 'blanks50' },
+                      { name: 'Blanks — three quarters', value: 'blanks75' },
+                      { name: 'First letters only', value: 'firstLetters' },
+                      { name: 'Reference only', value: 'reference' },
+                    ],
+                  },
+                },
+              },
             },
           },
         ],
