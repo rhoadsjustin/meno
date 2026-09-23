@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { meetsThreshold } from '@/services/grading';
 import {
   buildArrangeRound,
   currentMode,
@@ -80,7 +81,9 @@ describe('arrange', () => {
     expect(gradeArrangement(round, perfect)).toBe(1);
     const oneSwap = [...perfect];
     [oneSwap[0], oneSwap[1]] = [oneSwap[1], oneSwap[0]];
-    expect(gradeArrangement(round, oneSwap)).toBeCloseTo((n - 2) / n);
+    // Two tiles land wrong, but tapping neighbours out of order is one slip,
+    // so it costs one error — not two (TRANSPOSITION_WEIGHT).
+    expect(gradeArrangement(round, oneSwap)).toBeCloseTo(1 - 1 / n);
   });
 
   it('accepts identical phrases in either order (TestFlight: repeated-phrase verses)', () => {
@@ -91,8 +94,10 @@ describe('arrange', () => {
     // Tiles 0 and 2 are the same text — swapping them must still grade 100%.
     expect(gradeArrangement(round, [2, 1, 0, 3])).toBe(1);
     expect(gradeArrangement(round, [0, 1, 2, 3])).toBe(1);
-    // A genuinely wrong placement still fails.
-    expect(gradeArrangement(round, [1, 0, 2, 3])).toBeCloseTo(0.5);
+    // A genuinely wrong placement still fails the tier.
+    const wrong = gradeArrangement(round, [1, 0, 2, 3]);
+    expect(wrong).toBeCloseTo(0.75);
+    expect(meetsThreshold(0.95, wrong, round.phrases.length)).toBe(false);
   });
 });
 
@@ -184,5 +189,47 @@ describe('recordRound tolerance', () => {
     for (let i = 0; i < 5; i++) s = recordRound(s, { accuracy: 0.5, unitCount: 26 }).state;
     expect(s.roundIndex).toBe(0);
     expect(s.failCount).toBe(5);
+  });
+});
+
+describe('gradeArrangement transpositions', () => {
+  const round = { phrases: ['a', 'b', 'c', 'd', 'e', 'f'], shuffledOrder: [0, 1, 2, 3, 4, 5] };
+
+  it('scores a perfect order at 1', () => {
+    expect(gradeArrangement(round, [0, 1, 2, 3, 4, 5])).toBe(1);
+  });
+
+  it('charges one adjacent swap as a single slip, and it clears the tier', () => {
+    // Two tiles are out of place but the user made one mistake; at full
+    // weight no tile count from 6 to 12 could absorb it (MAX_TILES is 12,
+    // and 10/12 is 83%), so every swap failed Arrange forever.
+    const swapped = [0, 1, 3, 2, 4, 5];
+    expect(gradeArrangement(round, swapped)).toBeCloseTo(1 - 1 / 6);
+    expect(meetsThreshold(0.95, gradeArrangement(round, swapped), 6)).toBe(true);
+  });
+
+  it('still fails two separate swaps', () => {
+    const twice = [1, 0, 2, 3, 5, 4];
+    expect(gradeArrangement(round, twice)).toBeCloseTo(1 - 2 / 6);
+    expect(meetsThreshold(0.95, gradeArrangement(round, twice), 6)).toBe(false);
+  });
+
+  it('still fails a tile dragged far out of place', () => {
+    // Placing 'f' first shifts everything: five tiles wrong, no swap among them.
+    const shifted = [5, 0, 1, 2, 3, 4];
+    expect(meetsThreshold(0.95, gradeArrangement(round, shifted), 6)).toBe(false);
+  });
+
+  it('still fails a reversed order', () => {
+    expect(gradeArrangement(round, [5, 4, 3, 2, 1, 0])).toBeLessThan(0.5);
+  });
+
+  it('treats duplicate phrases as interchangeable', () => {
+    const dup = { phrases: ['x', 'y', 'x', 'z'], shuffledOrder: [0, 1, 2, 3] };
+    expect(gradeArrangement(dup, [2, 1, 0, 3])).toBe(1); // the two 'x' tiles swapped
+  });
+
+  it('scores an incomplete placement without crashing', () => {
+    expect(gradeArrangement(round, [0, 1])).toBeCloseTo(1 - 4 / 6);
   });
 });
