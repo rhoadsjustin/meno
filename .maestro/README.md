@@ -44,10 +44,24 @@ This suite is a **local gate: run it before creating any PR.**
 npm run e2e
 ```
 
-The script (`scripts/e2e-local.sh`) builds the app for the simulator
-(incremental — fast after the first run), boots an iOS 26 iPhone, installs
-the build, and runs `flows/` then `manual/`. Only open the PR once it prints
-that the gate passed.
+The script (`scripts/e2e-local.sh`) builds the app for the simulator, boots
+an iOS 26 iPhone, installs the build, and runs `flows/` then `manual/`. Only
+open the PR once it prints that the gate passed.
+
+It cleans up after itself, because a Release build's derived data is several
+GB and repeated runs used to fill the disk. On exit — pass, fail, or Ctrl-C —
+it removes `ios/build`, uninstalls the app and Maestro's XCTest driver from
+the simulator, and shuts the simulator down **only if this run booted it**.
+Maestro's debug output goes to a temp directory that is deleted on success
+and kept on failure (the path is printed) so screenshots survive for
+diagnosis.
+
+That trades the old incremental rebuild for a cold one each time. To iterate
+on a failing flow, keep the build:
+
+```bash
+E2E_KEEP_BUILD=1 npm run e2e
+```
 
 We ran this suite on GitHub Actions for a while (`e2e.yml`, removed) but the
 shared macOS runners were too flaky to gate on: simulator boots wedged for
