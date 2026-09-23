@@ -3,6 +3,7 @@
  * fully serializable so sessions survive an app kill (M2 acceptance:
  * killing the app mid-session resumes correctly).
  */
+import { meetsThreshold } from '@/services/grading';
 import { blanksDensity, nextTier, tierDef, type PracticeMode } from '@/services/practice/tiers';
 
 export type RoundResult = {
@@ -37,6 +38,15 @@ export type RoundOutcome = {
   suggestDropTier: boolean;
 };
 
+/** What a graded round reports. `unitCount` is the length the accuracy was
+ * measured against — words for type/speak, blanks for a blanks round, tiles
+ * for arrange — and sets how much slip the tier tolerates (grading/diff). */
+export type RoundInput = {
+  accuracy?: number;
+  unitCount?: number;
+  selfPass?: boolean;
+};
+
 export function startSession(input: {
   goalId: string;
   chunkId: string;
@@ -69,10 +79,7 @@ export function isComplete(state: SessionState): boolean {
  * Applies one round result. Graded modes pass `accuracy`; read and
  * first-letters rounds pass `selfPass` instead (completion / self-report).
  */
-export function recordRound(
-  state: SessionState,
-  result: { accuracy?: number; selfPass?: boolean }
-): RoundOutcome {
+export function recordRound(state: SessionState, result: RoundInput): RoundOutcome {
   if (isComplete(state)) throw new Error('Session already complete');
   const mode = currentMode(state);
   const def = tierDef(state.tier);
@@ -80,7 +87,7 @@ export function recordRound(
   const passed =
     def.passThreshold === null
       ? (result.selfPass ?? true)
-      : (result.accuracy ?? 0) >= def.passThreshold;
+      : meetsThreshold(def.passThreshold, result.accuracy ?? 0, result.unitCount ?? 0);
 
   const entry: RoundResult = { mode, accuracy: result.accuracy ?? null, passed };
   const next: SessionState = {
@@ -96,6 +103,24 @@ export function recordRound(
     passed,
     tierCleared: passed && next.roundIndex >= next.rounds.length,
     suggestDropTier: !passed && next.failCount >= 2 && next.tier > 0,
+  };
+}
+
+/**
+ * Rebuilds the session one tier lower (docs/03 §1: "failing a tier twice
+ * suggests dropping one tier — suggestion, never forced"). Session-local:
+ * the chunk's highest-cleared tier is untouched, so there is no penalty and
+ * the harder tier is waiting again once this one clears.
+ */
+export function dropTier(state: SessionState): SessionState {
+  const tier = Math.max(0, state.tier - 1);
+  return {
+    ...state,
+    tier,
+    rounds: [...tierDef(tier).modes],
+    roundIndex: 0,
+    failCount: 0,
+    attemptNo: state.attemptNo + 1,
   };
 }
 

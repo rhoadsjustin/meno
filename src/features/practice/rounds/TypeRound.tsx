@@ -16,7 +16,12 @@ export function TypeRound({
 }: {
   text: string;
   reference: string;
-  onDone: (outcome: { accuracy: number; missedWords: string[]; result: GradeResult }) => void;
+  onDone: (outcome: {
+    accuracy: number;
+    unitCount: number;
+    missedWords: string[];
+    result: GradeResult;
+  }) => void;
 }) {
   const colors = useThemeColors();
   const [input, setInput] = useState('');
@@ -26,6 +31,7 @@ export function TypeRound({
     const result = gradeTyped(text, input);
     onDone({
       accuracy: result.accuracy,
+      unitCount: result.unitCount,
       missedWords: result.words.filter((w) => w.tag !== 'correct').map((w) => w.word),
       result,
     });

@@ -42,6 +42,8 @@ import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
 export type SpeakOutcome = {
   accuracy: number;
+  /** Reference words — the length the tier's tolerance scales to. */
+  unitCount: number;
   missedWords: string[];
   result: GradeResult;
   /** True when the user answered by typing instead of speaking. */
@@ -191,6 +193,7 @@ export function SpeakRound({
     const result = gradeSpoken(text, committed);
     onDone({
       accuracy: result.accuracy,
+      unitCount: result.unitCount,
       missedWords: result.words.filter((w) => w.tag !== 'correct').map((w) => w.word),
       result,
     });

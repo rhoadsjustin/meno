@@ -191,8 +191,14 @@ export function ReviewSession() {
                   attemptNo={phase.index}
                   onDone={(o) =>
                     void finishRound(phase.index, {
-                      ...o,
-                      result: { words: [], insertions: [], accuracy: o.accuracy },
+                      accuracy: o.accuracy,
+                      missedWords: o.missedWords,
+                      result: {
+                        words: [],
+                        insertions: [],
+                        accuracy: o.accuracy,
+                        unitCount: o.unitCount,
+                      },
                     })
                   }
                 />
