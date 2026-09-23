@@ -1,6 +1,7 @@
-# Ship to TestFlight on demand. E2E verification is a LOCAL gate now
-# (`npm run e2e` before any PR — see .maestro/README.md); GitHub's shared
-# macOS simulators proved too flaky to gate releases on.
+# Ship to TestFlight on demand. E2E runs elsewhere: `npm run e2e` locally
+# before any PR, and the Maestro suite on EAS (.eas/workflows/e2e.yml).
+# GitHub's shared macOS simulators proved too flaky to gate releases on, so
+# nothing here boots a simulator.
 #
 # Two ways to ship (both re-run fast checks first):
 #   - put "[ship]" in the merge commit message

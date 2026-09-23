@@ -18,10 +18,18 @@ tags:
 - assertVisible: ".*Recite to Unlock.*"
 # Setup guide opens as a sheet and closes back to Settings.
 - tapOn: ".*How to set up Meno.*"
+# The guide presents as a sheet — assert through the presentation animation,
+# or the first row is checked before it has rendered (this flaked on CI and
+# was only caught because the runner's retry happened to pass).
 # Overview rows merge the feature name with its status.
-- assertVisible: ".*Surprise quizzes.*"
+- extendedWaitUntil:
+    visible: ".*Surprise quizzes.*"
+    timeout: 10000
 - assertVisible: ".*Home Screen widget.*"
 - tapOn: "Done"
-- assertVisible: "Review reminders"
+# Dismissal animates too.
+- extendedWaitUntil:
+    visible: "Review reminders"
+    timeout: 10000
 - tapOn: "Today"
 - assertVisible: "Start a goal"
