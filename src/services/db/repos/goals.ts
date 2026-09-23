@@ -10,6 +10,7 @@ import type { RefRange } from '@/services/bible/types';
 import { chunkPassage, type ChunkPlan } from '@/services/chunking';
 import { db, tables } from '@/services/db';
 import { nextTier, tierDef, TIERS } from '@/services/practice/tiers';
+import { resolveFocusGoal } from '@/services/focus';
 
 export type Goal = typeof tables.goals.$inferSelect;
 export type Chunk = typeof tables.chunks.$inferSelect;
@@ -107,14 +108,43 @@ export async function listGoals(): Promise<Goal[]> {
   return db.select().from(tables.goals).orderBy(asc(tables.goals.createdAt));
 }
 
-export async function activeGoal(): Promise<Goal | undefined> {
-  const rows = await db
+/** Every passage in progress, oldest first. */
+export async function listActiveGoals(): Promise<Goal[]> {
+  return db
     .select()
     .from(tables.goals)
     .where(eq(tables.goals.status, 'active'))
-    .orderBy(asc(tables.goals.createdAt))
+    .orderBy(asc(tables.goals.createdAt));
+}
+
+/**
+ * The focus goal (services/focus): the passage on the widgets and the
+ * shield, and what a widget tap practices — the user's "Show on widgets"
+ * pick, else the oldest active goal.
+ */
+export async function activeGoal(): Promise<Goal | undefined> {
+  const [goals, focusId] = await Promise.all([listActiveGoals(), focusGoalId()]);
+  return resolveFocusGoal(goals, focusId);
+}
+
+const FOCUS_KEY = 'focusGoalId';
+
+/** The stored "Show on widgets" pick; may point at a finished goal (resolver skips it). */
+export async function focusGoalId(): Promise<string | null> {
+  const rows = await db
+    .select()
+    .from(tables.settings)
+    .where(eq(tables.settings.key, FOCUS_KEY))
     .limit(1);
-  return rows[0];
+  return rows[0]?.value ?? null;
+}
+
+/** Stores the pick only — use services/widgets `showGoalOnWidgets` from screens. */
+export async function setFocusGoalId(goalId: string): Promise<void> {
+  await db
+    .insert(tables.settings)
+    .values({ key: FOCUS_KEY, value: goalId })
+    .onConflictDoUpdate({ target: tables.settings.key, set: { value: goalId } });
 }
 
 export async function chunksForGoal(goalId: string): Promise<Chunk[]> {

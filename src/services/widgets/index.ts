@@ -15,7 +15,7 @@
 import { Platform } from 'react-native';
 
 import { formatRange, getPassage, getTranslation, mayPersistText } from '@/services/bible';
-import { activeGoal, currentChunk } from '@/services/db/repos/goals';
+import { activeGoal, currentChunk, setFocusGoalId } from '@/services/db/repos/goals';
 import { dueReviewItems, countDueReviews } from '@/services/db/repos/reviews';
 import { loadStats } from '@/services/db/repos/stats';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
@@ -129,5 +129,21 @@ export async function publishWidgetSnapshot(): Promise<void> {
     // the extension, simulator quirks, etc.).
   } finally {
     publishing = false;
+  }
+}
+
+/**
+ * "Show on widgets" (Today / Library): makes `goalId` the focus goal, then
+ * republishes the widgets and the shield copy right away rather than on the
+ * next app close — the user just asked to see it there.
+ */
+export async function showGoalOnWidgets(goalId: string): Promise<void> {
+  await setFocusGoalId(goalId);
+  await publishWidgetSnapshot();
+  try {
+    const { refreshShieldForCurrentVerse } = await import('@/services/lock');
+    await refreshShieldForCurrentVerse();
+  } catch {
+    // Shield copy also refreshes on every foreground; best-effort here.
   }
 }
