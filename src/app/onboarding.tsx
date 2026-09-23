@@ -9,6 +9,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
 import { isLockAvailable } from '@/services/lock';
 import { setNotificationsEnabled } from '@/services/notifications';
@@ -87,11 +88,11 @@ export default function OnboardingRoute() {
               Keep it in front of you
             </Text>
             <View
-              style={styles.mockRow}
+              style={styles.shotStack}
               accessible
-              accessibilityLabel="Preview: a Home Screen widget showing your current verse, and a Lock Screen line showing its reference">
-              <HomeWidgetMock />
-              <LockScreenMock />
+              accessibilityLabel="Preview: Meno’s Home Screen widget showing Philippians 4:4 with half its words blanked out, and its Lock Screen widget under the clock">
+              <HomeWidgetShot />
+              <LockScreenShot />
             </View>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               Meno’s widgets put your current verse on the Home Screen and under the clock on your
@@ -159,42 +160,9 @@ export default function OnboardingRoute() {
 }
 
 /**
- * Feature mocks: quiet typographic previews, not screenshots (07 §5).
- * Verse text in them is WEB (public domain), so bundling it here is fine.
+ * Screen Time shields can't render in the simulator, so the shield stays a
+ * drawn preview (the widget previews are real captures).
  */
-function HomeWidgetMock() {
-  const colors = useThemeColors();
-  return (
-    <View
-      style={[
-        styles.widgetMock,
-        { backgroundColor: colors.surfaceRaised, borderColor: colors.separator },
-      ]}>
-      <Text
-        numberOfLines={3}
-        style={[styles.widgetMockVerse, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-        Rejoice in the Lord always.
-      </Text>
-      <Text style={[styles.widgetMockRef, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        Philippians 4:4
-      </Text>
-    </View>
-  );
-}
-
-function LockScreenMock() {
-  // A Lock Screen is dark in both themes — painted explicitly, not themed.
-  const colors = useThemeColors();
-  return (
-    <View style={[styles.lockScreenMock, { borderColor: colors.separator }]}>
-      <Text style={[styles.lockScreenClock, { fontFamily: fonts?.ui }]}>9:41</Text>
-      <Text numberOfLines={1} style={[styles.lockScreenLine, { fontFamily: fonts?.ui }]}>
-        M · Philippians 4:4
-      </Text>
-    </View>
-  );
-}
-
 function ShieldMock() {
   const colors = useThemeColors();
   return (
@@ -235,34 +203,7 @@ const styles = StyleSheet.create({
   primaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   quiet: { fontSize: 15, textAlign: 'center', marginTop: spacing.md },
 
-  mockRow: { flexDirection: 'row', gap: spacing.md, marginVertical: spacing.sm },
-  widgetMock: {
-    flex: 1,
-    aspectRatio: 1,
-    maxWidth: 150,
-    borderRadius: radius.card,
-    borderCurve: 'continuous',
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
-    justifyContent: 'space-between',
-  },
-  widgetMockVerse: { fontSize: 16, lineHeight: 21 },
-  widgetMockRef: { fontSize: 11 },
-  lockScreenMock: {
-    flex: 1,
-    aspectRatio: 1,
-    maxWidth: 150,
-    borderRadius: radius.card,
-    borderCurve: 'continuous',
-    borderWidth: StyleSheet.hairlineWidth,
-    backgroundColor: '#101418',
-    padding: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  lockScreenClock: { color: '#F2F4F7', fontSize: 34, fontWeight: '300', letterSpacing: 1 },
-  lockScreenLine: { color: '#C7CCD4', fontSize: 12 },
+  shotStack: { gap: spacing.sm },
   shieldMock: {
     borderRadius: radius.card,
     borderCurve: 'continuous',

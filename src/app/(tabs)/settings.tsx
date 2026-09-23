@@ -51,6 +51,21 @@ export default function SettingsScreen() {
   return (
     <Screen title="Settings">
       <Card>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Opens a step-by-step guide"
+          onPress={() => router.push('/help')}
+          style={styles.rowText}>
+          <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            How to set up Meno
+          </Text>
+          <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Step by step: quizzes, widgets, speaking, and recite-to-unlock — plus common questions.
+          </Text>
+        </Pressable>
+      </Card>
+
+      <Card>
         <View style={styles.row}>
           <View style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
