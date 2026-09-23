@@ -73,13 +73,42 @@ export function isPlacementCorrect(round: ArrangeRound, placedOrder: number[], p
   return tile !== undefined && round.phrases[tile] === round.phrases[position];
 }
 
-/** Accuracy = fraction of tiles placed in their correct position. */
+/**
+ * Weight for a tile displaced by a single adjacent swap — the arrange
+ * analogue of a typo in `services/grading`. Tapping two neighbouring tiles
+ * in the wrong order is one slip, but it leaves *two* tiles out of place; at
+ * full weight that costs two errors, which no tile count between 6 and 12
+ * can absorb, so every swap would fail the tier forever.
+ */
+export const TRANSPOSITION_WEIGHT = 0.5;
+
+/**
+ * True when position `i` holds the phrase belonging to a neighbour and that
+ * neighbour holds `i`'s — i.e. the two were simply tapped out of order.
+ * Compared by text, so duplicate phrases stay interchangeable.
+ */
+function isAdjacentSwap(round: ArrangeRound, placedOrder: number[], i: number): boolean {
+  const here = placedOrder[i];
+  if (here === undefined) return false;
+  for (const j of [i - 1, i + 1]) {
+    if (j < 0 || j >= round.phrases.length) continue;
+    const there = placedOrder[j];
+    if (there === undefined) continue;
+    if (round.phrases[here] === round.phrases[j] && round.phrases[there] === round.phrases[i]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Accuracy = 1 − weightedErrors / tileCount, matching the text graders. */
 export function gradeArrangement(round: ArrangeRound, placedOrder: number[]): number {
   const n = round.phrases.length;
   if (n === 0) return 1;
-  let correct = 0;
-  for (let i = 0; i < Math.min(n, placedOrder.length); i++) {
-    if (isPlacementCorrect(round, placedOrder, i)) correct++;
+  let weightedErrors = 0;
+  for (let i = 0; i < n; i++) {
+    if (isPlacementCorrect(round, placedOrder, i)) continue;
+    weightedErrors += isAdjacentSwap(round, placedOrder, i) ? TRANSPOSITION_WEIGHT : 1;
   }
-  return correct / n;
+  return Math.max(0, 1 - weightedErrors / n);
 }

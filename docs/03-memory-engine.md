@@ -41,7 +41,9 @@ Verse-number markers are never part of graded text.
 
 - Token-level alignment via **Levenshtein on word tokens** (not characters), yielding per-word ops: match / substitution / insertion / deletion.
 - Word-level leniency: a substituted word with character-level similarity ≥0.8 (Damerau-Levenshtein ratio) counts as a **typo**, weighted 0.5 instead of 1.0 error. ("recieve" ≈ receive.)
-- `accuracy = 1 − (weightedErrors / referenceWordCount)`, floored at 0.
+- `accuracy = 1 − (weightedErrors / referenceWordCount)`, floored at 0. This is the honest score: it is what the user sees, what `attempts` stores, and what SM-2 consumes.
+- Pass/fail is a separate decision — `errorBudget(threshold, unitCount)`: the proportional budget `(1 − threshold) × length`, raised to at least one whole word so short chunks can't demand perfection, and capped at 20% of the passage so a two-word verse still has to be exact. `unitCount` is words for type/speak, blanks for a blanks round, tiles for arrange.
+- **Arrange scores like the text graders**: `1 − weightedErrors / tileCount`, where two tiles displaced by a single adjacent swap cost 0.5 each rather than 1 each. Tapping neighbouring tiles out of order is one slip but leaves two tiles wrong; at full weight no tile count in the 6–12 range could absorb it, so every swap failed the tier. Larger derangements (a tile dragged well out of place, two separate swaps) still cost full weight and still fail.
 - Output structure feeds the feedback UI: each reference word tagged `correct | typo | wrong | missed`, plus inserted extras.
 - **Reveal = miss**: tap-and-hold on a blank/next-word hint reveals it but tags it `missed`.
 
@@ -63,9 +65,9 @@ Verse-number markers are never part of graded text.
 - Prefer breaking at sentence-final punctuation and paragraph markers when the translation data has them.
 - Deterministic: same passage + translation → same chunks (stable ids across reinstalls).
 
-**Sequential unlock with overlap stitching:** chunk N+1 unlocks when chunk N reaches Tier 3. Every 5 chunks (and at each chapter completion), a **Stitch session** runs: recite from chunk 1 (or chapter start) through the current chunk at Type/Speak tier, graded as one long text. A goal is Memorized when all chunks are Memorized **and** a full-passage stitch passes ≥90%.
-
 **Practice order:** the next chunk practiced is the lowest-order unfinished one that still has something to do today. A chunk that topped the ladder and banked its first mastery day stays `learning` until a second day seals it, so it is skipped in favour of the next unlocked chunk rather than parking the whole goal. When every unfinished chunk is waiting on tomorrow, the lowest-order one is still what the Today card and recite-to-unlock show.
+
+**Sequential unlock with overlap stitching:** chunk N+1 unlocks when chunk N reaches Tier 3. Every 5 chunks (and at each chapter completion), a **Stitch session** runs: recite from chunk 1 (or chapter start) through the current chunk at Type/Speak tier, graded as one long text. A goal is Memorized when all chunks are Memorized **and** a full-passage stitch passes ≥90%.
 
 Pace projection: with default settings (~1 new chunk per day reaching Tier 3, plus reviews) the goal wizard shows an estimated completion date and adjusts weekly based on actual velocity.
 
