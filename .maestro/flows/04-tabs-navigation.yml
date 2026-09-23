@@ -16,5 +16,12 @@ tags:
 - assertVisible: "Review reminders"
 # The row merges title + subtitle into one accessibility element.
 - assertVisible: ".*Recite to Unlock.*"
+# Setup guide opens as a sheet and closes back to Settings.
+- tapOn: ".*How to set up Meno.*"
+# Overview rows merge the feature name with its status.
+- assertVisible: ".*Surprise quizzes.*"
+- assertVisible: ".*Home Screen widget.*"
+- tapOn: "Done"
+- assertVisible: "Review reminders"
 - tapOn: "Today"
 - assertVisible: "Start a goal"
