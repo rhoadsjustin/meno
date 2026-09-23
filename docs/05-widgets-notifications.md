@@ -39,6 +39,16 @@ offers:
 | `firstLetters` | First letter of each word, monospaced |
 | `reference` | Reference only — recall unaided |
 
+### Which passage — the focus goal
+
+With several passages in progress, every widget shows the **focus goal**: the
+passage the user marked **Show on widgets** (Today or Library), else the oldest
+active goal (`services/focus`). The same goal drives the recite-to-unlock
+shield and the widget's `/practice` tap target. The pick lives in the app, not
+the Edit Widget sheet: expo-widgets parameters are string/number/boolean or a
+static enum fixed at build time, so WidgetKit cannot list the user's goals.
+Picking republishes the snapshot immediately rather than on the next app close.
+
 Mechanics: `configuration.parameters.mode` in the expo-widgets plugin block of
 `app.config.ts` generates a `WidgetConfigurationIntent`; WidgetKit stores the
 per-instance choice and passes it to the layout as

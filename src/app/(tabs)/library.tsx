@@ -1,14 +1,22 @@
+import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Screen } from '@/components/screen';
 import { formatRange, getTranslation } from '@/services/bible';
 import { shareGoalChallenge } from '@/services/challenges';
-import { chunksForGoal, listGoals, type Chunk, type Goal } from '@/services/db/repos/goals';
+import {
+  activeGoal,
+  chunksForGoal,
+  listGoals,
+  type Chunk,
+  type Goal,
+} from '@/services/db/repos/goals';
 import { itemHealth, reviewItemForChunk } from '@/services/db/repos/reviews';
 import type { Health } from '@/services/scheduler';
+import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, radius, spacing, type ThemeColors } from '@/theme';
 
 type Segment = 'inProgress' | 'memorized';
@@ -20,33 +28,55 @@ export default function LibraryScreen() {
   const [items, setItems] = useState<GoalWithChunks[]>([]);
   const [healthByChunk, setHealthByChunk] = useState<Record<string, Health>>({});
   const [loaded, setLoaded] = useState(false);
+  // The passage on the widgets (services/focus).
+  const [focusId, setFocusId] = useState<string | null>(null);
+
+  // Reads everything this screen shows; `isCancelled` guards a blurred screen.
+  const load = useCallback(async (isCancelled: () => boolean) => {
+    const [goals, focus] = await Promise.all([listGoals(), activeGoal()]);
+    const withChunks = await Promise.all(
+      goals.map(async (goal) => ({ goal, chunks: await chunksForGoal(goal.id) }))
+    );
+    const health: Record<string, Health> = {};
+    for (const { chunks } of withChunks) {
+      for (const c of chunks.filter((c) => c.status === 'memorized')) {
+        const item = await reviewItemForChunk(c.id);
+        if (item) health[c.id] = itemHealth(item);
+      }
+    }
+    if (!isCancelled()) {
+      setItems(withChunks);
+      setFocusId(focus?.id ?? null);
+      setHealthByChunk(health);
+      setLoaded(true);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      (async () => {
-        const goals = await listGoals();
-        const withChunks = await Promise.all(
-          goals.map(async (goal) => ({ goal, chunks: await chunksForGoal(goal.id) }))
-        );
-        const health: Record<string, Health> = {};
-        for (const { chunks } of withChunks) {
-          for (const c of chunks.filter((c) => c.status === 'memorized')) {
-            const item = await reviewItemForChunk(c.id);
-            if (item) health[c.id] = itemHealth(item);
-          }
-        }
-        if (!cancelled) {
-          setItems(withChunks);
-          setHealthByChunk(health);
-          setLoaded(true);
-        }
-      })().catch(() => setLoaded(true));
+      load(() => cancelled).catch(() => setLoaded(true));
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [load])
   );
+
+  const showOnWidgets = useCallback(
+    async (goal: Goal) => {
+      void Haptics.selectionAsync();
+      try {
+        await showGoalOnWidgets(goal.id);
+        AccessibilityInfo.announceForAccessibility(`${goal.title} is now on your widgets.`);
+      } finally {
+        await load(() => false);
+      }
+    },
+    [load]
+  );
+
+  // Only offer a choice once there is more than one passage in progress.
+  const activeCount = items.filter(({ goal }) => goal.status === 'active').length;
 
   const memorizedChunks = items.flatMap(({ goal, chunks }) =>
     chunks.filter((c) => c.status === 'memorized').map((c) => ({ goal, chunk: c }))
@@ -121,6 +151,31 @@ export default function LibraryScreen() {
                       Share challenge
                     </Text>
                   </Pressable>
+                  {activeCount > 1 &&
+                    (goal.id === focusId ? (
+                      <Text
+                        style={[
+                          styles.practiceLink,
+                          styles.focusNote,
+                          { color: colors.inkFaint, fontFamily: fonts?.ui },
+                        ]}>
+                        On your widgets
+                      </Text>
+                    ) : (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Show ${goal.title} on your widgets`}
+                        onPress={() => void showOnWidgets(goal)}
+                        style={[styles.practiceLink]}>
+                        <Text
+                          style={[
+                            styles.practiceLinkText,
+                            { color: colors.lapis, fontFamily: fonts?.ui },
+                          ]}>
+                          Show on widgets
+                        </Text>
+                      </Pressable>
+                    ))}
                 </View>
               </Card>
             ))}
@@ -229,7 +284,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   cell: { width: 16, height: 16, borderRadius: 4 },
-  actionsRow: { flexDirection: 'row', gap: spacing.xl },
+  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.xl },
+  focusNote: { fontSize: 15, fontWeight: '600' },
   practiceLink: { marginTop: spacing.md, alignSelf: 'flex-start' },
   newGoal: {
     borderWidth: 1.5,

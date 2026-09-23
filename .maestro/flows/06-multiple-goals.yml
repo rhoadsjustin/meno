@@ -1,0 +1,42 @@
+# Two passages in progress → Today lists the second under "Also practicing",
+# and "Show on widgets" swaps which one is the focus (the widget verse).
+# The wizard's wheel pickers aren't Maestro-friendly, so both goals use the
+# wizard defaults (John 1:1); the flow checks structure, not titles.
+appId: com.rhoadsdev.meno
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- runFlow: ../helpers/create-goal.yml
+- tapOn: "\\+ Practice another passage"
+- extendedWaitUntil:
+    visible: "Choose a translation"
+    timeout: 10000
+- tapOn: "Continue"
+- assertVisible: "Choose a passage"
+- tapOn: "Continue"
+- assertVisible: "Your plan"
+- tapOn: "Start memorizing"
+- extendedWaitUntil:
+    visible: "Also practicing"
+    timeout: 10000
+- assertVisible: "On your widgets"
+- scrollUntilVisible:
+    element: "Show John 1:1 on your widgets"
+    direction: DOWN
+- tapOn: "Show John 1:1 on your widgets"
+# The other passage is now the focus; the first moves under "Also practicing".
+- assertVisible: "Also practicing"
+- scrollUntilVisible:
+    element: "On your widgets"
+    direction: UP
+- tapOn: "Library"
+# Library marks the focus passage and offers the switch on the other one.
+- scrollUntilVisible:
+    element: "On your widgets"
+    direction: DOWN
+- scrollUntilVisible:
+    element: "Show John 1:1 on your widgets"
+    direction: DOWN

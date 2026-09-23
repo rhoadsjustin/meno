@@ -1,6 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Screen } from '@/components/screen';
@@ -10,6 +11,7 @@ import {
   chunkProgressLabel,
   chunksForGoal,
   currentChunk,
+  listActiveGoals,
   type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
@@ -18,14 +20,28 @@ import { stitchPlan } from '@/services/db/repos/stitch';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
+import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
 
-type TodayData = {
+/** Where one passage in progress stands. */
+type GoalProgress = {
   goal: Goal;
   chunk: Chunk | null;
-  chunkText: string;
   totalChunks: number;
+  stitchDue: boolean;
 };
+
+/** The focus passage (the one on the widgets) gets the hero card and its text. */
+type TodayData = GoalProgress & { chunkText: string };
+
+async function progressFor(goal: Goal): Promise<GoalProgress> {
+  const [chunk, chunks, stitch] = await Promise.all([
+    currentChunk(goal.id),
+    chunksForGoal(goal.id),
+    stitchPlan(goal.id),
+  ]);
+  return { goal, chunk: chunk ?? null, totalChunks: chunks.length, stitchDue: stitch.due };
+}
 
 /** Dissolution level for the hero card (07 §1): the text thins as the tier
  * climbs — full → first letters → reference only. */
@@ -38,61 +54,75 @@ function dissolve(text: string, tier: number): { display: string; mono: boolean 
 export default function TodayScreen() {
   const colors = useThemeColors();
   const [data, setData] = useState<TodayData | null>(null);
+  const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
   const [dueCount, setDueCount] = useState(0);
-  const [stitchDue, setStitchDue] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  // Reads everything this screen shows; `isCancelled` guards a blurred screen.
+  const load = useCallback(async (isCancelled: () => boolean) => {
+    const [goal, goals] = await Promise.all([activeGoal(), listActiveGoals()]);
+    // First launch: run onboarding before anything else.
+    if (!goal) {
+      const { onboardingDone } = await import('@/services/db/repos/appFlags');
+      if (!(await onboardingDone()) && !isCancelled()) {
+        router.push('/onboarding');
+        setLoaded(true);
+        return;
+      }
+    }
+    const streakNow = await currentStreakDisplay();
+    const due = await countDueReviews();
+    if (!isCancelled()) setDueCount(due);
+    if (!goal) {
+      if (!isCancelled()) {
+        setData(null);
+        setOthers([]);
+        setStreak(streakNow);
+        setLoaded(true);
+      }
+      return;
+    }
+    const [focus, rest] = await Promise.all([
+      progressFor(goal),
+      Promise.all(goals.filter((g) => g.id !== goal.id).map(progressFor)),
+    ]);
+    let chunkText = '';
+    if (focus.chunk) {
+      const c = focus.chunk;
+      const verses = await getPassage(goal.translationId, {
+        start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+        end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+      });
+      chunkText = verses.map((v) => v.text).join(' ');
+    }
+    if (!isCancelled()) {
+      setData({ ...focus, chunkText });
+      setOthers(rest);
+      setStreak(streakNow);
+      setLoaded(true);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      (async () => {
-        const goal = await activeGoal();
-        // First launch: run onboarding before anything else.
-        if (!goal) {
-          const { onboardingDone } = await import('@/services/db/repos/appFlags');
-          if (!(await onboardingDone()) && !cancelled) {
-            router.push('/onboarding');
-            setLoaded(true);
-            return;
-          }
-        }
-        const streakNow = await currentStreakDisplay();
-        const due = await countDueReviews();
-        if (!cancelled) setDueCount(due);
-        if (!goal) {
-          if (!cancelled) {
-            setData(null);
-            setStreak(streakNow);
-            setLoaded(true);
-          }
-          return;
-        }
-        const [chunk, chunks, stitch] = await Promise.all([
-          currentChunk(goal.id),
-          chunksForGoal(goal.id),
-          stitchPlan(goal.id),
-        ]);
-        if (!cancelled) setStitchDue(stitch.due);
-        let chunkText = '';
-        if (chunk) {
-          const verses = await getPassage(goal.translationId, {
-            start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
-            end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
-          });
-          chunkText = verses.map((v) => v.text).join(' ');
-        }
-        if (!cancelled) {
-          setData({ goal, chunk: chunk ?? null, chunkText, totalChunks: chunks.length });
-          setStreak(streakNow);
-          setLoaded(true);
-        }
-      })().catch(() => setLoaded(true));
+      load(() => cancelled).catch(() => setLoaded(true));
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [load])
   );
+
+  const showOnWidgets = useCallback(async (goal: Goal) => {
+    void Haptics.selectionAsync();
+    try {
+      await showGoalOnWidgets(goal.id);
+      AccessibilityInfo.announceForAccessibility(`${goal.title} is now on your widgets.`);
+    } finally {
+      await load(() => false);
+    }
+  }, [load]);
 
   const ember = streak && streak.current > 0 && (
     <Text
@@ -102,6 +132,13 @@ export default function TodayScreen() {
         { color: streak.activeToday ? colors.lapis : colors.inkFaint, fontFamily: fonts?.ui },
       ]}>
       🔥 {streak.current}
+    </Text>
+  );
+
+  // Only worth saying which passage is on the widgets once there's a choice.
+  const focusLabel = others.length > 0 && (
+    <Text style={[styles.focusLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+      On your widgets
     </Text>
   );
 
@@ -126,6 +163,7 @@ export default function TodayScreen() {
 
       {data && data.chunk && (
         <Card>
+          {focusLabel}
           {(() => {
             const { display, mono } = dissolve(data.chunkText, data.chunk.tier);
             return display ? (
@@ -163,6 +201,7 @@ export default function TodayScreen() {
 
       {data && !data.chunk && (
         <Card>
+          {focusLabel}
           <Text style={[styles.emptyTitle, { color: colors.gold, fontFamily: fonts?.ui }]}>
             {data.goal.title} — memorized
           </Text>
@@ -178,7 +217,7 @@ export default function TodayScreen() {
         </Card>
       )}
 
-      {stitchDue && data && (
+      {data?.stitchDue && (
         <Card>
           <Pressable accessibilityRole="button" onPress={() => router.push(`/stitch/${data.goal.id}`)}>
             <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -210,6 +249,50 @@ export default function TodayScreen() {
         </Card>
       )}
 
+      {others.length > 0 && (
+        <>
+          <Text
+            accessibilityRole="header"
+            style={[styles.sectionHeader, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Also practicing
+          </Text>
+          {others.map((o) => (
+            <Card key={o.goal.id}>
+              <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                {o.goal.title}
+              </Text>
+              <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {o.chunk
+                  ? `${chunkRangeLabel(o.chunk)} · ${chunkProgressLabel(o.chunk, o.totalChunks)}`
+                  : 'Every chunk memorized'}
+              </Text>
+              <View style={styles.otherActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${o.stitchDue ? 'Stitch' : 'Practice'} ${o.goal.title}`}
+                  onPress={() =>
+                    router.push(o.stitchDue ? `/stitch/${o.goal.id}` : `/practice/${o.goal.id}`)
+                  }
+                  style={[styles.smallButton, { backgroundColor: colors.lapis }]}>
+                  <Text style={[styles.smallButtonText, { fontFamily: fonts?.ui }]}>
+                    {o.stitchDue ? 'Stitch' : 'Practice'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Show ${o.goal.title} on your widgets`}
+                  hitSlop={8}
+                  onPress={() => void showOnWidgets(o.goal)}>
+                  <Text style={[styles.textAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                    Show on widgets
+                  </Text>
+                </Pressable>
+              </View>
+            </Card>
+          ))}
+        </>
+      )}
+
       {data && (
         <Pressable
           accessibilityRole="link"
@@ -223,6 +306,14 @@ export default function TodayScreen() {
               start: { bookId: data.goal.startBookId, chapter: data.goal.startChapter, verse: data.goal.startVerse },
               end: { bookId: data.goal.endBookId, chapter: data.goal.endChapter, verse: data.goal.endVerse },
             })}
+          </Text>
+        </Pressable>
+      )}
+
+      {data && (
+        <Pressable accessibilityRole="button" onPress={() => router.push('/goal-wizard')}>
+          <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+            + Practice another passage
           </Text>
         </Pressable>
       )}
@@ -256,4 +347,34 @@ const styles = StyleSheet.create({
   readingLink: { fontSize: 15, paddingHorizontal: spacing.xs },
   reviewLink: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
   ember: { fontSize: 17, fontWeight: '600' },
+  focusLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
+  },
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: spacing.sm,
+    marginBottom: -spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  otherActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  smallButton: {
+    borderRadius: radius.capsule,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+  },
+  smallButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  textAction: { fontSize: 15, fontWeight: '600' },
 });
