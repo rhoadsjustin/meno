@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { gradeSpoken, gradeTyped, metaphone, similarity } from '@/services/grading';
+import {
+  errorBudget,
+  gradeSpoken,
+  gradeTyped,
+  meetsThreshold,
+  metaphone,
+  MIN_PASS_ACCURACY,
+  similarity,
+  thresholdFor,
+} from '@/services/grading';
 
 const verse = 'For God so loved the world, that he gave his one and only Son';
 
@@ -72,5 +81,51 @@ describe('gradeSpoken', () => {
       'yahweh is my shepherd i shall lack nothing'
     );
     expect(r.accuracy).toBe(1);
+  });
+});
+
+describe('errorBudget / meetsThreshold', () => {
+  it('never demands literal perfection above a handful of words', () => {
+    // The bare proportional budget is (1 - threshold) * length, which is < 1
+    // for anything under 20 words at the 95% tiers — one slip then fails
+    // forever, since a failed round never advances (services/practice).
+    for (const words of [5, 8, 10, 14, 17, 19]) {
+      expect(errorBudget(0.95, words)).toBeGreaterThanOrEqual(1);
+      expect(meetsThreshold(0.95, 1 - 1 / words, words)).toBe(true);
+    }
+  });
+
+  it('leaves long chunks exactly as tolerant as before', () => {
+    expect(errorBudget(0.95, 20)).toBeCloseTo(1);
+    expect(errorBudget(0.95, 26)).toBeCloseTo(1.3);
+    expect(errorBudget(0.95, 60)).toBeCloseTo(3);
+    expect(meetsThreshold(0.95, 1 - 2 / 26, 26)).toBe(false);
+  });
+
+  it('never passes a round below MIN_PASS_ACCURACY', () => {
+    for (const units of [1, 2, 3, 4, 8, 10, 26, 60]) {
+      expect(thresholdFor(0.95, units)).toBeGreaterThanOrEqual(MIN_PASS_ACCURACY - 1e-9);
+    }
+    // "Jesus wept." — a near-miss on one of two words is still not a pass.
+    const short = gradeSpoken('Jesus wept.', 'Jesus swept');
+    expect(short.accuracy).toBeCloseTo(0.75);
+    expect(meetsThreshold(0.95, short.accuracy, short.unitCount)).toBe(false);
+  });
+
+  it('forgives one slipped word in a short verse', () => {
+    // Phil 4:13 (WEB) is 10 words: one wrong word used to score 90% and repeat.
+    const phil = 'I can do all things through Christ, who strengthens me.';
+    const said = 'I can do all things through Christ, who strengthens us.';
+    const g = gradeSpoken(phil, said);
+    expect(g.accuracy).toBeLessThan(0.95);
+    expect(meetsThreshold(0.95, g.accuracy, g.unitCount)).toBe(true);
+  });
+
+  it('a perfect answer passes at every length', () => {
+    for (const units of [1, 2, 5, 20, 60]) expect(meetsThreshold(0.95, 1, units)).toBe(true);
+  });
+
+  it('reports the reference length it graded against', () => {
+    expect(gradeTyped('For God so loved the world', 'For God so loved the world').unitCount).toBe(6);
   });
 });

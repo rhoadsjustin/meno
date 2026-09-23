@@ -17,7 +17,7 @@ export function ArrangeRound({
   text: string;
   chunkId: string;
   attemptNo: number;
-  onDone: (outcome: { accuracy: number; missedWords: string[] }) => void;
+  onDone: (outcome: { accuracy: number; unitCount: number; missedWords: string[] }) => void;
 }) {
   const colors = useThemeColors();
   const round = useMemo(
@@ -40,6 +40,7 @@ export function ArrangeRound({
     const accuracy = gradeArrangement(round, placed);
     onDone({
       accuracy,
+      unitCount: round.phrases.length,
       missedWords: placed
         .filter((_, i) => !isPlacementCorrect(round, placed, i))
         .map((tile) => round.phrases[tile]),

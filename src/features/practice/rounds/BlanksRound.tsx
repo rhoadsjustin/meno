@@ -12,6 +12,8 @@ import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
 export type BlanksOutcome = {
   accuracy: number;
+  /** Blanks in this round — the length the tier's tolerance scales to. */
+  unitCount: number;
   missedWords: string[];
 };
 
@@ -65,6 +67,7 @@ export function BlanksRound({
       const correct = values.filter((s) => s === 'correct').length;
       onDone({
         accuracy: blankIndices.length === 0 ? 1 : correct / blankIndices.length,
+        unitCount: blankIndices.length,
         missedWords: blankIndices.filter((i) => next[i] !== 'correct').map((i) => tokens[i].word),
       });
     }

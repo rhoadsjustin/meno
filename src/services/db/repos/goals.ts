@@ -2,15 +2,16 @@
  * Goal + chunk persistence and orchestration. Screens stay thin; anything
  * touching both Scripture and the database goes through here.
  */
-import { and, asc, eq, gte, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
 import { getPassage } from '@/services/bible';
 import type { RefRange } from '@/services/bible/types';
 import { chunkPassage, type ChunkPlan } from '@/services/chunking';
+import { meetsThreshold, tokenize } from '@/services/grading';
 import { db, tables } from '@/services/db';
-import { nextTier, tierDef, TIERS } from '@/services/practice/tiers';
 import { resolveFocusGoal } from '@/services/focus';
+import { nextTier, tierDef, TIERS } from '@/services/practice/tiers';
 
 export type Goal = typeof tables.goals.$inferSelect;
 export type Chunk = typeof tables.chunks.$inferSelect;
@@ -155,11 +156,28 @@ export async function chunksForGoal(goalId: string): Promise<Chunk[]> {
     .orderBy(asc(tables.chunks.orderIndex));
 }
 
+/** Reference length of a chunk, in the same tokens the graders count. */
+async function chunkUnitCount(chunk: Chunk, translationId: string): Promise<number> {
+  const verses = await getPassage(translationId, {
+    start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
+    end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
+  });
+  return tokenize(verses.map((v) => v.text).join(' ')).length;
+}
+
 /**
  * The chunk the user practices next: the lowest-order unfinished chunk
- * (active or learning). Once review sessions exist (M3), the session queue
- * pulls older learning chunks through reviews instead and this can favor
- * the newest unlocked chunk.
+ * (active or learning) that still has something to do today.
+ *
+ * A chunk that has topped the ladder and banked today's mastery day stays
+ * `learning` until a second day seals it, so taking the lowest order blindly
+ * would park the whole goal on it — the next chunk unlocked back at Tier 3
+ * and would sit unreachable. Skip past it to that chunk instead.
+ *
+ * When every unfinished chunk is waiting on tomorrow there is nothing to
+ * skip to, so the lowest-order one is still returned: callers (the Today
+ * card, recite-to-unlock) need the goal's current verse either way, and the
+ * practice screen turns it into its "one day from sealed" state.
  */
 export async function currentChunk(goalId: string): Promise<Chunk | undefined> {
   const rows = await db
@@ -171,20 +189,42 @@ export async function currentChunk(goalId: string): Promise<Chunk | undefined> {
         inArray(tables.chunks.status, ['active', 'learning'])
       )
     )
-    .orderBy(asc(tables.chunks.orderIndex))
-    .limit(1);
+    .orderBy(asc(tables.chunks.orderIndex));
+  if (rows.length === 0) return undefined;
+
+  let translationId: string | undefined;
+  for (const chunk of rows) {
+    // Cheap check first: anything still climbing the ladder is practiceable,
+    // so only a chunk sitting at the ceiling costs a passage read.
+    if (nextTier(chunk.tier) !== chunk.tier) return chunk;
+    translationId ??= (await getGoal(goalId))?.translationId ?? 'web';
+    if (!(await awaitingSecondDay(chunk, await chunkUnitCount(chunk, translationId)))) {
+      return chunk;
+    }
+  }
   return rows[0];
 }
+
+/** The Memorized bar (docs/03 §1): a Tier 5/6 pass on two separate days. */
+const MASTERY_THRESHOLD = 0.95;
 
 /**
  * Applies a cleared tier to a chunk: bumps tier/status, unlocks the next
  * chunk once Tier 3 is reached, and marks Memorized per docs/03 §1 —
  * a Tier 5 or 6 pass at ≥95% on two separate days (attempts are the audit
  * trail). Creates the chunk's review item when it becomes memorized.
+ *
+ * `unitCount` is the chunk's word count: the mastery bar tolerates the same
+ * single slip the round itself does, or a short chunk could clear Speak and
+ * still never be credited with the day.
  */
-export async function applyTierCleared(chunk: Chunk, clearedTier: number): Promise<{ memorized: boolean }> {
+export async function applyTierCleared(
+  chunk: Chunk,
+  clearedTier: number,
+  unitCount: number
+): Promise<{ memorized: boolean }> {
   const newTier = Math.max(chunk.tier, clearedTier);
-  const memorized = clearedTier >= 5 && (await hasTwoDayMastery(chunk.id));
+  const memorized = clearedTier >= 5 && (await masteryDays(chunk.id, unitCount)).size >= 2;
   await db
     .update(tables.chunks)
     .set({
@@ -209,25 +249,39 @@ export async function applyTierCleared(chunk: Chunk, clearedTier: number): Promi
   return { memorized };
 }
 
-/** ≥95% Type/Speak attempts on at least two distinct local days (03 §1). */
-async function hasTwoDayMastery(chunkId: string): Promise<boolean> {
+function localDay(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** Local days on which a Type/Speak attempt cleared the mastery bar (03 §1). */
+async function masteryDays(chunkId: string, unitCount: number): Promise<Set<string>> {
   const rows = await db
-    .select({ createdAt: tables.attempts.createdAt })
+    .select({ createdAt: tables.attempts.createdAt, accuracy: tables.attempts.accuracy })
     .from(tables.attempts)
     .where(
       and(
         eq(tables.attempts.chunkId, chunkId),
-        inArray(tables.attempts.mode, ['type', 'speak']),
-        gte(tables.attempts.accuracy, 0.95)
+        inArray(tables.attempts.mode, ['type', 'speak'])
       )
     );
-  const days = new Set(
-    rows.map((r) => {
-      const d = r.createdAt;
-      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    })
+  return new Set(
+    rows
+      .filter((r) => meetsThreshold(MASTERY_THRESHOLD, r.accuracy, unitCount))
+      .map((r) => localDay(r.createdAt))
   );
-  return days.size >= 2;
+}
+
+/**
+ * True when the chunk has topped the ladder and today's work is done: Speak
+ * is cleared, today's mastery day is banked, and only a second day can seal
+ * it. Without this the practice screen hands back the same Speak round every
+ * time it is cleared, because `nextTier(6)` is 6 and the chunk stays
+ * `learning` until Memorized.
+ */
+export async function awaitingSecondDay(chunk: Chunk, unitCount: number): Promise<boolean> {
+  if (chunk.status === 'memorized' || nextTier(chunk.tier) !== chunk.tier) return false;
+  const days = await masteryDays(chunk.id, unitCount);
+  return days.size < 2 && days.has(localDay(new Date()));
 }
 
 /** Sub-line copy like "Chunk 4 of 12 · Blanks 50" (docs/07 §6). */

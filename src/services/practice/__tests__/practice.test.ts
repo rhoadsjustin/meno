@@ -4,6 +4,7 @@ import {
   buildArrangeRound,
   currentMode,
   deserializeSession,
+  dropTier,
   firstLetters,
   gradeArrangement,
   isComplete,
@@ -138,5 +139,50 @@ describe('session state machine', () => {
     expect(resumed).toEqual(s);
     expect(deserializeSession('{"broken": true}')).toBeNull();
     expect(deserializeSession('not json')).toBeNull();
+  });
+});
+
+describe('dropTier', () => {
+  it('rebuilds one tier lower without touching the chunk record', () => {
+    // docs/03 §1: "failing a tier twice suggests dropping one tier —
+    // suggestion, never forced". Session-local, so nothing is lost.
+    let s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 5, now: 0 });
+    expect(s.tier).toBe(6);
+    const failed = recordRound(recordRound(s, { accuracy: 0.5, unitCount: 26 }).state, {
+      accuracy: 0.5,
+      unitCount: 26,
+    });
+    expect(failed.suggestDropTier).toBe(true);
+
+    const dropped = dropTier(failed.state);
+    expect(dropped.tier).toBe(5);
+    expect(dropped.roundIndex).toBe(0);
+    expect(dropped.failCount).toBe(0);
+    expect(dropped.attemptNo).toBeGreaterThan(failed.state.attemptNo);
+    expect(dropped.results).toEqual(failed.state.results); // history kept
+    expect(dropped.chunkId).toBe('c');
+  });
+
+  it('bottoms out at Read', () => {
+    let s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 1, now: 0 });
+    for (let i = 0; i < 6; i++) s = dropTier(s);
+    expect(s.tier).toBe(0);
+    expect(dropTier(s).tier).toBe(0);
+  });
+});
+
+describe('recordRound tolerance', () => {
+  it('lets a short chunk clear a 95% tier with one slipped word', () => {
+    const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 4, now: 0 });
+    expect(s.tier).toBe(5); // Type, threshold 0.95
+    expect(recordRound(s, { accuracy: 0.9, unitCount: 10 }).passed).toBe(true);
+    expect(recordRound(s, { accuracy: 0.9, unitCount: 40 }).passed).toBe(false);
+  });
+
+  it('still freezes the round on a real miss', () => {
+    let s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 4, now: 0 });
+    for (let i = 0; i < 5; i++) s = recordRound(s, { accuracy: 0.5, unitCount: 26 }).state;
+    expect(s.roundIndex).toBe(0);
+    expect(s.failCount).toBe(5);
   });
 });

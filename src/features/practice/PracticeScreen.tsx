@@ -20,6 +20,7 @@ import { formatRange, getPassage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
   applyTierCleared,
+  awaitingSecondDay,
   currentChunk,
   getGoal,
   type Chunk,
@@ -31,10 +32,12 @@ import {
   saveActiveSession,
 } from '@/services/db/repos/sessionStore';
 import { secureToday } from '@/services/db/repos/streaks';
-import type { GradeResult } from '@/services/grading';
+import { tokenize, type GradeResult } from '@/services/grading';
 import {
   blanksDensity,
   currentMode,
+  dropTier,
+  nextTier,
   recordRound,
   startSession,
   tierDef,
@@ -54,12 +57,17 @@ type Phase =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'round' }
+  /** Speak is cleared and today's mastery day is banked — only a second day
+   * can seal the chunk, so there is nothing left to practice here today. */
+  | { kind: 'sealsTomorrow' }
   | {
       kind: 'feedback';
       accuracy: number;
       passed: boolean;
       tierCleared: boolean;
       memorized: boolean;
+      /** Cleared the top tier without sealing: do not serve it again. */
+      sealsTomorrow: boolean;
       suggestDropTier: boolean;
       result?: GradeResult;
     };
@@ -90,6 +98,16 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     });
     const chunkText = verses.map((v) => v.text).join(' ');
 
+    // Topped the ladder and already banked today: serving Speak again would
+    // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
+    if (await awaitingSecondDay(c, tokenize(chunkText).length)) {
+      setGoal(g);
+      setChunk(c);
+      setText(chunkText);
+      setPhase({ kind: 'sealsTomorrow' });
+      return;
+    }
+
     // Resume a persisted session for this chunk, else start fresh
     // (M2 acceptance: killing the app mid-session resumes correctly).
     const saved = await loadActiveSession();
@@ -118,7 +136,13 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   }, [load]);
 
   const finishRound = useCallback(
-    async (input: { accuracy?: number; selfPass?: boolean; missedWords?: string[]; result?: GradeResult }) => {
+    async (input: {
+      accuracy?: number;
+      unitCount?: number;
+      selfPass?: boolean;
+      missedWords?: string[];
+      result?: GradeResult;
+    }) => {
       if (!session || !chunk) return;
       const outcome = recordRound(session, input);
       setSession(outcome.state);
@@ -135,8 +159,12 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       await secureToday(); // any completed practice item counts (docs/06 §1)
 
       let memorized = false;
+      let sealsTomorrow = false;
       if (outcome.tierCleared) {
-        ({ memorized } = await applyTierCleared(chunk, session.tier));
+        ({ memorized } = await applyTierCleared(chunk, session.tier, tokenize(text).length));
+        // Tier 6 is the top of the ladder, so a clear that didn't seal the
+        // chunk would otherwise reload into the identical Speak round.
+        sealsTomorrow = !memorized && nextTier(session.tier) === session.tier;
         await clearActiveSession();
         const { refreshBadges } = await import('@/services/db/repos/badges');
         void refreshBadges();
@@ -163,16 +191,19 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         passed: outcome.passed,
         tierCleared: outcome.tierCleared,
         memorized,
+        sealsTomorrow,
         suggestDropTier: outcome.suggestDropTier,
         result: input.result,
       });
     },
-    [session, chunk, roundStartedAt]
+    [session, chunk, text, roundStartedAt]
   );
 
   const continueSession = useCallback(async () => {
     if (phase.kind !== 'feedback') return;
-    if (phase.tierCleared) {
+    if (phase.sealsTomorrow) {
+      router.back();
+    } else if (phase.tierCleared) {
       // Reload: next tier for this chunk, or the next chunk.
       setPhase({ kind: 'loading' });
       await load();
@@ -181,6 +212,17 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       setRoundStartedAt(Date.now());
     }
   }, [phase, load]);
+
+  /** The "rebuild the foundation" escape (docs/03 §1) — session-local, so
+   * the chunk keeps its highest cleared tier and nothing is lost. */
+  const dropToLowerTier = useCallback(async () => {
+    if (!session) return;
+    const next = dropTier(session);
+    setSession(next);
+    await saveActiveSession(next);
+    setPhase({ kind: 'round' });
+    setRoundStartedAt(Date.now());
+  }, [session]);
 
   if (phase.kind === 'loading') {
     return <View style={[styles.root, { backgroundColor: colors.surface }]} />;
@@ -237,6 +279,24 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
             </>
           )}
 
+          {phase.kind === 'sealsTomorrow' && (
+            <>
+              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                {reference} is one day from sealed
+              </Text>
+              <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                You have already cleared Speak today. Memorized takes a clean pass on two
+                separate days, so this one rests until tomorrow.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.back()}
+                style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
+                <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
+              </Pressable>
+            </>
+          )}
+
           {phase.kind === 'round' && session && chunk && (
             <>
               <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -283,9 +343,16 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
                       : 'Not quite — the slipped words are marked below'}
               </Text>
               {phase.result && !phase.tierCleared && <WordFeedback result={phase.result} />}
+              {phase.sealsTomorrow && (
+                <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  That is today’s pass banked. Memorized takes a clean pass on two separate
+                  days — come back tomorrow and this one is sealed.
+                </Text>
+              )}
               {phase.suggestDropTier && (
                 <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  Want to rebuild the foundation? You can drop back a tier any time — no penalty.
+                  Want to rebuild the foundation? Drop back a tier — no penalty, and{' '}
+                  {tierDef(session.tier).name} will be waiting when you come back up.
                 </Text>
               )}
               <Pressable
@@ -293,9 +360,26 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
                 onPress={() => void continueSession()}
                 style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
                 <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-                  {phase.tierCleared ? 'Continue' : phase.passed ? 'Next round' : 'Try again'}
+                  {phase.sealsTomorrow
+                    ? 'Done'
+                    : phase.tierCleared
+                      ? 'Continue'
+                      : phase.passed
+                        ? 'Next round'
+                        : 'Try again'}
                 </Text>
               </Pressable>
+              {phase.suggestDropTier && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Rebuilds this chunk one tier lower; your progress is kept"
+                  onPress={() => void dropToLowerTier()}
+                  style={styles.secondaryButton}>
+                  <Text style={[styles.secondaryButtonText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                    Rebuild at {tierDef(Math.max(0, session.tier - 1)).name}
+                  </Text>
+                </Pressable>
+              )}
             </>
           )}
         </ScrollView>
@@ -393,4 +477,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  secondaryButton: { marginTop: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center' },
+  secondaryButtonText: { fontSize: 16, fontWeight: '600' },
 });

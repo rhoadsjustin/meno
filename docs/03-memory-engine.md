@@ -17,8 +17,10 @@ Each **chunk** (2–4 verses, see §5) climbs seven tiers. `chunks.tier` stores 
 | 6 | Speak | `speak` | Reference only; recite aloud, live transcript ghosted | ≥95% |
 
 - **Memorized** = pass Tier 5 **or** 6 at ≥95% on two separate days (`attempts` provides the audit trail). Both is encouraged; either suffices (accessibility: typing-only and speaking-only paths are both complete).
+- **Thresholds scale to chunk length.** A flat ≥95% means a literally word-perfect answer for any chunk under 20 words — most single-verse goals — so one slip repeats the round forever. Every tier therefore tolerates at least one whole slipped word, capped so nothing passes below 80% (`services/grading` §3). The displayed accuracy is always the honest score; only the pass bar moves.
+- **Tier 6 is the top of the ladder.** Clearing Speak when the chunk has only banked one mastery day ends the session with "one day from sealed" — it is never re-served the same day, because the chunk stays `learning` until Memorized and would otherwise loop.
 - Users may practice any unlocked tier anytime; progression just requires thresholds in order.
-- Failing a tier twice in a session suggests dropping one tier ("Let's rebuild the foundation") — suggestion, never forced.
+- Failing a tier twice in a session suggests dropping one tier ("Let's rebuild the foundation") — suggestion, never forced. The suggestion carries a **working control**: dropping is session-local, so `chunks.tier` is untouched and the harder tier is waiting again once the lower one clears.
 - Blank selection: prefer content words (nouns/verbs/adjectives via a small stopword list) at 25%; random beyond stopwords at 50/75%. Deterministic per (chunkId, density, attemptNo) seed so retries vary but tests are reproducible.
 
 ## 2. Normalization (before any comparison)
@@ -62,6 +64,8 @@ Verse-number markers are never part of graded text.
 - Deterministic: same passage + translation → same chunks (stable ids across reinstalls).
 
 **Sequential unlock with overlap stitching:** chunk N+1 unlocks when chunk N reaches Tier 3. Every 5 chunks (and at each chapter completion), a **Stitch session** runs: recite from chunk 1 (or chapter start) through the current chunk at Type/Speak tier, graded as one long text. A goal is Memorized when all chunks are Memorized **and** a full-passage stitch passes ≥90%.
+
+**Practice order:** the next chunk practiced is the lowest-order unfinished one that still has something to do today. A chunk that topped the ladder and banked its first mastery day stays `learning` until a second day seals it, so it is skipped in favour of the next unlocked chunk rather than parking the whole goal. When every unfinished chunk is waiting on tomorrow, the lowest-order one is still what the Today card and recite-to-unlock show.
 
 Pace projection: with default settings (~1 new chunk per day reaching Tier 3, plus reviews) the goal wizard shows an estimated completion date and adjusts weekly based on actual velocity.
 

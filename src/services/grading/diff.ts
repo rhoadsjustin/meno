@@ -21,8 +21,13 @@ export type GradeResult = {
   /** User tokens that matched nothing in the reference, with the reference
    * index they were inserted before. */
   insertions: { word: string; beforeIndex: number }[];
-  /** 0–1, floored at 0: 1 − weightedErrors / referenceWordCount. */
+  /** 0–1, floored at 0: 1 − weightedErrors / referenceWordCount. Always the
+   * honest score — it is what the user is shown and what SM-2 consumes.
+   * Pass/fail is decided by `meetsThreshold`, not by comparing this to a
+   * tier threshold directly. */
   accuracy: number;
+  /** Reference length the accuracy was measured against (0 for empty text). */
+  unitCount: number;
 };
 
 type Op = 'match' | 'sub' | 'del' | 'ins';
@@ -148,5 +153,45 @@ export function gradeTokens(
   }
 
   const accuracy = m === 0 ? 1 : Math.max(0, 1 - weightedErrors / m);
-  return { words, insertions, accuracy };
+  return { words, insertions, accuracy, unitCount: m };
+}
+
+/**
+ * No round passes below this, whatever the floor below would allow — a pass
+ * has to have been a recitation. It only binds on very short chunks:
+ * "Jesus wept." must be exact, while ~5 words up gets its one slip.
+ */
+const MAX_ERROR_FRACTION = 0.2;
+export const MIN_PASS_ACCURACY = 1 - MAX_ERROR_FRACTION;
+
+/**
+ * Weighted errors a round may carry and still pass `threshold`.
+ *
+ * The proportional budget on its own — (1 − threshold) × length — demands a
+ * literally word-perfect answer for anything under 20 words at the 95% tiers,
+ * which is most single-verse goals (Phil 4:13 is 10 words, Ps 23:1 is 8). One
+ * slipped word then fails every attempt, and since a failed round never
+ * advances, the user recites the same verse forever. So the budget never
+ * falls below one whole word, capped by MIN_PASS_ACCURACY.
+ */
+export function errorBudget(threshold: number, unitCount: number): number {
+  if (unitCount <= 0) return 0;
+  const proportional = (1 - threshold) * unitCount;
+  return Math.min(Math.max(proportional, 1), unitCount * MAX_ERROR_FRACTION);
+}
+
+/**
+ * `errorBudget` restated as the lowest honest accuracy that still passes.
+ * With no length to scale to, fall back to the bare threshold — a caller
+ * that forgets `unitCount` must get the strict rule, never a free pass.
+ */
+export function thresholdFor(threshold: number, unitCount: number): number {
+  if (unitCount <= 0) return threshold;
+  return Math.max(0, 1 - errorBudget(threshold, unitCount) / unitCount);
+}
+
+/** The pass test for every graded mode. `unitCount` is words for
+ * type/speak, blanks for a blanks round, tiles for arrange. */
+export function meetsThreshold(threshold: number, accuracy: number, unitCount: number): boolean {
+  return accuracy >= thresholdFor(threshold, unitCount) - 1e-9;
 }
