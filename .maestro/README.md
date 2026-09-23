@@ -63,6 +63,25 @@ on a failing flow, keep the build:
 E2E_KEEP_BUILD=1 npm run e2e
 ```
 
+## On EAS
+
+`flows/` also runs on EAS Workflows (`.eas/workflows/e2e.yml`) — on pull
+requests, on pushes to main, and on demand:
+
+```bash
+eas workflow:run .eas/workflows/e2e.yml
+```
+
+It builds with the `e2e-test` profile (a simulator build) and runs the flows
+on EAS hardware. `manual/` is deliberately excluded: iOS's "Open in Meno?"
+scheme confirmation lands late on a hosted simulator and then sits over the
+screen failing everything after it. Run that one locally before a release.
+
+Retries are set to 0 on purpose. The local gate retries once to shake off a
+stale Maestro XCTest driver, and that retry has already masked a genuine
+timing flake — a green run that needed a retry told us nothing. If a flow
+fails on EAS, it failed.
+
 We ran this suite on GitHub Actions for a while (`e2e.yml`, removed) but the
 shared macOS runners were too flaky to gate on: simulator boots wedged for
 an hour, the app crashed mid-flow on runs that pass everywhere else, and

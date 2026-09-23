@@ -1,0 +1,37 @@
+# Maestro E2E on EAS. The suite used to run on GitHub's shared macOS runners
+# and was pulled for flakiness (see .maestro/README.md); EAS builds the
+# simulator app and runs the flows on its own hardware instead.
+#
+# Only .maestro/flows runs here. .maestro/manual is local-only: iOS's
+# "Open in Meno?" scheme confirmation can land tens of seconds late on a
+# hosted simulator, after the flow gave up waiting, and then sits over the
+# screen failing everything after it.
+name: E2E
+
+on:
+  pull_request:
+    branches: ['main']
+  push:
+    branches: ['main']
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build for the iOS Simulator
+    type: build
+    params:
+      platform: ios
+      profile: e2e-test
+      message: E2E ${{ github.sha }}
+
+  maestro:
+    name: Maestro flows
+    type: maestro
+    needs: [build]
+    params:
+      build_id: ${{ needs.build.outputs.build_id }}
+      flow_path: .maestro/flows
+      # No retries on purpose. A retry here would hide exactly the kind of
+      # timing flake the local gate's retry already masked once.
+      retries: 0
+      record_screen: true
