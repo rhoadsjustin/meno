@@ -9,7 +9,7 @@ export async function recordAttempt(input: {
   accuracy: number;
   durationMs: number;
   missedWords: string[];
-  source: 'practice' | 'review' | 'popquiz' | 'unlock';
+  source: 'practice' | 'review' | 'popquiz' | 'unlock' | 'stitch';
 }): Promise<void> {
   await db.insert(tables.attempts).values({
     id: Crypto.randomUUID(),

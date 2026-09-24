@@ -85,7 +85,10 @@ export default function StitchRoute() {
         accuracy: outcome.accuracy,
         durationMs: 0,
         missedWords: outcome.missedWords,
-        source: 'practice',
+        // Not 'practice': this accuracy is for every chunk from the first
+        // through this one, so it must not be read as a score for the last
+        // chunk alone (repos/goals masteryDays).
+        source: 'stitch',
       });
       const { goalCompleted } = passed
         ? await recordStitchResult(goalId, outcome.accuracy, data.chunkCount, data.isFinal)
