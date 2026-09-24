@@ -65,12 +65,15 @@ E2E_KEEP_BUILD=1 npm run e2e
 
 ## On EAS
 
-`flows/` also runs on EAS Workflows (`.eas/workflows/e2e.yml`) — on pull
-requests, on pushes to main, and on demand:
+`flows/` can also run on EAS Workflows (`.eas/workflows/e2e.yml`), on demand:
 
 ```bash
 eas workflow:run .eas/workflows/e2e.yml
 ```
+
+It is manual on purpose — each run costs a paid EAS build plus Maestro
+compute, and the local gate already covers every PR. Reach for it when the
+suite needs to run on EAS hardware rather than the dev machine.
 
 It builds with the `e2e-test` profile (a simulator build) and runs the flows
 on EAS hardware. `manual/` is deliberately excluded: iOS's "Open in Meno?"

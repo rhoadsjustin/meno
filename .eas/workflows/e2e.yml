@@ -8,11 +8,12 @@
 # screen failing everything after it.
 name: E2E
 
+# Manual only. Each run is a paid EAS build plus Maestro compute, and the
+# local gate (`npm run e2e`) already covers every PR — this is for when the
+# suite needs to run on EAS hardware rather than on the dev machine.
+#
+#   eas workflow:run .eas/workflows/e2e.yml
 on:
-  pull_request:
-    branches: ['main']
-  push:
-    branches: ['main']
   workflow_dispatch: {}
 
 jobs:
