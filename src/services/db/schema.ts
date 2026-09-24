@@ -88,7 +88,11 @@ export const attempts = sqliteTable(
     /** JSON array of missed word indices/words. */
     missedWords: text('missedWords', { mode: 'json' }).notNull().default('[]'),
     createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
-    source: text('source', { enum: ['practice', 'review', 'popquiz', 'unlock'] }).notNull(),
+    /** `stitch` grades a whole run of chunks at once, so its accuracy is not
+     * comparable to a single chunk's — see masteryDays in repos/goals. */
+    source: text('source', {
+      enum: ['practice', 'review', 'popquiz', 'unlock', 'stitch'],
+    }).notNull(),
   },
   (t) => [index('attempts_chunkId_idx').on(t.chunkId, t.createdAt)]
 );

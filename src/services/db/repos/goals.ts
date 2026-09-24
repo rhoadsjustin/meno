@@ -2,7 +2,7 @@
  * Goal + chunk persistence and orchestration. Screens stay thin; anything
  * touching both Scripture and the database goes through here.
  */
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
 import { getPassage } from '@/services/bible';
@@ -253,7 +253,14 @@ function localDay(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-/** Local days on which a Type/Speak attempt cleared the mastery bar (03 §1). */
+/**
+ * Local days on which a Type/Speak attempt cleared the mastery bar (03 §1).
+ *
+ * Stitch attempts are excluded. A stitch is filed against its last chunk but
+ * graded over every chunk from the first through that one, so its accuracy
+ * says nothing about the last chunk on its own — counting it could seal a
+ * chunk the user never recited alone.
+ */
 async function masteryDays(chunkId: string, unitCount: number): Promise<Set<string>> {
   const rows = await db
     .select({ createdAt: tables.attempts.createdAt, accuracy: tables.attempts.accuracy })
@@ -261,7 +268,8 @@ async function masteryDays(chunkId: string, unitCount: number): Promise<Set<stri
     .where(
       and(
         eq(tables.attempts.chunkId, chunkId),
-        inArray(tables.attempts.mode, ['type', 'speak'])
+        inArray(tables.attempts.mode, ['type', 'speak']),
+        ne(tables.attempts.source, 'stitch')
       )
     );
   return new Set(
