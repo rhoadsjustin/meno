@@ -6,6 +6,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   availableTranslations,
@@ -119,8 +120,13 @@ export default function ChallengeScreen() {
     }
   };
 
+  // A link that cold-starts the app makes this the stack's root, which iOS
+  // shows full-screen rather than as a sheet. SafeAreaView measures the real
+  // overlap, so it pads under the status bar there and adds nothing in a sheet.
   return (
-    <View style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
+    <SafeAreaView
+      edges={['top', 'bottom']}
+      style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           Challenge invitation
@@ -214,7 +220,7 @@ export default function ChallengeScreen() {
           </Pressable>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -263,7 +269,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    // The bottom safe-area edge already clears the home indicator.
+    paddingBottom: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   footerSecondary: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
