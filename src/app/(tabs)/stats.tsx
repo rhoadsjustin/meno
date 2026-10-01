@@ -62,7 +62,9 @@ export default function StatsScreen() {
         </View>
         {stats && (stats.recitations > 0 || stats.overrides > 0) && (
           <Text style={[styles.neutral, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Recite to Unlock: {stats.recitations} recitations, {stats.overrides} overrides.
+            Recite to Unlock: {stats.recitations}{' '}
+            {stats.recitations === 1 ? 'recitation' : 'recitations'}, {stats.overrides}{' '}
+            {stats.overrides === 1 ? 'override' : 'overrides'}.
           </Text>
         )}
       </Card>

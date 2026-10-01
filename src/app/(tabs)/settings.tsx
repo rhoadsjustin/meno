@@ -95,7 +95,7 @@ export default function SettingsScreen() {
           <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {isLockAvailable()
               ? lockEnabled
-                ? `On · this week: ${lockStats.recitations} recitations, ${lockStats.overrides} overrides`
+                ? `On · this week: ${lockStats.recitations} ${lockStats.recitations === 1 ? 'recitation' : 'recitations'}, ${lockStats.overrides} ${lockStats.overrides === 1 ? 'override' : 'overrides'}`
                 : 'Ask for a verse before your distracting apps open.'
               : 'Available on your iPhone (not in the simulator).'}
           </Text>
