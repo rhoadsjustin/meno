@@ -105,6 +105,9 @@ export function configureShield(reference: string, verseText: string | null): vo
       primaryButtonLabel: 'Recite to unlock',
       secondaryButtonLabel: 'Override',
       iconSystemName: 'book.closed.fill',
+      // Untinted, the symbol renders black and vanishes on the dark shield. Dark-mode
+      // lapis (palette.dark.lapis) reads on both the light and dark shield.
+      iconTint: { red: 91, green: 127, blue: 232 },
     },
     {
       primary: {
