@@ -104,7 +104,10 @@ export function Dissolution({
       }
       onPress={skip}
       style={styles.stage}>
-      <Animated.View style={[styles.layer, fullStyle]}>
+      {/* The full text stays in flow so the stage is as tall as the passage; the
+          cipher and reference layers sit over it. All-absolute layers left the
+          stage at minHeight and long passages spilled over the text around it. */}
+      <Animated.View style={fullStyle}>
         <Text style={[styles.scripture, { color: colors.ink, fontFamily: fonts?.scripture }]}>
           {text}
         </Text>
@@ -136,7 +139,7 @@ export function Dissolution({
 
 const styles = StyleSheet.create({
   stage: { minHeight: 140, justifyContent: 'center' },
-  layer: { position: 'absolute', left: 0, right: 0 },
+  layer: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, justifyContent: 'center' },
   scripture: {
     fontSize: scriptureType.minSize,
     lineHeight: 26,
