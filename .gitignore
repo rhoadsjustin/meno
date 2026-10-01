@@ -48,3 +48,6 @@ scripture-memory-docs/
 
 # secrets
 .env
+
+# Argent (simulator tooling) recordings and scratch output
+.argent/

@@ -1,0 +1,6 @@
+node_modules/
+out/
+# Apple system fonts (copied from /System/Library/Fonts for local renders only)
+public/fonts/
+# Simulator recordings: regenerate per the README
+public/clips/
