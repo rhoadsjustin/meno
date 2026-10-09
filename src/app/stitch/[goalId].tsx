@@ -3,7 +3,7 @@
  * chunk as one long passage, Speak or Type, graded as one text (≥90%).
  */
 import * as Haptics from 'expo-haptics';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { getGoal } from '@/services/db/repos/goals';
@@ -29,13 +30,19 @@ import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 type Phase =
   | { kind: 'loading' }
   | { kind: 'quiz' }
-  | { kind: 'result'; accuracy: number; passed: boolean; goalCompleted: boolean; result: GradeResult }
+  | {
+      kind: 'result';
+      accuracy: number;
+      passed: boolean;
+      goalCompleted: boolean;
+      result: GradeResult;
+    }
   | { kind: 'error'; message: string };
 
 export default function StitchRoute() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
   const colors = useThemeColors();
-  const { insets, sides } = useContentLayout();
+  const { sides } = useContentLayout();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [data, setData] = useState<{
     text: string;
@@ -56,7 +63,11 @@ export default function StitchRoute() {
         const first = plan.chunks[0];
         const last = plan.chunks[plan.chunks.length - 1];
         const range = {
-          start: { bookId: first.startBookId, chapter: first.startChapter, verse: first.startVerse },
+          start: {
+            bookId: first.startBookId,
+            chapter: first.startChapter,
+            verse: first.startVerse,
+          },
           end: { bookId: last.endBookId, chapter: last.endChapter, verse: last.endVerse },
         };
         const verses = await getPassage(goal.translationId, range);
@@ -95,7 +106,9 @@ export default function StitchRoute() {
         : { goalCompleted: false };
       await secureToday();
       void Haptics.notificationAsync(
-        passed ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
+        passed
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Warning,
       );
       setPhase({
         kind: 'result',
@@ -105,23 +118,29 @@ export default function StitchRoute() {
         result: outcome.result,
       });
     },
-    [data, goalId]
+    [data, goalId],
   );
 
   return (
-    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <View style={styles.chrome}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => router.back()} hitSlop={12}>
-          <Text style={[styles.close, { color: colors.inkFaint }]}>✕</Text>
-        </Pressable>
-        <Text style={[styles.title, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Stitch
-        </Text>
-        <View style={styles.closeSpacer} />
-      </View>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      {/* Native bar: Close, titled Stitch. */}
+      <ScreenHeader backHidden title="Stitch">
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button
+            icon="xmark"
+            accessibilityLabel="Close"
+            onPress={() => router.back()}>
+            Close
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={[styles.content, contentColumn]} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={[styles.content, contentColumn]}
+          keyboardShouldPersistTaps="handled">
           {phase.kind === 'error' && (
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {phase.message}
@@ -158,7 +177,11 @@ export default function StitchRoute() {
                 ]}>
                 {Math.round(phase.accuracy * 100)}%
               </Text>
-              <Text style={[styles.heading, { color: phase.goalCompleted ? colors.gold : colors.ink, fontFamily: fonts?.ui }]}>
+              <Text
+                style={[
+                  styles.heading,
+                  { color: phase.goalCompleted ? colors.gold : colors.ink, fontFamily: fonts?.ui },
+                ]}>
                 {phase.goalCompleted
                   ? 'The whole passage is hidden in your heart.'
                   : phase.passed
@@ -192,16 +215,6 @@ export default function StitchRoute() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
-  chrome: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenMargin,
-    paddingVertical: spacing.sm,
-  },
-  close: { fontSize: 20 },
-  closeSpacer: { width: 20 },
-  title: { fontSize: 14 },
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   body: { fontSize: 15, lineHeight: 21 },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },

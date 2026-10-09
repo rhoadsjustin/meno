@@ -371,11 +371,13 @@ export default function TodayScreen() {
     <Screen title="Today" accessory={ember || undefined} wide>
       {isWide ? (
         <View style={panes.row}>
-          <View style={panes.main}>
+          {/* Even halves: a half-folded hinge lands between the panes
+              instead of through one (HIG: prefer an even number of columns). */}
+          <View style={panes.half}>
             {hero}
             {links}
           </View>
-          <View style={panes.aside}>
+          <View style={panes.half}>
             {ladder}
             {secondary}
           </View>
