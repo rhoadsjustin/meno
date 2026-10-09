@@ -1,13 +1,25 @@
-# Meno promo video
+# Meno promo videos
 
-A 30-second, 1080×1350 (4:5) social cut built with [Remotion](https://remotion.dev).
-Scenes, headlines and footage timings live in `src/Promo.tsx`; brand colors and
-fonts in `src/theme.ts`.
+Two 1080×1350 (4:5) social cuts built with [Remotion](https://remotion.dev), sharing
+the phone frame, clips and widget cards in `src/parts.tsx`, the brand colors and
+fonts in `src/theme.ts`, and a piano soundtrack from `public/music/` (see Assets).
+
+- **Promo** (`src/Promo.tsx`, ~30s): the feature tour — six practice modes, the
+  dissolve, word-by-word checking, reviews, the shield, widgets.
+- **Abide** (`src/Abide.tsx`, ~34s): why the name — μένω (menō) as a lexicon entry,
+  then the verses that carry it (John 1:38–39, 15:4, 15:7; Isaiah 40:8; 1 John 2:24),
+  the dissolve as "a verse that remains", widgets, and the tagline. Scripture is quoted
+  from the ESV (fetched from Crossway's ESV API); the outro carries the required copyright
+  notice. Crossway's standard permission covers up to 1,000 verses provided the quotations
+  are under 25% of the work's text — a verse-heavy cut like this one leans on the app's
+  existing ESV API licence, so keep the notice in.
 
 ```bash
 npm install
-npm run studio   # preview and scrub in the browser
-npm run render   # -> out/meno-promo.mp4
+npm run music          # build the soundtracks first (see Assets)
+npm run studio         # preview and scrub in the browser
+npm run render         # -> out/meno-promo.mp4
+npm run render:abide   # -> out/meno-abide.mp4
 ```
 
 ## Assets (not committed)
@@ -22,6 +34,13 @@ npm run render   # -> out/meno-promo.mp4
 
   If you re-record, update the `startFrom` / `holdFrom` timings in `src/Promo.tsx`. The
   bottom of each recording carries the recorder's mark; the phone frame keeps it out of view.
+
+- `public/music/` — the soundtracks, built by `npm run music` (needs ffmpeg and the Apple
+  Loops that come with GarageBand): `promo.wav` and `abide.wav`, timed to each cut. The bed
+  is the "Find Strength Piano" loop (C major, 73 BPM) under its own long reverb and a quiet
+  drone; `scripts/music.py` has the cue timings. Previews land in `out/music-previews/`.
+  GarageBand's loop licence allows royalty-free use in your own soundtracks and distributing
+  the result, but not redistributing the loops themselves, so the raw loops stay out of git.
 
 `public/img/` is committed: the status-bar overlay, the cleaned shield screenshot and the
 widget captures (from `assets/images/onboarding/`).

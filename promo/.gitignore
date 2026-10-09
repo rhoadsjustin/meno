@@ -4,3 +4,5 @@ out/
 public/fonts/
 # Simulator recordings: regenerate per the README
 public/clips/
+# Soundtracks built from GarageBand's Apple Loops: `npm run music` (see README)
+public/music/

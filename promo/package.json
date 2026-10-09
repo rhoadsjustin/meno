@@ -4,7 +4,9 @@
   "description": "Remotion promo video for Meno (LinkedIn / social cut).",
   "scripts": {
     "studio": "remotion studio",
-    "render": "remotion render Promo out/meno-promo.mp4"
+    "render": "remotion render Promo out/meno-promo.mp4",
+    "render:abide": "remotion render Abide out/meno-abide.mp4",
+    "music": "python3 scripts/music.py"
   },
   "dependencies": {
     "@remotion/cli": "4.0.532",

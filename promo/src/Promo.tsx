@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   AbsoluteFill,
+  Audio,
   Img,
   interpolate,
   Sequence,
@@ -10,7 +11,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 
-import { Clip, Headline, Phone, Scene, Theme } from './parts';
+import { Clip, Headline, Phone, Scene, Theme, Widgets } from './parts';
 import { C, SANS, SERIF } from './theme';
 
 // Footage timings are seconds into public/clips/*.mp4 (see README for how
@@ -33,8 +34,7 @@ const Intro: React.FC = () => {
           color: C.lapis,
           transform: `scale(${0.8 + mark * 0.2})`,
           opacity: mark,
-        }}
-      >
+        }}>
         M
       </div>
       <div
@@ -49,8 +49,7 @@ const Intro: React.FC = () => {
           whiteSpace: 'pre-line',
           opacity: line,
           transform: `translateY(${(1 - line) * 24}px)`,
-        }}
-      >
+        }}>
         Let the Word{'\n'}remain in you.
       </div>
     </AbsoluteFill>
@@ -69,36 +68,6 @@ const Shield: React.FC = () => {
   );
 };
 
-/** The real widget captures, dealt in like cards. */
-const Widgets: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const card = (src: string, delay: number, angle: number, top: number) => {
-    const t = spring({ frame: frame - delay, fps, config: { damping: 16, mass: 0.9 } });
-    return (
-      <Img
-        src={staticFile(src)}
-        style={{
-          position: 'absolute',
-          left: 140,
-          top: top + (1 - t) * 260,
-          width: 800,
-          borderRadius: 48,
-          opacity: Math.min(1, t * 1.4),
-          transform: `rotate(${angle * t}deg)`,
-          boxShadow: '0 30px 70px rgba(10, 15, 40, 0.28)',
-        }}
-      />
-    );
-  };
-  return (
-    <>
-      {card('img/lock-screen.png', 6, 2.5, 420)}
-      {card('img/widget-home-light.png', 16, -2.5, 910)}
-    </>
-  );
-};
-
 const Outro: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -106,7 +75,8 @@ const Outro: React.FC = () => {
   const b = spring({ frame: frame - 12, fps, config: { damping: 200 } });
   return (
     <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', padding: 80 }}>
-      <div style={{ fontFamily: SERIF, fontSize: 150, fontWeight: 600, color: C.white, opacity: a }}>
+      <div
+        style={{ fontFamily: SERIF, fontSize: 150, fontWeight: 600, color: C.white, opacity: a }}>
         Meno
       </div>
       <div
@@ -117,8 +87,7 @@ const Outro: React.FC = () => {
           color: C.onLapisFaint,
           textAlign: 'center',
           opacity: a,
-        }}
-      >
+        }}>
         Memorize Scripture. Keep it for good.
       </div>
       <div
@@ -133,11 +102,17 @@ const Outro: React.FC = () => {
           fontSize: 40,
           opacity: b,
           transform: `scale(${0.9 + b * 0.1})`,
-        }}
-      >
+        }}>
         Free beta on iPhone
       </div>
-      <div style={{ marginTop: 34, fontFamily: SANS, fontSize: 30, color: C.onLapisFaint, opacity: b }}>
+      <div
+        style={{
+          marginTop: 34,
+          fontFamily: SANS,
+          fontSize: 30,
+          color: C.onLapisFaint,
+          opacity: b,
+        }}>
         No account · No ads · No tracking
       </div>
     </AbsoluteFill>
@@ -153,7 +128,11 @@ export const SCENES: SceneSpec[] = [
     theme: 'lapis',
     render: () => (
       <>
-        <Headline theme="lapis" title="Six ways to practice." sub="From reading it to reciting it." />
+        <Headline
+          theme="lapis"
+          title="Six ways to practice."
+          sub="From reading it to reciting it."
+        />
         <Phone>
           <Clip src="clips/arrange.mp4" startFrom={1.4} rate={2} />
         </Phone>
@@ -193,7 +172,11 @@ export const SCENES: SceneSpec[] = [
     theme: 'vellum',
     render: () => (
       <>
-        <Headline theme="vellum" title="Fill in what fades." sub="Reviews arrive right before you’d forget." />
+        <Headline
+          theme="vellum"
+          title="Fill in what fades."
+          sub="Reviews arrive right before you’d forget."
+        />
         <Phone>
           <Clip src="clips/review.mp4" startFrom={20} rate={1.5} />
         </Phone>
@@ -206,7 +189,11 @@ export const SCENES: SceneSpec[] = [
     theme: 'lapis',
     render: () => (
       <>
-        <Headline theme="lapis" title="Recite before you scroll." sub="The override always works." />
+        <Headline
+          theme="lapis"
+          title="Recite before you scroll."
+          sub="The override always works."
+        />
         <Phone cleanStatusBar={false}>
           <Shield />
         </Phone>
@@ -233,6 +220,7 @@ export const Promo: React.FC = () => {
   let from = 0;
   return (
     <AbsoluteFill style={{ background: C.vellum }}>
+      <Audio src={staticFile('music/promo.wav')} />
       {SCENES.map((s) => {
         const start = from;
         from += s.frames;
