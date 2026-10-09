@@ -28,13 +28,13 @@ export const Background: React.FC<{ theme: Theme }> = ({ theme }) => (
 );
 
 /** Fades a whole scene in and out over `edge` frames. */
-export const Scene: React.FC<{ duration: number; theme: Theme; children: React.ReactNode }> = ({
-  duration,
-  theme,
-  children,
-}) => {
+export const Scene: React.FC<{
+  duration: number;
+  theme: Theme;
+  edge?: number; // crossfade length in frames
+  children: React.ReactNode;
+}> = ({ duration, theme, edge = 8, children }) => {
   const frame = useCurrentFrame();
-  const edge = 8;
   const opacity = interpolate(frame, [0, edge, duration - edge, duration], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -177,4 +177,34 @@ export const Clip: React.FC<{
     return <Freeze frame={holdFrom}>{video}</Freeze>;
   }
   return video;
+};
+
+/** The real widget captures, dealt in like cards. */
+export const Widgets: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const card = (src: string, delay: number, angle: number, top: number) => {
+    const t = spring({ frame: frame - delay, fps, config: { damping: 16, mass: 0.9 } });
+    return (
+      <Img
+        src={staticFile(src)}
+        style={{
+          position: 'absolute',
+          left: 140,
+          top: top + (1 - t) * 260,
+          width: 800,
+          borderRadius: 48,
+          opacity: Math.min(1, t * 1.4),
+          transform: `rotate(${angle * t}deg)`,
+          boxShadow: '0 30px 70px rgba(10, 15, 40, 0.28)',
+        }}
+      />
+    );
+  };
+  return (
+    <>
+      {card('img/lock-screen.png', 6, 2.5, 420)}
+      {card('img/widget-home-light.png', 16, -2.5, 910)}
+    </>
+  );
 };
