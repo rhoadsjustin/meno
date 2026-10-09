@@ -4,7 +4,7 @@
  * Speak alternation arrives with the speech tier; recall is typed for now.
  */
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { recordAttempt } from '@/services/db/repos/attempts';
@@ -50,7 +51,7 @@ type Phase =
 
 export function ReviewSession() {
   const colors = useThemeColors();
-  const { insets, sides } = useContentLayout();
+  const { sides } = useContentLayout();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [accuracies, setAccuracies] = useState<number[]>([]);
@@ -76,7 +77,11 @@ export function ReviewSession() {
             .limit(1);
           const translationId = goalRows[0]?.translationId ?? 'web';
           const range = {
-            start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
+            start: {
+              bookId: chunk.startBookId,
+              chapter: chunk.startChapter,
+              verse: chunk.startVerse,
+            },
             end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
           };
           const verses = await getPassage(translationId, range);
@@ -104,7 +109,10 @@ export function ReviewSession() {
   }, []);
 
   const finishRound = useCallback(
-    async (index: number, outcome: { accuracy: number; missedWords: string[]; result: GradeResult }) => {
+    async (
+      index: number,
+      outcome: { accuracy: number; missedWords: string[]; result: GradeResult },
+    ) => {
       const entry = queue[index];
       await recordAttempt({
         chunkId: entry.chunkId,
@@ -122,11 +130,11 @@ export function ReviewSession() {
       void Haptics.notificationAsync(
         outcome.accuracy >= 0.9
           ? Haptics.NotificationFeedbackType.Success
-          : Haptics.NotificationFeedbackType.Warning
+          : Haptics.NotificationFeedbackType.Warning,
       );
       setPhase({ kind: 'feedback', index, accuracy: outcome.accuracy, result: outcome.result });
     },
-    [queue, startedAt]
+    [queue, startedAt],
   );
 
   const advance = useCallback(() => {
@@ -146,23 +154,31 @@ export function ReviewSession() {
   }, [phase, queue.length, accuracies]);
 
   return (
-    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <View style={styles.chrome}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close review" onPress={() => router.back()} hitSlop={12}>
-          <Text style={[styles.close, { color: colors.inkFaint }]}>✕</Text>
-        </Pressable>
-        {queue.length > 0 && phase.kind !== 'summary' && (
-          <Text style={[styles.progress, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {phase.kind === 'round' || phase.kind === 'feedback'
-              ? `${Math.min(phase.index + 1, queue.length)} of ${queue.length}`
-              : ''}
-          </Text>
-        )}
-        <View style={styles.closeSpacer} />
-      </View>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      {/* Native bar: Close, with the queue position as the title. */}
+      <ScreenHeader
+        backHidden
+        title={
+          queue.length > 0 && (phase.kind === 'round' || phase.kind === 'feedback')
+            ? `${Math.min(phase.index + 1, queue.length)} of ${queue.length}`
+            : 'Review'
+        }>
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button
+            icon="xmark"
+            accessibilityLabel="Close review"
+            onPress={() => router.back()}>
+            Close
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={[styles.content, contentColumn]} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={[styles.content, contentColumn]}
+          keyboardShouldPersistTaps="handled">
           {phase.kind === 'empty' && (
             <>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -171,7 +187,10 @@ export function ReviewSession() {
               <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 Memorized verses come back here as their review dates arrive.
               </Text>
-              <Pressable accessibilityRole="button" onPress={() => router.back()} style={[styles.button, { backgroundColor: colors.lapis }]}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.back()}
+                style={[styles.button, { backgroundColor: colors.lapis }]}>
                 <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Done</Text>
               </Pressable>
             </>
@@ -226,12 +245,18 @@ export function ReviewSession() {
               <Text
                 style={[
                   styles.accuracy,
-                  { color: phase.accuracy >= 0.9 ? colors.success : colors.error, fontFamily: fonts?.scripture },
+                  {
+                    color: phase.accuracy >= 0.9 ? colors.success : colors.error,
+                    fontFamily: fonts?.scripture,
+                  },
                 ]}>
                 {Math.round(phase.accuracy * 100)}%
               </Text>
               <WordFeedback result={phase.result} />
-              <Pressable accessibilityRole="button" onPress={advance} style={[styles.button, { backgroundColor: colors.lapis }]}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={advance}
+                style={[styles.button, { backgroundColor: colors.lapis }]}>
                 <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Continue</Text>
               </Pressable>
             </>
@@ -239,13 +264,17 @@ export function ReviewSession() {
 
           {phase.kind === 'summary' && (
             <>
-              <Text style={[styles.accuracy, { color: colors.lapis, fontFamily: fonts?.scripture }]}>
+              <Text
+                style={[styles.accuracy, { color: colors.lapis, fontFamily: fonts?.scripture }]}>
                 {Math.round(phase.averageAccuracy * 100)}%
               </Text>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {phase.reviewed} {phase.reviewed === 1 ? 'verse' : 'verses'} kept fresh
               </Text>
-              <Pressable accessibilityRole="button" onPress={() => router.back()} style={[styles.button, { backgroundColor: colors.lapis }]}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.back()}
+                style={[styles.button, { backgroundColor: colors.lapis }]}>
                 <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Done</Text>
               </Pressable>
             </>
@@ -259,16 +288,6 @@ export function ReviewSession() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
-  chrome: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenMargin,
-    paddingVertical: spacing.sm,
-  },
-  close: { fontSize: 20 },
-  closeSpacer: { width: 20 },
-  progress: { fontSize: 14 },
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   reference: { fontSize: 14, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },

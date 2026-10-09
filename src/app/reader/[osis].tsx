@@ -2,11 +2,12 @@
  * Reader (docs/07 §6): pure typography — a chapter of Scripture in New York
  * with superscript verse numbers, chapter navigation, and attribution.
  */
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { ScreenHeader } from '@/components/screen-header';
 import {
   DEFAULT_TRANSLATION_ID,
   getBook,
@@ -22,7 +23,7 @@ export default function ReaderRoute() {
   const { osis, translation } = useLocalSearchParams<{ osis: string; translation?: string }>();
   const colors = useThemeColors();
   // Wide windows (iPhone Duo opened): a chapter sidebar beside the text.
-  const { insets, sides, isWide } = useContentLayout();
+  const { sides, isWide } = useContentLayout();
 
   const translationId = translation ?? DEFAULT_TRANSLATION_ID;
   const [verses, setVerses] = useState<Verse[]>([]);
@@ -57,51 +58,27 @@ export default function ReaderRoute() {
   const chapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
 
   return (
-    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <View style={styles.chrome}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          hitSlop={12}>
-          <Text style={[styles.chromeButton, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            ‹ Back
-          </Text>
-        </Pressable>
-        <Text style={[styles.chromeTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-          {book.name} {ref.chapter}
-        </Text>
-        <View style={styles.chromeNav}>
-          <Pressable
-            accessibilityRole="button"
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      {/* Native bar: back chevron, chapter title, previous/next as symbols —
+          on iPhone Duo the system moves them to the side with the status bar. */}
+      <ScreenHeader title={`${book.name} ${ref.chapter}`}>
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            icon="chevron.left"
             accessibilityLabel="Previous chapter"
             disabled={ref.chapter <= 1}
-            onPress={() => goToChapter(ref.chapter - 1)}
-            hitSlop={8}>
-            <Text
-              style={[
-                styles.chromeButton,
-                { color: ref.chapter <= 1 ? colors.separator : colors.lapis },
-              ]}>
-              ‹
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
+            onPress={() => goToChapter(ref.chapter - 1)}>
+            Previous chapter
+          </Stack.Toolbar.Button>
+          <Stack.Toolbar.Button
+            icon="chevron.right"
             accessibilityLabel="Next chapter"
             disabled={ref.chapter >= book.chapters}
-            onPress={() => goToChapter(ref.chapter + 1)}
-            hitSlop={8}>
-            <Text
-              style={[
-                styles.chromeButton,
-                { color: ref.chapter >= book.chapters ? colors.separator : colors.lapis },
-              ]}>
-              ›
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+            onPress={() => goToChapter(ref.chapter + 1)}>
+            Next chapter
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
 
       <View style={isWide ? styles.split : styles.flex}>
         {isWide && (
@@ -165,7 +142,8 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
   split: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: 200, flexGrow: 0, borderRightWidth: StyleSheet.hairlineWidth },
+  // Proportional, not fixed: about a quarter of the window, capped for iPad.
+  sidebar: { width: '26%', maxWidth: 240, flexGrow: 0, borderRightWidth: StyleSheet.hairlineWidth },
   sidebarContent: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, gap: 2 },
   sidebarTitle: {
     fontSize: 13,
@@ -182,16 +160,6 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   chapterText: { fontSize: 15 },
-  chrome: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenMargin,
-    paddingVertical: spacing.sm,
-  },
-  chromeButton: { fontSize: 17 },
-  chromeTitle: { fontSize: 17, fontWeight: '600' },
-  chromeNav: { flexDirection: 'row', gap: spacing.xl },
   content: {
     padding: layout.screenMargin,
     paddingBottom: spacing.xxxl * 2,

@@ -65,10 +65,18 @@ right way up for review.
 ## What to check for Meno, per pose
 
 Wide windows (`useContentLayout().isWide`, width ≥ 600pt) switch the layouts
-in `src/components/content-layout.ts`: Today and Stats go two-pane
-(`panes.row`), Library becomes a two-up grid, Practice gains a context rail
-(reference, chunk progress, the tier ladder), and the Reader gets a chapter
-sidebar. Narrow windows keep the shipped phone layouts unchanged.
+in `src/components/content-layout.ts`: Today and Stats go two-pane as even
+halves (`panes.row` + `panes.half`, so a half-folded hinge lands between the
+panes), Library becomes a two-up grid, and the Reader gets a chapter sidebar.
+Extra-wide windows (≥ 900pt) add the practice context rail (reference, chunk
+progress, the tier ladder). Narrow windows keep the shipped phone layouts.
+
+Navigation controls follow Apple's "vertical controls" rule: Practice,
+Review, Reader and Stitch configure native bar items in-page via
+`src/components/screen-header.tsx` (`ScreenHeader` + `Stack.Toolbar`), so
+Close, Back and the chapter chevrons move to the side with the status bar and
+tab bar on the cover panel and in the opened landscape pose. Do not add JS
+header rows to stack screens; modals keep their bottom Cancel/Continue bars.
 
 1. Closed: content avoids the right status-bar strip; tabs, practice, reader all usable at 466pt wide; no two-pane layout appears (466 < 600).
 2. Open (landscape UI): Today shows the hero left and the ladder/secondary cards right; Stats shows numerals and the practice grid beside the badges; Library is a two-up grid; Practice has the rail on the right and the primary action stays on screen at 669pt of height; the Reader's chapter sidebar jumps chapters.

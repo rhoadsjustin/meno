@@ -3,7 +3,7 @@
  * mode-specific rounds, word-level feedback, resumable at any point.
  */
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -17,6 +17,7 @@ import {
 
 import { Card } from '@/components/card';
 import { contentColumn, panes, useContentLayout } from '@/components/content-layout';
+import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
@@ -82,7 +83,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   // round keeps its reading column and a context rail sits beside it —
   // reference, chunk progress, ladder. Narrower windows keep one column so
   // Blanks and Arrange have room to work.
-  const { insets, sides, isExtraWide: showRail } = useContentLayout();
+  const { sides, isExtraWide: showRail } = useContentLayout();
 
   const [goal, setGoal] = useState<Goal | null>(null);
   const [chunk, setChunk] = useState<Chunk | null>(null);
@@ -249,32 +250,37 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     : '';
 
   return (
-    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <View style={styles.chrome}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close practice (your progress is saved)"
-          onPress={() => router.back()}
-          hitSlop={12}>
-          <Text style={[styles.close, { color: colors.inkFaint }]}>✕</Text>
-        </Pressable>
-        {session && (
-          <View
-            style={styles.dots}
-            accessibilityLabel={`Round ${Math.min(session.roundIndex + 1, session.rounds.length)} of ${session.rounds.length}`}>
-            {session.rounds.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  { backgroundColor: i < session.roundIndex ? colors.lapis : colors.separator },
-                ]}
-              />
-            ))}
-          </View>
-        )}
-        <View style={styles.closeSpacer} />
-      </View>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      {/* Native bar: Close at the top of the vertical axis, progress dots in
+          the title slot (docs/07 §6 chrome, placed where the system puts it). */}
+      <ScreenHeader
+        backHidden
+        titleView={
+          session ? (
+            <View
+              style={styles.dots}
+              accessibilityLabel={`Round ${Math.min(session.roundIndex + 1, session.rounds.length)} of ${session.rounds.length}`}>
+              {session.rounds.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: i < session.roundIndex ? colors.lapis : colors.separator },
+                  ]}
+                />
+              ))}
+            </View>
+          ) : undefined
+        }>
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button
+            icon="xmark"
+            accessibilityLabel="Close practice (your progress is saved)"
+            onPress={() => router.back()}>
+            Close
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -410,7 +416,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
             )}
           </ScrollView>
           {showRail && session && chunk && goal && (
-            <View style={[panes.aside, styles.rail]}>
+            <View style={[panes.half, styles.rail]}>
               <Card>
                 <Text
                   style={[styles.railTitle, { color: colors.ink, fontFamily: fonts?.scripture }]}>
@@ -500,23 +506,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   split: { flex: 1, flexDirection: 'row' },
   rail: {
-    flex: 0,
-    width: 300,
     paddingRight: layout.screenMargin,
     paddingTop: layout.screenMargin,
   },
   railTitle: { fontSize: 22, lineHeight: 28 },
   railSub: { fontSize: 13, marginTop: spacing.xs },
   railLadder: { marginTop: spacing.lg },
-  chrome: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenMargin,
-    paddingVertical: spacing.sm,
-  },
-  close: { fontSize: 20 },
-  closeSpacer: { width: 20 },
   dots: { flexDirection: 'row', gap: spacing.sm },
   dot: { width: 8, height: 8, borderRadius: 4 },
   content: {

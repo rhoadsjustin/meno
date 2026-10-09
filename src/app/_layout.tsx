@@ -49,7 +49,10 @@ ErrorUtils.setGlobalHandler((err, isFatal) => {
     Observe.logEvent('app.fatal_error', {
       severity: 'fatal',
       body: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-      attributes: { stack: err instanceof Error ? (err.stack ?? '') : '', isFatal: Boolean(isFatal) },
+      attributes: {
+        stack: err instanceof Error ? (err.stack ?? '') : '',
+        isFatal: Boolean(isFatal),
+      },
     });
   } catch {
     // never let reporting break error handling
@@ -132,7 +135,9 @@ function RootLayout() {
     // than rendering screens against a broken schema.
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <Text accessibilityRole="alert">Something went wrong preparing your data: {error.message}</Text>
+        <Text accessibilityRole="alert">
+          Something went wrong preparing your data: {error.message}
+        </Text>
       </View>
     );
   }
@@ -143,25 +148,28 @@ function RootLayout() {
       <StatusBar style="auto" />
       <AppErrorBoundary>
         <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="goal-wizard"
-          options={{ presentation: 'modal', headerShown: false }}
-        />
-        <Stack.Screen name="challenge" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="help" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen
-          name="onboarding"
-          options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
-        />
-        <Stack.Screen name="practice/[goalId]" options={{ headerShown: false }} />
-        <Stack.Screen name="review/index" options={{ headerShown: false }} />
-        <Stack.Screen name="reader/[osis]" options={{ headerShown: false }} />
-        <Stack.Screen name="stitch/[goalId]" options={{ headerShown: false }} />
-        <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
-        {/* No swipe-back: leaving the unlock quiz goes through its own
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="goal-wizard"
+            options={{ presentation: 'modal', headerShown: false }}
+          />
+          <Stack.Screen name="challenge" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="help" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen
+            name="onboarding"
+            options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
+          />
+          {/* Practice, review, reader and stitch configure their own native
+            header items in-page (ScreenHeader + Stack.Toolbar), so the
+            controls follow the system's vertical bar on iPhone Duo. */}
+          <Stack.Screen name="practice/[goalId]" />
+          <Stack.Screen name="review/index" />
+          <Stack.Screen name="reader/[osis]" />
+          <Stack.Screen name="stitch/[goalId]" />
+          <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
+          {/* No swipe-back: leaving the unlock quiz goes through its own
             buttons (Override / close), never a half-dismissed gesture. */}
-        <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
+          <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
         </Stack>
       </AppErrorBoundary>
     </ThemeProvider>
