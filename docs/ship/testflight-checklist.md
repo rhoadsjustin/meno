@@ -87,7 +87,8 @@ npx eas-cli build -p ios --profile production --submit
 > API key and cached per that license's terms; WEB/KJV/ASV are public
 > domain and bundled.
 
-**Demo video script (record ~90s screen capture on the phone):**
+**Demo video script (record ~90s screen capture on the phone)** — full shot list,
+prep steps and the Resolution Center reply are in `review-demo-script.md`:
 1. Settings → Recite to Unlock → walk the 5-step setup, pick one app.
 2. Open the shielded app → shield appears with verse reference.
 3. Tap Override → app opens instantly (escape hatch).

@@ -7,6 +7,18 @@ const surfaceDark = '#10131A'; // night lapis-black
 
 // Bundle id decided 2026-08-26: com.rhoadsdev.meno (also the id to use for
 // the Family Controls entitlement request and its extension targets).
+//
+// APP_VARIANT=review builds a second, independently identified copy of the
+// app ("Meno Review", com.rhoadsdev.meno.review) that installs beside the
+// real one with its own sandbox, app group, URL scheme and Screen Time
+// authorization. Use it to demo the first-launch experience (App Review
+// videos) without wiping real memorization data:
+//   APP_VARIANT=review npx expo prebuild -p ios --clean
+// The Xcode project name stays "Meno"; only the display name changes.
+const variant = process.env.APP_VARIANT === 'review' ? 'review' : null;
+const bundleId = variant ? `com.rhoadsdev.meno.${variant}` : 'com.rhoadsdev.meno';
+const appGroup = `group.${bundleId}`;
+
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
@@ -16,13 +28,16 @@ const config: ExpoConfig = {
   // 'device-activity' is the hardcoded scheme the ShieldAction extension's
   // "openApp" action opens (react-native-device-activity Shared.swift) —
   // it must resolve to this app for "Recite to unlock" to work.
-  scheme: ['meno', 'device-activity'],
+  scheme: variant ? [`meno-${variant}`] : ['meno', 'device-activity'],
   userInterfaceStyle: 'automatic',
   ios: {
-    bundleIdentifier: 'com.rhoadsdev.meno',
+    bundleIdentifier: bundleId,
     appleTeamId: 'Z8825H46UN',
     supportsTablet: false,
     infoPlist: {
+      // Variant builds get a distinguishable home-screen name so the real
+      // Meno can't be deleted by mistake.
+      ...(variant ? { CFBundleDisplayName: 'Meno Review' } : {}),
       // Standard HTTPS only — export-compliance exempt (skips the ASC
       // encryption questionnaire on every build).
       ITSAppUsesNonExemptEncryption: false,
@@ -53,7 +68,7 @@ const config: ExpoConfig = {
     // associatedDomains: ['applinks:meno.app'],
   },
   android: {
-    package: 'com.rhoadsdev.meno',
+    package: bundleId,
     adaptiveIcon: {
       backgroundColor: surfaceLight,
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -95,7 +110,7 @@ const config: ExpoConfig = {
       'react-native-device-activity',
       {
         appleTeamId: 'Z8825H46UN',
-        appGroup: 'group.com.rhoadsdev.meno',
+        appGroup,
         // Our targets/ folder carries local edits (extension icons) — don't
         // let prebuild overwrite it from the package's bundled copies.
         copyToTargetFolder: false,
@@ -104,8 +119,8 @@ const config: ExpoConfig = {
     [
       'expo-widgets',
       {
-        bundleIdentifier: 'com.rhoadsdev.meno.widgets',
-        groupIdentifier: 'group.com.rhoadsdev.meno',
+        bundleIdentifier: `${bundleId}.widgets`,
+        groupIdentifier: appGroup,
         widgets: [
           {
             name: 'MenoWidget',
