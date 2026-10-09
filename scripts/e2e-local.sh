@@ -64,9 +64,32 @@ cleanup() {
 trap cleanup EXIT
 
 export LANG=en_US.UTF-8
-# Stable Xcode 26 — the 27-beta toolchain cannot compile expo-modules-jsi.
-if [ -d /Applications/Xcode.app/Contents/Developer ]; then
-  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+# Build with the newest release Xcode on the machine (27.1 or later ships the
+# iOS 27.1 SDK that iPhone Duo's full-screen layout needs, and matches the
+# EAS image in eas.json). Betas are skipped; MENO_XCODE=/path/to/Xcode.app
+# overrides the choice.
+pick_xcode() {
+  local best="" best_v=0 app v
+  if [ -n "${MENO_XCODE:-}" ]; then
+    [ -d "$MENO_XCODE/Contents/Developer" ] && echo "$MENO_XCODE/Contents/Developer"
+    return
+  fi
+  shopt -s nullglob
+  # ~/Downloads is named explicitly as well: macOS privacy controls can hide
+  # its listing from a sandboxed shell while the bundle itself stays readable.
+  for app in /Applications/Xcode*.app "$HOME"/Downloads/Xcode*.app "$HOME/Downloads/Xcode.app"; do
+    case "$app" in *[Bb]eta*) continue ;; esac
+    [ -d "$app/Contents/Developer" ] || continue
+    v=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist" 2>/dev/null) || continue
+    v=$(echo "$v" | awk -F. '{ printf "%d", $1 * 1000 + $2 * 10 }')
+    if [ "$v" -gt "$best_v" ]; then best="$app"; best_v="$v"; fi
+  done
+  shopt -u nullglob
+  [ -n "$best" ] && echo "$best/Contents/Developer"
+}
+if dev_dir=$(pick_xcode); then
+  export DEVELOPER_DIR="$dev_dir"
+  echo "==> Xcode: $(xcodebuild -version | tr '\n' ' ')"
 fi
 
 if ! command -v maestro >/dev/null; then

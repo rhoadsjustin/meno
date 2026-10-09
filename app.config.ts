@@ -82,12 +82,29 @@ const config: ExpoConfig = {
     favicon: './assets/images/favicon.png',
   },
   plugins: [
+    [
+      'expo-build-properties',
+      {
+        ios: {
+          // iOS 27 SDK builds must use the UIKit scene-based life cycle or
+          // they fail to launch (Apple TN3187); SDK 57 makes it opt-in. The
+          // iOS 27.1 SDK is also what gives iPhone Duo its full-screen
+          // layout, so this pairs with the Xcode 27.1 image in eas.json.
+          enableSceneSupport: true,
+        },
+      },
+    ],
     // Fixes the TestFlight dyld crash: guarantees ExpoModulesJSI.framework
     // is embedded when CocoaPods' fresh-checkout classification misses it.
     './plugins/withEmbedJsiFramework',
     './plugins/withExtensionAppIcon',
     'expo-router',
     'expo-sqlite',
+    // SDK 57 asks for these to be listed explicitly (expo install --fix).
+    'expo-font',
+    'expo-image',
+    'expo-status-bar',
+    'expo-web-browser',
     [
       'expo-speech-recognition',
       {
