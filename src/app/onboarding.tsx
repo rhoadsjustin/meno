@@ -7,8 +7,8 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
 import { isLockAvailable } from '@/services/lock';
@@ -19,7 +19,7 @@ type Step = 'welcome' | 'notifications' | 'widget' | 'lock';
 
 export default function OnboardingRoute() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const { insets, sides } = useContentLayout();
   const [step, setStep] = useState<Step>('welcome');
 
   const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
@@ -34,8 +34,8 @@ export default function OnboardingRoute() {
   }, []);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         {step === 'welcome' && (
           <>
             <Text style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>M</Text>

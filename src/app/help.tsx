@@ -24,8 +24,8 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { Card } from '@/components/card';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { loadLockConfig } from '@/services/db/repos/lock';
@@ -133,7 +133,7 @@ const FAQ: { q: string; a: string }[] = [
 
 export default function HelpRoute() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const { insets } = useContentLayout();
   const reduceMotion = useReducedMotion();
   const scrollRef = useRef<ScrollView>(null);
   const offsets = useRef<Partial<Record<SectionKey, number>>>({});
@@ -212,7 +212,7 @@ export default function HelpRoute() {
       </View>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxxl }]}>
+        contentContainerStyle={[styles.content, contentColumn, { paddingBottom: insets.bottom + spacing.xxxl }]}>
         <Text accessibilityRole="header" style={[styles.title, text]}>
           How to set up Meno
         </Text>

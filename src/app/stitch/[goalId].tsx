@@ -14,8 +14,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { formatRange, getPassage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { getGoal } from '@/services/db/repos/goals';
@@ -35,7 +35,7 @@ type Phase =
 export default function StitchRoute() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const { insets, sides } = useContentLayout();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [data, setData] = useState<{
     text: string;
@@ -109,7 +109,7 @@ export default function StitchRoute() {
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
       <View style={styles.chrome}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => router.back()} hitSlop={12}>
           <Text style={[styles.close, { color: colors.inkFaint }]}>✕</Text>
@@ -121,7 +121,7 @@ export default function StitchRoute() {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.content, contentColumn]} keyboardShouldPersistTaps="handled">
           {phase.kind === 'error' && (
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {phase.message}

@@ -14,13 +14,16 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { formatRange, getPassage } from '@/services/bible';
+import { Card } from '@/components/card';
+import { contentColumn, panes, useContentLayout } from '@/components/content-layout';
+import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
   applyTierCleared,
   awaitingSecondDay,
+  chunkProgressLabel,
+  chunksForGoal,
   currentChunk,
   getGoal,
   type Chunk,
@@ -44,6 +47,7 @@ import {
   type SessionState,
 } from '@/services/practice';
 import { Dissolution } from '@/features/practice/Dissolution';
+import { TierLadder } from '@/features/practice/TierLadder';
 import { WordFeedback } from '@/features/practice/WordFeedback';
 import { ArrangeRound } from '@/features/practice/rounds/ArrangeRound';
 import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
@@ -74,10 +78,15 @@ type Phase =
 
 export function PracticeScreen({ goalId }: { goalId: string }) {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  // Extra-wide windows (iPhone Duo opened in its landscape pose, iPad): the
+  // round keeps its reading column and a context rail sits beside it —
+  // reference, chunk progress, ladder. Narrower windows keep one column so
+  // Blanks and Arrange have room to work.
+  const { insets, sides, isExtraWide: showRail } = useContentLayout();
 
   const [goal, setGoal] = useState<Goal | null>(null);
   const [chunk, setChunk] = useState<Chunk | null>(null);
+  const [totalChunks, setTotalChunks] = useState(0);
   const [text, setText] = useState('');
   const [session, setSession] = useState<SessionState | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
@@ -87,6 +96,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     const g = await getGoal(goalId);
     if (!g) throw new Error('Goal not found');
     const c = await currentChunk(goalId);
+    setTotalChunks((await chunksForGoal(goalId)).length);
     if (!c) {
       setPhase({ kind: 'error', message: 'Every chunk in this goal is memorized. Well done.' });
       setGoal(g);
@@ -176,7 +186,10 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       // success ×2, miss = soft buzz.
       if (memorized) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 300);
+        setTimeout(
+          () => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+          300,
+        );
       } else if (outcome.tierCleared) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } else if (outcome.passed) {
@@ -196,7 +209,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         result: input.result,
       });
     },
-    [session, chunk, text, roundStartedAt]
+    [session, chunk, text, roundStartedAt],
   );
 
   const continueSession = useCallback(async () => {
@@ -236,7 +249,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     : '';
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
       <View style={styles.chrome}>
         <Pressable
           accessibilityRole="button"
@@ -246,7 +259,9 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
           <Text style={[styles.close, { color: colors.inkFaint }]}>✕</Text>
         </Pressable>
         {session && (
-          <View style={styles.dots} accessibilityLabel={`Round ${Math.min(session.roundIndex + 1, session.rounds.length)} of ${session.rounds.length}`}>
+          <View
+            style={styles.dots}
+            accessibilityLabel={`Round ${Math.min(session.roundIndex + 1, session.rounds.length)} of ${session.rounds.length}`}>
             {session.rounds.map((_, i) => (
               <View
                 key={i}
@@ -264,125 +279,158 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {phase.kind === 'error' && (
-            <>
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {phase.message}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.back()}
-                style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
-              </Pressable>
-            </>
-          )}
-
-          {phase.kind === 'sealsTomorrow' && (
-            <>
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {reference} is one day from sealed
-              </Text>
-              <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                You have already cleared Speak today. Memorized takes a clean pass on two
-                separate days, so this one rests until tomorrow.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.back()}
-                style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
-              </Pressable>
-            </>
-          )}
-
-          {phase.kind === 'round' && session && chunk && (
-            <>
-              <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {reference} · {tierDef(session.tier).name}
-              </Text>
-              <RoundBody
-                key={`${session.roundIndex}-${session.attemptNo}`}
-                session={session}
-                text={text}
-                reference={reference}
-                translationId={goal?.translationId ?? 'web'}
-                onFinish={finishRound}
-              />
-            </>
-          )}
-
-          {phase.kind === 'feedback' && session && (
-            <>
-              <Text
-                accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
-                style={[
-                  styles.accuracy,
-                  {
-                    color: phase.tierCleared
-                      ? colors.gold
-                      : phase.passed
-                        ? colors.success
-                        : colors.error,
-                    fontFamily: fonts?.scripture,
-                  },
-                ]}>
-                {Math.round(phase.accuracy * 100)}%
-              </Text>
-              {phase.tierCleared && (
-                <Dissolution text={text} reference={reference} memorized={phase.memorized} />
-              )}
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {phase.memorized
-                  ? 'Memorized'
-                  : phase.tierCleared
-                    ? `${tierDef(session.tier).name} cleared`
-                    : phase.passed
-                      ? 'Round passed'
-                      : 'Not quite — the slipped words are marked below'}
-              </Text>
-              {phase.result && !phase.tierCleared && <WordFeedback result={phase.result} />}
-              {phase.sealsTomorrow && (
-                <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  That is today’s pass banked. Memorized takes a clean pass on two separate
-                  days — come back tomorrow and this one is sealed.
+        <View style={showRail ? styles.split : styles.flex}>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={[styles.content, contentColumn]}
+            keyboardShouldPersistTaps="handled">
+            {phase.kind === 'error' && (
+              <>
+                <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                  {phase.message}
                 </Text>
-              )}
-              {phase.suggestDropTier && (
-                <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  Want to rebuild the foundation? Drop back a tier — no penalty, and{' '}
-                  {tierDef(session.tier).name} will be waiting when you come back up.
-                </Text>
-              )}
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void continueSession()}
-                style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-                  {phase.sealsTomorrow
-                    ? 'Done'
-                    : phase.tierCleared
-                      ? 'Continue'
-                      : phase.passed
-                        ? 'Next round'
-                        : 'Try again'}
-                </Text>
-              </Pressable>
-              {phase.suggestDropTier && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityHint="Rebuilds this chunk one tier lower; your progress is kept"
-                  onPress={() => void dropToLowerTier()}
-                  style={styles.secondaryButton}>
-                  <Text style={[styles.secondaryButtonText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                    Rebuild at {tierDef(Math.max(0, session.tier - 1)).name}
+                  onPress={() => router.back()}
+                  style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
+                  <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
+                </Pressable>
+              </>
+            )}
+
+            {phase.kind === 'sealsTomorrow' && (
+              <>
+                <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                  {reference} is one day from sealed
+                </Text>
+                <Text
+                  style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  You have already cleared Speak today. Memorized takes a clean pass on two separate
+                  days, so this one rests until tomorrow.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.back()}
+                  style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
+                  <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
+                </Pressable>
+              </>
+            )}
+
+            {phase.kind === 'round' && session && chunk && (
+              <>
+                <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {reference} · {tierDef(session.tier).name}
+                </Text>
+                <RoundBody
+                  key={`${session.roundIndex}-${session.attemptNo}`}
+                  session={session}
+                  text={text}
+                  reference={reference}
+                  translationId={goal?.translationId ?? 'web'}
+                  onFinish={finishRound}
+                />
+              </>
+            )}
+
+            {phase.kind === 'feedback' && session && (
+              <>
+                <Text
+                  accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
+                  style={[
+                    styles.accuracy,
+                    {
+                      color: phase.tierCleared
+                        ? colors.gold
+                        : phase.passed
+                          ? colors.success
+                          : colors.error,
+                      fontFamily: fonts?.scripture,
+                    },
+                  ]}>
+                  {Math.round(phase.accuracy * 100)}%
+                </Text>
+                {phase.tierCleared && (
+                  <Dissolution text={text} reference={reference} memorized={phase.memorized} />
+                )}
+                <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                  {phase.memorized
+                    ? 'Memorized'
+                    : phase.tierCleared
+                      ? `${tierDef(session.tier).name} cleared`
+                      : phase.passed
+                        ? 'Round passed'
+                        : 'Not quite — the slipped words are marked below'}
+                </Text>
+                {phase.result && !phase.tierCleared && <WordFeedback result={phase.result} />}
+                {phase.sealsTomorrow && (
+                  <Text
+                    style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                    That is today’s pass banked. Memorized takes a clean pass on two separate days —
+                    come back tomorrow and this one is sealed.
+                  </Text>
+                )}
+                {phase.suggestDropTier && (
+                  <Text
+                    style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                    Want to rebuild the foundation? Drop back a tier — no penalty, and{' '}
+                    {tierDef(session.tier).name} will be waiting when you come back up.
+                  </Text>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void continueSession()}
+                  style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
+                  <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
+                    {phase.sealsTomorrow
+                      ? 'Done'
+                      : phase.tierCleared
+                        ? 'Continue'
+                        : phase.passed
+                          ? 'Next round'
+                          : 'Try again'}
                   </Text>
                 </Pressable>
-              )}
-            </>
+                {phase.suggestDropTier && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityHint="Rebuilds this chunk one tier lower; your progress is kept"
+                    onPress={() => void dropToLowerTier()}
+                    style={styles.secondaryButton}>
+                    <Text
+                      style={[
+                        styles.secondaryButtonText,
+                        { color: colors.lapis, fontFamily: fonts?.ui },
+                      ]}>
+                      Rebuild at {tierDef(Math.max(0, session.tier - 1)).name}
+                    </Text>
+                  </Pressable>
+                )}
+              </>
+            )}
+          </ScrollView>
+          {showRail && session && chunk && goal && (
+            <View style={[panes.aside, styles.rail]}>
+              <Card>
+                <Text
+                  style={[styles.railTitle, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                  {reference}
+                </Text>
+                <Text style={[styles.railSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {goal.title} · {getTranslation(goal.translationId).abbrev}
+                </Text>
+                <Text style={[styles.railSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {chunkProgressLabel(chunk, totalChunks)} · Round{' '}
+                  {Math.min(session.roundIndex + 1, session.rounds.length)} of{' '}
+                  {session.rounds.length}
+                </Text>
+                <View style={styles.railLadder}>
+                  <TierLadder highestCleared={chunk.tier} current={session.tier} />
+                </View>
+              </Card>
+            </View>
           )}
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -450,6 +498,16 @@ function RoundBody({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
+  split: { flex: 1, flexDirection: 'row' },
+  rail: {
+    flex: 0,
+    width: 300,
+    paddingRight: layout.screenMargin,
+    paddingTop: layout.screenMargin,
+  },
+  railTitle: { fontSize: 22, lineHeight: 28 },
+  railSub: { fontSize: 13, marginTop: spacing.xs },
+  railLadder: { marginTop: spacing.lg },
   chrome: {
     flexDirection: 'row',
     alignItems: 'center',

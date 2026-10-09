@@ -4,7 +4,9 @@ import { useCallback, useState } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { panes, useContentLayout } from '@/components/content-layout';
 import { Screen } from '@/components/screen';
+import { TierLadder } from '@/features/practice/TierLadder';
 import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import {
   activeGoal,
@@ -53,6 +55,9 @@ function dissolve(text: string, tier: number): { display: string; mono: boolean 
 
 export default function TodayScreen() {
   const colors = useThemeColors();
+  // Wide windows (iPhone Duo opened, Split View): hero on the left, the
+  // ladder and secondary cards on the right instead of one long stack.
+  const { isWide } = useContentLayout();
   const [data, setData] = useState<TodayData | null>(null);
   const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
@@ -111,18 +116,21 @@ export default function TodayScreen() {
       return () => {
         cancelled = true;
       };
-    }, [load])
+    }, [load]),
   );
 
-  const showOnWidgets = useCallback(async (goal: Goal) => {
-    void Haptics.selectionAsync();
-    try {
-      await showGoalOnWidgets(goal.id);
-      AccessibilityInfo.announceForAccessibility(`${goal.title} is now on your widgets.`);
-    } finally {
-      await load(() => false);
-    }
-  }, [load]);
+  const showOnWidgets = useCallback(
+    async (goal: Goal) => {
+      void Haptics.selectionAsync();
+      try {
+        await showGoalOnWidgets(goal.id);
+        AccessibilityInfo.announceForAccessibility(`${goal.title} is now on your widgets.`);
+      } finally {
+        await load(() => false);
+      }
+    },
+    [load],
+  );
 
   const ember = streak && streak.current > 0 && (
     <Text
@@ -142,8 +150,8 @@ export default function TodayScreen() {
     </Text>
   );
 
-  return (
-    <Screen title="Today" accessory={ember || undefined}>
+  const hero = (
+    <>
       {loaded && !data && (
         <Card>
           <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -179,7 +187,8 @@ export default function TodayScreen() {
                 {display}
               </Text>
             ) : (
-              <Text style={[styles.scripture, { color: colors.gold, fontFamily: fonts?.scripture }]}>
+              <Text
+                style={[styles.scripture, { color: colors.gold, fontFamily: fonts?.scripture }]}>
                 {chunkRangeLabel(data.chunk)}
               </Text>
             );
@@ -216,10 +225,16 @@ export default function TodayScreen() {
           </Pressable>
         </Card>
       )}
+    </>
+  );
 
+  const secondary = (
+    <>
       {data?.stitchDue && (
         <Card>
-          <Pressable accessibilityRole="button" onPress={() => router.push(`/stitch/${data.goal.id}`)}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/stitch/${data.goal.id}`)}>
             <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
               Stitch it together
             </Text>
@@ -292,19 +307,32 @@ export default function TodayScreen() {
           ))}
         </>
       )}
+    </>
+  );
 
+  const links = (
+    <>
       {data && (
         <Pressable
           accessibilityRole="link"
           onPress={() =>
             router.push(
-              `/reader/${data.goal.startBookId}.${data.chunk?.startChapter ?? data.goal.startChapter}.1?translation=${data.goal.translationId}`
+              `/reader/${data.goal.startBookId}.${data.chunk?.startChapter ?? data.goal.startChapter}.1?translation=${data.goal.translationId}`,
             )
           }>
           <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Continue reading {formatRange({
-              start: { bookId: data.goal.startBookId, chapter: data.goal.startChapter, verse: data.goal.startVerse },
-              end: { bookId: data.goal.endBookId, chapter: data.goal.endChapter, verse: data.goal.endVerse },
+            Continue reading{' '}
+            {formatRange({
+              start: {
+                bookId: data.goal.startBookId,
+                chapter: data.goal.startChapter,
+                verse: data.goal.startVerse,
+              },
+              end: {
+                bookId: data.goal.endBookId,
+                chapter: data.goal.endChapter,
+                verse: data.goal.endVerse,
+              },
             })}
           </Text>
         </Pressable>
@@ -316,6 +344,48 @@ export default function TodayScreen() {
             + Practice another passage
           </Text>
         </Pressable>
+      )}
+    </>
+  );
+
+  // Where the focus chunk stands on the ladder — context that only fits
+  // once there is a second column.
+  const ladder = data?.chunk && (
+    <Card>
+      <Text
+        accessibilityRole="header"
+        style={[styles.asideTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+        Where it stands
+      </Text>
+      <TierLadder highestCleared={data.chunk.tier} />
+      <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+        {chunkProgressLabel(data.chunk, data.totalChunks)}
+        {streak && streak.current > 0
+          ? ` · ${streak.current}-day streak${streak.activeToday ? ', secured today' : ''}`
+          : ''}
+      </Text>
+    </Card>
+  );
+
+  return (
+    <Screen title="Today" accessory={ember || undefined} wide>
+      {isWide ? (
+        <View style={panes.row}>
+          <View style={panes.main}>
+            {hero}
+            {links}
+          </View>
+          <View style={panes.aside}>
+            {ladder}
+            {secondary}
+          </View>
+        </View>
+      ) : (
+        <>
+          {hero}
+          {secondary}
+          {links}
+        </>
       )}
     </Screen>
   );
@@ -353,6 +423,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginBottom: spacing.sm,
+  },
+  asideTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: spacing.md,
   },
   sectionHeader: {
     fontSize: 13,
