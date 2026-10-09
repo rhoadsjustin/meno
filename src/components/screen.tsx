@@ -1,25 +1,32 @@
 import type { PropsWithChildren } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
 import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 /**
  * Tab-screen scaffold: surface background, safe-area top, iOS-style large
  * title. (Native large-title headers arrive with per-tab stacks in M2.)
+ * `wide` lifts the column cap for screens that lay out two panes on wide
+ * windows (iPhone Duo opened, Split View, iPad-class sizes).
  */
 export function Screen({
   title,
   accessory,
+  wide = false,
   children,
-}: PropsWithChildren<{ title: string; accessory?: React.ReactNode }>) {
+}: PropsWithChildren<{ title: string; accessory?: React.ReactNode; wide?: boolean }>) {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const { insets, sides } = useContentLayout();
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface }]}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.sm }]}
+        contentContainerStyle={[
+          styles.content,
+          wide ? contentColumnWide : contentColumn,
+          { paddingTop: insets.top + spacing.sm },
+        ]}
         contentInsetAdjustmentBehavior="automatic">
         <View style={styles.titleRow}>
           <Text

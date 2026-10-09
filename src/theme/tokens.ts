@@ -16,10 +16,27 @@ export const spacing = {
   xxxl: 32,
 } as const;
 
-/** Screen margins 20pt; card padding 16pt (07 §5). */
+/**
+ * Screen margins 20pt; card padding 16pt (07 §5).
+ *
+ * `maxContentWidth` caps reading content on wide windows (iPhone Duo's inner
+ * display, Split View): ~65–75 characters of New York at the default size.
+ * `wideBreakpoint` is where a window stops being "a phone" — Apple's iPhone
+ * Duo guidance is to decide layout from the window's width, never from the
+ * device idiom or orientation.
+ */
 export const layout = {
   screenMargin: spacing.xl,
   cardPadding: spacing.lg,
+  maxContentWidth: 680,
+  /** Cap for two-pane screens (Today, Stats, Practice): wide enough for a
+   * main column plus a rail, narrow enough that neither sprawls on an iPad. */
+  maxWideWidth: 1100,
+  wideBreakpoint: 600,
+  /** Room for a fixed rail beside a full reading column (iPhone Duo opened
+   * in its landscape pose, iPad); below this the rail would squeeze the
+   * practice rounds into a phone-width column. */
+  extraWideBreakpoint: 900,
 } as const;
 
 /** Continuous corners: 12pt cards, 24pt sheets, capsule buttons (07 §5). */

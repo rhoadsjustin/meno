@@ -15,8 +15,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { formatRange, getPassage } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { recordAttempt } from '@/services/db/repos/attempts';
@@ -50,7 +50,7 @@ type Phase =
 
 export function ReviewSession() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const { insets, sides } = useContentLayout();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [accuracies, setAccuracies] = useState<number[]>([]);
@@ -146,7 +146,7 @@ export function ReviewSession() {
   }, [phase, queue.length, accuracies]);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
       <View style={styles.chrome}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close review" onPress={() => router.back()} hitSlop={12}>
           <Text style={[styles.close, { color: colors.inkFaint }]}>✕</Text>
@@ -162,7 +162,7 @@ export function ReviewSession() {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.content, contentColumn]} keyboardShouldPersistTaps="handled">
           {phase.kind === 'empty' && (
             <>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>

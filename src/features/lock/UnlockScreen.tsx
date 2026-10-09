@@ -7,8 +7,8 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { formatRange, getPassage } from '@/services/bible';
 import { activeGoal, chunksForGoal, currentChunk, type Chunk } from '@/services/db/repos/goals';
 import { loadLockConfig, recordLockEvent } from '@/services/db/repos/lock';
@@ -30,7 +30,7 @@ type Phase =
 
 export function UnlockScreen() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const { insets, sides } = useContentLayout();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
 
   // Single-instance guard: while mounted, presentUnlock() is a no-op.
@@ -127,8 +127,8 @@ export function UnlockScreen() {
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={[styles.content, contentColumn]} keyboardShouldPersistTaps="handled">
         {phase.kind === 'error' && (
           <>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>

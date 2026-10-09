@@ -7,8 +7,8 @@ import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { loadLockConfig, saveLockConfig } from '@/services/db/repos/lock';
 import {
   configureShield,
@@ -33,7 +33,7 @@ type Mode = 'firstPickup' | 'everyPickup' | 'schedule';
 
 export function LockSetup() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const { insets, sides } = useContentLayout();
   const [step, setStep] = useState<Step>('explainer');
   const [authStatus, setAuthStatus] = useState<LockAuthStatus>('notDetermined');
   const [hasSelection, setHasSelection] = useState(false);
@@ -114,8 +114,8 @@ export function LockSetup() {
 
   if (!available) {
     return (
-      <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-        <ScrollView contentContainerStyle={styles.content}>
+      <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+        <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             Recite to Unlock needs your iPhone
           </Text>
@@ -134,8 +134,8 @@ export function LockSetup() {
   const SheetPicker = mod?.DeviceActivitySelectionSheetViewPersisted;
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         {step === 'explainer' && (
           <>
             <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>

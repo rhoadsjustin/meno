@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 
+import { contentColumn } from '@/components/content-layout';
 import {
   BOOKS,
   DEFAULT_TRANSLATION_ID,
@@ -114,7 +115,7 @@ export function GoalWizard() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, contentColumn]} keyboardShouldPersistTaps="handled">
         <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
           {step === 'translation' && 'Choose a translation'}
           {step === 'passage' && 'Choose a passage'}

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { contentColumn } from '@/components/content-layout';
 import {
   availableTranslations,
   DEFAULT_TRANSLATION_ID,
@@ -127,7 +128,7 @@ export default function ChallengeScreen() {
     <SafeAreaView
       edges={['top', 'bottom']}
       style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           Challenge invitation
         </Text>
