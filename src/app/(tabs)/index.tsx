@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { panes, useContentLayout } from '@/components/content-layout';
+import { useContentLayout } from '@/components/content-layout';
+import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { formatRange, getPassage, getTranslation } from '@/services/bible';
@@ -370,18 +371,16 @@ export default function TodayScreen() {
   return (
     <Screen title="Today" accessory={ember || undefined} wide>
       {isWide ? (
-        <View style={panes.row}>
-          {/* Even halves: a half-folded hinge lands between the panes
-              instead of through one (HIG: prefer an even number of columns). */}
-          <View style={panes.half}>
+        <FoldAwareRow>
+          <>
             {hero}
             {links}
-          </View>
-          <View style={panes.half}>
+          </>
+          <>
             {ladder}
             {secondary}
-          </View>
-        </View>
+          </>
+        </FoldAwareRow>
       ) : (
         <>
           {hero}

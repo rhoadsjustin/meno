@@ -1,6 +1,7 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useReservedRegions } from '@modules/reserved-regions';
 import { layout, spacing } from '@/theme';
 
 /**
@@ -46,6 +47,10 @@ export const panes = StyleSheet.create({
 export function useContentLayout() {
   const { width, height } = useWindowDimensions();
   const raw = useSafeAreaInsets();
+  // iPhone Duo's folding region (window points) while partially folded, else
+  // null. `foldAxis` says which way the crease runs through the window.
+  const { fold } = useReservedRegions();
+  const foldAxis = fold ? (fold.height > fold.width ? 'vertical' : 'horizontal') : null;
   // With the status bar on a side edge (iPhone Duo opened, landscape phones)
   // the top inset is 0 and titles would touch the bezel; keep a small floor.
   const insets = { ...raw, top: Math.max(raw.top, spacing.md) };
@@ -55,6 +60,8 @@ export function useContentLayout() {
     insets,
     isWide: width >= layout.wideBreakpoint,
     isExtraWide: width >= layout.extraWideBreakpoint,
+    fold,
+    foldAxis,
     sides: { paddingLeft: insets.left, paddingRight: insets.right },
   };
 }
