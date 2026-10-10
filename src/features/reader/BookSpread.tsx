@@ -18,6 +18,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { useHeaderHeight } from 'expo-router/build/react-navigation/elements';
+
 import { PageCurlView } from '@modules/page-curl';
 import { useContentLayout } from '@/components/content-layout';
 import {
@@ -53,6 +55,9 @@ type Geometry = {
 };
 
 const NO_CHAPTERS: Record<number, never> = {};
+// The footer is furniture: it grows with Dynamic Type, but only so far, so
+// the largest sizes spend the page on Scripture and the attribution fits.
+const FOOTER_MAX_SCALE = 1.4;
 
 function reduce(state: Position, action: Action): Position {
   switch (action.type) {
@@ -82,6 +87,8 @@ export function BookSpread({
   const { fold, insets } = useContentLayout();
   const { fontScale } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
+  // The pages run under the (clear) navigation bar; the text starts below it.
+  const headerHeight = useHeaderHeight();
 
   // The reader's place. `from` remembers the chapter the route asked for, so
   // a jump made elsewhere (toolbar chevrons) resets to that chapter's first
@@ -97,9 +104,14 @@ export function BookSpread({
 
   // Window frame of the spread, to map the fold (window points) onto it.
   const ref = useRef<View>(null);
-  const [frame, setFrame] = useState<{ x: number; width: number; height: number } | null>(null);
+  const [frame, setFrame] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const onLayout = useCallback(() => {
-    ref.current?.measureInWindow((x, _y, width, height) => setFrame({ x, width, height }));
+    ref.current?.measureInWindow((x, y, width, height) => setFrame({ x, y, width, height }));
   }, []);
 
   const geo = useMemo<Geometry | null>(() => {
@@ -108,9 +120,9 @@ export function BookSpread({
       fold && fold.x > frame.x && fold.x + fold.width < frame.x + frame.width ? fold : null;
     const spine = crease ? crease.x + crease.width / 2 - frame.x : frame.width / 2;
     const inner = crease ? crease.width / 2 + spacing.md : spacing.lg;
-    const top = spacing.md;
+    const top = Math.max(headerHeight - frame.y, 0) + spacing.md;
     const bottom = Math.max(insets.bottom, spacing.md);
-    const footer = Math.ceil(22 * fontScale);
+    const footer = Math.ceil(22 * Math.min(fontScale, FOOTER_MAX_SCALE));
     // Both pages take the narrower side's width, so the spread is even
     // about the crease and a sheet reads the same on either side of it.
     const half = Math.min(spine, frame.width - spine);
@@ -118,7 +130,7 @@ export function BookSpread({
     const pageHeight = Math.floor(frame.height - top - bottom - footer - spacing.sm);
     if (textWidth <= 0 || pageHeight <= 0) return null;
     return { width: frame.width, spine, half, inner, textWidth, pageHeight, top, bottom, footer };
-  }, [frame, fold, insets.bottom, fontScale]);
+  }, [frame, fold, insets.bottom, fontScale, headerHeight]);
 
   // Verses and pages for this chapter and its neighbours, so a turn across a
   // chapter boundary has its pages ready.
@@ -364,6 +376,7 @@ function PageContent({
         onTurn ? (side === 'left' ? 'Previous page' : 'Next page') : `Page ${face.number}`
       }
       onAccessibilityTap={onTurn}
+      maxFontSizeMultiplier={FOOTER_MAX_SCALE}
       style={[styles.footerText, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
       {face.number}
     </Text>
@@ -388,6 +401,9 @@ function PageContent({
           <>
             <Text
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+              maxFontSizeMultiplier={FOOTER_MAX_SCALE}
               style={[
                 styles.footerText,
                 styles.attribution,

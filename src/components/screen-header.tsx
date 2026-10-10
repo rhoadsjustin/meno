@@ -18,6 +18,7 @@ export function ScreenHeader({
   title,
   titleView,
   backHidden = false,
+  transparent = false,
   children,
 }: {
   title?: string;
@@ -25,13 +26,19 @@ export function ScreenHeader({
   titleView?: ReactNode;
   /** Screens closed with their own Close item hide the system back button. */
   backHidden?: boolean;
+  /** No bar background, for screens that draw under the bar themselves. */
+  transparent?: boolean;
   children?: ReactNode;
 }) {
   const colors = useThemeColors();
   return (
     <>
       <Stack.Header
-        style={{ backgroundColor: colors.surface, shadowColor: 'transparent', color: colors.lapis }}
+        style={{
+          backgroundColor: transparent ? 'transparent' : colors.surface,
+          shadowColor: 'transparent',
+          color: colors.lapis,
+        }}
       />
       {titleView ? (
         <Stack.Title asChild>{titleView}</Stack.Title>
