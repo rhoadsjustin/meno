@@ -4,6 +4,7 @@ import {
   Audio,
   Img,
   interpolate,
+  OffthreadVideo,
   Sequence,
   spring,
   staticFile,
@@ -21,6 +22,8 @@ import { C, SANS, SERIF } from './theme';
  * Captures in public/img/duo/ come straight off the iPhone Duo simulator
  * (scripts/duo-captures.sh): the cover panel at 1398×2034, the inner panel
  * turned upright at 2853×2007, in the closed, open and half-open postures.
+ * public/video/duo/page-turn.mp4 is the inner panel recorded half-open while
+ * two pages are turned (see promo/README.md).
  */
 type SceneSpec = { id: string; frames: number; theme: Theme; render: () => React.ReactNode };
 
@@ -69,15 +72,16 @@ const Cover: React.FC<{ src: string; width?: number; top?: number; zoom?: number
  * device reads as a book facing the viewer.
  */
 const Inner: React.FC<{
+  /** A capture, or a recording of the inner panel (.mp4). */
   src: string;
   angle: number;
   width?: number;
   top?: number;
   opacity?: number;
-  crease?: boolean;
-}> = ({ src, angle, width = 980, top = 470, opacity = 1, crease = true }) => {
+}> = ({ src, angle, width = 980, top = 470, opacity = 1 }) => {
   const bezel = 16;
   const h = (width * INNER.h) / INNER.w;
+  const Screen: React.ElementType = src.endsWith('.mp4') ? OffthreadVideo : Img;
   const tilt = (180 - angle) / 2; // each half's rotation away from flat
   const half = width / 2;
   const panel = (side: 'left' | 'right') => (
@@ -99,6 +103,9 @@ const Inner: React.FC<{
           side === 'left'
             ? `${-tilt * 0.6}px 40px 90px rgba(10, 15, 40, 0.32)`
             : `${tilt * 0.6}px 40px 90px rgba(10, 15, 40, 0.32)`,
+        // Keep each half's shadow off the other half: lying flat, the panel
+        // is one unbroken screen, with no line down the middle of the UI.
+        clipPath: side === 'left' ? 'inset(-300px 0 -300px -300px)' : 'inset(-300px -300px -300px 0)',
         backfaceVisibility: 'hidden',
       }}>
       <div
@@ -109,11 +116,13 @@ const Inner: React.FC<{
           borderRadius: side === 'left' ? '52px 0 0 52px' : '0 52px 52px 0',
           background: C.vellum,
         }}>
-        <Img
+        <Screen
           src={staticFile(src)}
+          muted
           style={{
             width,
             height: h,
+            maxWidth: 'none',
             marginLeft: side === 'left' ? 0 : -half,
           }}
         />
@@ -147,22 +156,18 @@ const Inner: React.FC<{
       <div style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d' }}>
         {panel('left')}
         {panel('right')}
-        {crease && angle > 178 ? (
-          <div
-            style={{
-              position: 'absolute',
-              top: bezel,
-              bottom: bezel,
-              left: half + bezel - 1,
-              width: 2,
-              background: 'rgba(10, 15, 40, 0.08)',
-            }}
-          />
-        ) : null}
       </div>
     </div>
   );
 };
+
+/**
+ * Below this hinge angle the device counts as folded. The app clears the
+ * crease as soon as UIKit reports a folding region, so a bent device always
+ * shows the half-open captures; the flat layouts, which run content across
+ * the middle, appear only when the panel lies flat.
+ */
+const FLAT = 177;
 
 const Intro: React.FC = () => {
   const frame = useCurrentFrame();
@@ -213,7 +218,11 @@ const Opening: React.FC = () => {
       <div style={{ position: 'absolute', inset: 0, opacity: coverOut }}>
         <Cover src="img/duo/closed-today.png" width={440} top={470} />
       </div>
-      <Inner src="img/duo/open-today.png" angle={angle} opacity={1 - coverOut} />
+      <Inner
+        src={angle < FLAT ? 'img/duo/half-today.png' : 'img/duo/open-today.png'}
+        angle={angle}
+        opacity={1 - coverOut}
+      />
     </>
   );
 };
@@ -222,13 +231,18 @@ const Opening: React.FC = () => {
 const Book: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const close = spring({ frame: frame - 30, fps, config: { damping: 28, mass: 1.6 } });
+  const close = spring({ frame: frame - 22, fps, config: { damping: 28, mass: 1.6 } });
   const angle = interpolate(close, [0, 1], [180, 118]);
-  const swap = angle < 150; // the app re-lays out once UIKit reports the fold
   return (
-    <Inner src={swap ? 'img/duo/half-reader.png' : 'img/duo/open-reader.png'} angle={angle} />
+    <Inner
+      src={angle < FLAT ? 'img/duo/half-reader.png' : 'img/duo/open-reader.png'}
+      angle={angle}
+    />
   );
 };
+
+/** Half-open, two pages are turned: the sheet curls from where it is held. */
+const Turn: React.FC = () => <Inner src="video/duo/page-turn.mp4" angle={118} />;
 
 /** Quick cuts through the wide layouts, each sliding in a touch. */
 const Screens: React.FC = () => {
@@ -239,7 +253,7 @@ const Screens: React.FC = () => {
     'img/duo/open-settings.png',
     'img/duo/open-stats.png',
   ];
-  const each = 41;
+  const each = 30;
   const i = Math.min(shots.length - 1, Math.floor(frame / each));
   const local = frame - i * each;
   const slide = interpolate(local, [0, 10], [40, 0], { extrapolateRight: 'clamp' });
@@ -254,8 +268,8 @@ const Screens: React.FC = () => {
 /** The cover panel's vertical controls, with a push toward the side strip. */
 const Controls: React.FC = () => {
   const frame = useCurrentFrame();
-  const push = interpolate(frame, [20, 125], [1, 1.22], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const swap = frame >= 70;
+  const push = interpolate(frame, [15, 98], [1, 1.22], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const swap = frame >= 54;
   return (
     <div
       style={{
@@ -316,7 +330,7 @@ export const DUO_SCENES: SceneSpec[] = [
   { id: 'intro', frames: 75, theme: 'vellum', render: () => <Intro /> },
   {
     id: 'closed',
-    frames: 120,
+    frames: 90,
     theme: 'lapis',
     render: () => (
       <>
@@ -327,7 +341,7 @@ export const DUO_SCENES: SceneSpec[] = [
   },
   {
     id: 'open',
-    frames: 150,
+    frames: 120,
     theme: 'vellum',
     render: () => (
       <>
@@ -338,18 +352,29 @@ export const DUO_SCENES: SceneSpec[] = [
   },
   {
     id: 'book',
-    frames: 150,
+    frames: 105,
     theme: 'lapis',
     render: () => (
       <>
-        <Headline theme="lapis" title="Half-open, it reads like a book." sub="Two pages, and the crease stays clear." />
+        <Headline theme="lapis" title="Half-open, it reads like a book." sub="A page each side, and the crease stays clear." />
         <Book />
       </>
     ),
   },
   {
+    id: 'turn',
+    frames: 180,
+    theme: 'lapis',
+    render: () => (
+      <>
+        <Headline theme="lapis" title="Turn the page like paper." sub="It curls from wherever you take hold." />
+        <Turn />
+      </>
+    ),
+  },
+  {
     id: 'screens',
-    frames: 165,
+    frames: 120,
     theme: 'vellum',
     render: () => (
       <>
@@ -364,7 +389,7 @@ export const DUO_SCENES: SceneSpec[] = [
   },
   {
     id: 'controls',
-    frames: 135,
+    frames: 105,
     theme: 'lapis',
     render: () => (
       <>

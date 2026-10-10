@@ -7,10 +7,15 @@ fonts in `src/theme.ts`, and a piano soundtrack from `public/music/` (see Assets
 - **Promo** (`src/Promo.tsx`, ~30s): the feature tour — six practice modes, the
   dissolve, word-by-word checking, reviews, the shield, widgets.
 - **Duo** (`src/Duo.tsx`, 29.5s): Meno on iPhone Duo — the cover panel, the unfold into
-  two panes, the half-open book pose in the Reader, the wide screens, and the controls that
-  move to the side strip. Built from full-resolution simulator captures in `public/img/duo/`
-  (committed; regenerate with `npm run captures:duo`, see `scripts/duo-captures.sh`), with a
-  device that hinges in CSS 3D. Same length and music cue as Promo.
+  two panes, the half-open book pose in the Reader and its page curl, the wide screens, and
+  the controls that move to the side strip. Built from full-resolution simulator captures in
+  `public/img/duo/` (committed; regenerate with `npm run captures:duo`, see
+  `scripts/duo-captures.sh`), with a device that hinges in CSS 3D. A bent device only ever
+  shows the half-open captures, so the crease always falls in the app's own gutter. The
+  page-curl scene plays `public/video/duo/page-turn.mp4` (committed): the inner panel
+  recorded half-open with `xcrun simctl io <udid> recordVideo --codec=h264 --display=3`
+  (no recorder mark) while two pages are dragged over, then cut to six seconds at
+  1902×1338, 30 fps. Same length and music cue as Promo.
 - **Abide** (`src/Abide.tsx`, ~34s): why the name — μένω (menō) as a lexicon entry,
   then the verses that carry it (John 1:38–39, 15:4, 15:7; Isaiah 40:8; 1 John 2:24),
   the dissolve as "a verse that remains", widgets, and the tagline. Scripture is quoted
