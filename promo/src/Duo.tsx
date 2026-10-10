@@ -233,8 +233,13 @@ const Book: React.FC = () => {
 /** Quick cuts through the wide layouts, each sliding in a touch. */
 const Screens: React.FC = () => {
   const frame = useCurrentFrame();
-  const shots = ['img/duo/open-practice.png', 'img/duo/open-library.png', 'img/duo/open-stats.png'];
-  const each = 50;
+  const shots = [
+    'img/duo/open-practice.png',
+    'img/duo/open-library.png',
+    'img/duo/open-settings.png',
+    'img/duo/open-stats.png',
+  ];
+  const each = 41;
   const i = Math.min(shots.length - 1, Math.floor(frame / each));
   const local = frame - i * each;
   const slide = interpolate(local, [0, 10], [40, 0], { extrapolateRight: 'clamp' });
@@ -249,8 +254,8 @@ const Screens: React.FC = () => {
 /** The cover panel's vertical controls, with a push toward the side strip. */
 const Controls: React.FC = () => {
   const frame = useCurrentFrame();
-  const push = interpolate(frame, [20, 140], [1, 1.22], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const swap = frame >= 78;
+  const push = interpolate(frame, [20, 125], [1, 1.22], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const swap = frame >= 70;
   return (
     <div
       style={{
@@ -344,18 +349,22 @@ export const DUO_SCENES: SceneSpec[] = [
   },
   {
     id: 'screens',
-    frames: 150,
+    frames: 165,
     theme: 'vellum',
     render: () => (
       <>
-        <Headline theme="vellum" title="Every screen uses the space." sub="Practice, Library, Stats." />
+        <Headline
+          theme="vellum"
+          title="Every screen uses the space."
+          sub="Side by side, not stretched: Practice, Library, Settings, Stats."
+        />
         <Screens />
       </>
     ),
   },
   {
     id: 'controls',
-    frames: 150,
+    frames: 135,
     theme: 'lapis',
     render: () => (
       <>
