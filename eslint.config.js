@@ -6,6 +6,7 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
-    ignores: ['dist/*', 'drizzle/*', 'node_modules/*', 'ios/*', 'android/*'],
+    // promo/ is its own Remotion workspace with its own tsconfig and node_modules.
+    ignores: ['dist/*', 'drizzle/*', 'node_modules/*', 'ios/*', 'android/*', 'promo/*'],
   },
 ]);
