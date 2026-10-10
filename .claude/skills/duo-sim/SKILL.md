@@ -79,7 +79,7 @@ tab bar on the cover panel and in the opened landscape pose. Do not add JS
 header rows to stack screens; modals keep their bottom Cancel/Continue bars.
 
 1. Closed: content avoids the right status-bar strip; tabs, practice, reader all usable at 466pt wide; no two-pane layout appears (466 < 600).
-2. Open (landscape UI): Today shows the hero left and the ladder/secondary cards right; Stats shows numerals and the practice grid beside the badges; Library is a two-up grid; Practice has the rail on the right and the primary action stays on screen at 669pt of height; the Reader's chapter sidebar jumps chapters.
+2. Open (landscape UI): Today shows the hero left and the ladder/secondary cards right; Stats shows numerals and the practice grid beside the badges; Library shows In progress and Memorized as two shelves with no segmented control; Settings is a split view (rows on the left, the setup guide or the selected row's section on the right, nothing pushed as a modal); Practice has the rail on the right and the primary action stays on screen at 669pt of height; the Reader's chapter sidebar jumps chapters.
 3. Open + `rotate LandscapeLeft` (portrait UI, 669 × 951): same checks, one column.
 4. Half-open (`fold --posture half-open`, 120°): UIKit now reports the folding region through `modules/reserved-regions`, so `FoldAwareRow` resizes Today's, Stats' and Practice's panes to leave the crease clear and the Reader turns into two facing pages (`book` pose) with the sidebar hidden. Fold back to open and the even halves and sidebar return. Nothing else should jump.
 5. Fold while a session is running (practice, speak): state survives, no re-mount.

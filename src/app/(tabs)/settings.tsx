@@ -4,14 +4,26 @@ import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { useContentLayout } from '@/components/content-layout';
+import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
+import { HelpGuide } from '@/features/help/HelpGuide';
 import { loadLockConfig, lockEventCounts, saveLockConfig } from '@/services/db/repos/lock';
 import { isLockAvailable, killSwitch } from '@/services/lock';
 import { notificationsEnabled, setNotificationsEnabled } from '@/services/notifications';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
+/** Which row's detail the right pane shows on wide windows. */
+type Detail = 'guide' | 'reminders' | 'lock';
+
 export default function SettingsScreen() {
   const colors = useThemeColors();
+  // Wide windows (iPhone Duo opened, Split View): a split view. The rows
+  // become a selectable list on the left and the right pane shows what the
+  // row leads to — the whole setup guide, or just the section that explains
+  // the row — instead of pushing a modal (HIG: list and detail side by side).
+  const { isWide } = useContentLayout();
+  const [detail, setDetail] = useState<Detail>('guide');
   const [notifsOn, setNotifsOn] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(false);
   const [lockStats, setLockStats] = useState({ recitations: 0, overrides: 0 });
@@ -34,7 +46,7 @@ export default function SettingsScreen() {
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, []),
   );
 
   const toggleNotifications = useCallback(async (value: boolean) => {
@@ -48,15 +60,23 @@ export default function SettingsScreen() {
     setLockEnabled(false);
   }, []);
 
-  return (
-    <Screen title="Settings">
-      <Card>
+  const selected = (d: Detail) => isWide && detail === d;
+  const rowCard = (d: Detail) =>
+    selected(d) ? { backgroundColor: colors.lapisWash, borderColor: colors.lapisWash } : undefined;
+  const titleColor = (d: Detail) => (selected(d) ? colors.lapis : colors.ink);
+
+  const rows = (
+    <>
+      <Card style={rowCard('guide')}>
         <Pressable
           accessibilityRole="button"
-          accessibilityHint="Opens a step-by-step guide"
-          onPress={() => router.push('/help')}
+          accessibilityState={isWide ? { selected: detail === 'guide' } : undefined}
+          accessibilityHint={
+            isWide ? 'Shows the guide beside this list' : 'Opens a step-by-step guide'
+          }
+          onPress={() => (isWide ? setDetail('guide') : router.push('/help'))}
           style={styles.rowText}>
-          <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          <Text style={[styles.rowTitle, { color: titleColor('guide'), fontFamily: fonts?.ui }]}>
             How to set up Meno
           </Text>
           <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -65,16 +85,23 @@ export default function SettingsScreen() {
         </Pressable>
       </Card>
 
-      <Card>
+      <Card style={rowCard('reminders')}>
         <View style={styles.row}>
-          <View style={styles.rowText}>
-            <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          <Pressable
+            accessibilityRole={isWide ? 'button' : undefined}
+            accessibilityState={isWide ? { selected: detail === 'reminders' } : undefined}
+            accessibilityHint={isWide ? 'Shows how quizzes work beside this list' : undefined}
+            disabled={!isWide}
+            onPress={() => setDetail('reminders')}
+            style={styles.rowText}>
+            <Text
+              style={[styles.rowTitle, { color: titleColor('reminders'), fontFamily: fonts?.ui }]}>
               Review reminders
             </Text>
             <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               Up to two surprise pop quizzes a day, between 9am and 9pm.
             </Text>
-          </View>
+          </Pressable>
           <Switch
             value={notifsOn}
             onValueChange={(v) => void toggleNotifications(v)}
@@ -84,12 +111,14 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
-      <Card>
+      <Card style={rowCard('lock')}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push('/lock-setup')}
+          accessibilityState={isWide ? { selected: detail === 'lock' } : undefined}
+          accessibilityHint={isWide ? 'Shows the setup steps beside this list' : undefined}
+          onPress={() => (isWide ? setDetail('lock') : router.push('/lock-setup'))}
           style={styles.rowText}>
-          <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          <Text style={[styles.rowTitle, { color: titleColor('lock'), fontFamily: fonts?.ui }]}>
             Recite to Unlock
           </Text>
           <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -115,6 +144,29 @@ export default function SettingsScreen() {
           Recitation audio never leaves this device.
         </Text>
       </Card>
+    </>
+  );
+
+  // The detail pane: the guide in full, or the one section the row is about.
+  const detailPane =
+    detail === 'guide' ? (
+      <HelpGuide />
+    ) : detail === 'reminders' ? (
+      <HelpGuide sections={['quizzes']} overview={false} faq={false} />
+    ) : (
+      <HelpGuide sections={['lock']} overview={false} faq={false} />
+    );
+
+  return (
+    <Screen title="Settings" wide>
+      {isWide ? (
+        <FoldAwareRow>
+          {rows}
+          {detailPane}
+        </FoldAwareRow>
+      ) : (
+        rows
+      )}
     </Screen>
   );
 }

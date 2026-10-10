@@ -5,6 +5,7 @@ import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
+import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { formatRange, getTranslation } from '@/services/bible';
 import { shareGoalChallenge } from '@/services/challenges';
@@ -25,7 +26,9 @@ type GoalWithChunks = { goal: Goal; chunks: Chunk[] };
 
 export default function LibraryScreen() {
   const colors = useThemeColors();
-  // Wide windows (iPhone Duo opened, Split View) get a two-up card grid.
+  // Wide windows (iPhone Duo opened, Split View) show both shelves side by
+  // side — In progress on the left, Memorized on the right — instead of the
+  // segmented control (HIG: show the next level of hierarchy when it fits).
   const { isWide } = useContentLayout();
   const [segment, setSegment] = useState<Segment>('inProgress');
   const [items, setItems] = useState<GoalWithChunks[]>([]);
@@ -86,191 +89,210 @@ export default function LibraryScreen() {
     chunks.filter((c) => c.status === 'memorized').map((c) => ({ goal, chunk: c })),
   );
 
-  return (
-    <Screen title="Library" wide>
-      <View style={[styles.segmented, { backgroundColor: colors.lapisWash }]}>
-        {(
-          [
-            ['inProgress', 'In progress'],
-            ['memorized', 'Memorized'],
-          ] as const
-        ).map(([value, label]) => {
-          const selected = segment === value;
-          return (
-            <Pressable
-              key={value}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              onPress={() => setSegment(value)}
-              style={[styles.segment, selected && { backgroundColor: colors.surfaceRaised }]}>
-              <Text
-                style={[
-                  styles.segmentText,
-                  { color: selected ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
-                ]}>
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+  const header = (label: string) => (
+    <Text
+      accessibilityRole="header"
+      style={[styles.shelfTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+      {label}
+    </Text>
+  );
 
-      {segment === 'inProgress' && (
-        <>
-          {active.length > 0 && (
-            <View style={isWide ? styles.grid : styles.stack}>
-              {active.map(({ goal, chunks }) => (
-                <Card key={goal.id} style={isWide ? styles.gridItem : undefined}>
+  const inProgress = (
+    <>
+      {active.length > 0 && (
+        <View style={styles.stack}>
+          {active.map(({ goal, chunks }) => (
+            <Card key={goal.id}>
+              <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                {goal.title}
+              </Text>
+              <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {getTranslation(goal.translationId).abbrev} ·{' '}
+                {chunks.filter((c) => c.status === 'memorized').length} of {chunks.length} chunks
+                memorized
+              </Text>
+              <View style={styles.heatmap} accessibilityLabel={`Chunk progress for ${goal.title}`}>
+                {chunks.map((c) => (
+                  <View
+                    key={c.id}
+                    style={[styles.cell, { backgroundColor: cellColor(c, colors) }]}
+                  />
+                ))}
+              </View>
+              <View style={styles.actionsRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push(`/practice/${goal.id}`)}
+                  style={[styles.practiceLink]}>
+                  <Text
+                    style={[
+                      styles.practiceLinkText,
+                      { color: colors.lapis, fontFamily: fonts?.ui },
+                    ]}>
+                    Practice
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Share ${goal.title} as a challenge`}
+                  onPress={() => shareGoalChallenge(goal).catch(() => {})}
+                  style={[styles.practiceLink]}>
+                  <Text
+                    style={[
+                      styles.practiceLinkText,
+                      { color: colors.lapis, fontFamily: fonts?.ui },
+                    ]}>
+                    Share challenge
+                  </Text>
+                </Pressable>
+                {activeCount > 1 &&
+                  (goal.id === focusId ? (
+                    <Text
+                      style={[
+                        styles.practiceLink,
+                        styles.focusNote,
+                        { color: colors.inkFaint, fontFamily: fonts?.ui },
+                      ]}>
+                      On your widgets
+                    </Text>
+                  ) : (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Show ${goal.title} on your widgets`}
+                      onPress={() => void showOnWidgets(goal)}
+                      style={[styles.practiceLink]}>
+                      <Text
+                        style={[
+                          styles.practiceLinkText,
+                          { color: colors.lapis, fontFamily: fonts?.ui },
+                        ]}>
+                        Show on widgets
+                      </Text>
+                    </Pressable>
+                  ))}
+              </View>
+            </Card>
+          ))}
+        </View>
+      )}
+      {loaded && active.length === 0 && (
+        <Card>
+          <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            No goals yet
+          </Text>
+          <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Your passages in progress will live here.
+          </Text>
+        </Card>
+      )}
+      {loaded && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/goal-wizard')}
+          style={[styles.newGoal, { borderColor: colors.lapis }]}>
+          <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+            {active.length > 0 ? '+ New goal' : 'Start a goal'}
+          </Text>
+        </Pressable>
+      )}
+    </>
+  );
+
+  const memorized = (
+    <>
+      {memorizedChunks.length > 0 && (
+        <View style={styles.stack}>
+          {memorizedChunks.map(({ goal, chunk }) => (
+            <Card key={chunk.id}>
+              <View style={styles.memorizedRow}>
+                <View
+                  style={[
+                    styles.healthDot,
+                    {
+                      backgroundColor: healthColor(healthByChunk[chunk.id] ?? 'fresh', colors),
+                    },
+                  ]}
+                />
+                <View style={styles.memorizedText}>
                   <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                    {goal.title}
+                    {formatRange({
+                      start: {
+                        bookId: chunk.startBookId,
+                        chapter: chunk.startChapter,
+                        verse: chunk.startVerse,
+                      },
+                      end: {
+                        bookId: chunk.endBookId,
+                        chapter: chunk.endChapter,
+                        verse: chunk.endVerse,
+                      },
+                    })}
                   </Text>
                   <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                     {getTranslation(goal.translationId).abbrev} ·{' '}
-                    {chunks.filter((c) => c.status === 'memorized').length} of {chunks.length}{' '}
-                    chunks memorized
+                    {healthLabel(healthByChunk[chunk.id] ?? 'fresh')}
                   </Text>
-                  <View
-                    style={styles.heatmap}
-                    accessibilityLabel={`Chunk progress for ${goal.title}`}>
-                    {chunks.map((c) => (
-                      <View
-                        key={c.id}
-                        style={[styles.cell, { backgroundColor: cellColor(c, colors) }]}
-                      />
-                    ))}
-                  </View>
-                  <View style={styles.actionsRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => router.push(`/practice/${goal.id}`)}
-                      style={[styles.practiceLink]}>
-                      <Text
-                        style={[
-                          styles.practiceLinkText,
-                          { color: colors.lapis, fontFamily: fonts?.ui },
-                        ]}>
-                        Practice
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Share ${goal.title} as a challenge`}
-                      onPress={() => shareGoalChallenge(goal).catch(() => {})}
-                      style={[styles.practiceLink]}>
-                      <Text
-                        style={[
-                          styles.practiceLinkText,
-                          { color: colors.lapis, fontFamily: fonts?.ui },
-                        ]}>
-                        Share challenge
-                      </Text>
-                    </Pressable>
-                    {activeCount > 1 &&
-                      (goal.id === focusId ? (
-                        <Text
-                          style={[
-                            styles.practiceLink,
-                            styles.focusNote,
-                            { color: colors.inkFaint, fontFamily: fonts?.ui },
-                          ]}>
-                          On your widgets
-                        </Text>
-                      ) : (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Show ${goal.title} on your widgets`}
-                          onPress={() => void showOnWidgets(goal)}
-                          style={[styles.practiceLink]}>
-                          <Text
-                            style={[
-                              styles.practiceLinkText,
-                              { color: colors.lapis, fontFamily: fonts?.ui },
-                            ]}>
-                            Show on widgets
-                          </Text>
-                        </Pressable>
-                      ))}
-                  </View>
-                </Card>
-              ))}
-            </View>
-          )}
-          {loaded && active.length === 0 && (
-            <Card>
-              <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                No goals yet
-              </Text>
-              <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Your passages in progress will live here.
-              </Text>
+                </View>
+              </View>
             </Card>
-          )}
-          {loaded && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/goal-wizard')}
-              style={[styles.newGoal, { borderColor: colors.lapis }]}>
-              <Text
-                style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                {active.length > 0 ? '+ New goal' : 'Start a goal'}
-              </Text>
-            </Pressable>
-          )}
-        </>
+          ))}
+        </View>
       )}
+      {loaded && memorizedChunks.length === 0 && (
+        <Card>
+          <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            Nothing memorized yet
+          </Text>
+          <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Chunks you’ve fully hidden in your heart appear here, with their health.
+          </Text>
+        </Card>
+      )}
+    </>
+  );
 
-      {segment === 'memorized' && (
+  return (
+    <Screen title="Library" wide>
+      {isWide ? (
+        <FoldAwareRow>
+          <>
+            {header('In progress')}
+            {inProgress}
+          </>
+          <>
+            {header('Memorized')}
+            {memorized}
+          </>
+        </FoldAwareRow>
+      ) : (
         <>
-          {memorizedChunks.length > 0 && (
-            <View style={isWide ? styles.grid : styles.stack}>
-              {memorizedChunks.map(({ goal, chunk }) => (
-                <Card key={chunk.id} style={isWide ? styles.gridItem : undefined}>
-                  <View style={styles.memorizedRow}>
-                    <View
-                      style={[
-                        styles.healthDot,
-                        {
-                          backgroundColor: healthColor(healthByChunk[chunk.id] ?? 'fresh', colors),
-                        },
-                      ]}
-                    />
-                    <View style={styles.memorizedText}>
-                      <Text
-                        style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                        {formatRange({
-                          start: {
-                            bookId: chunk.startBookId,
-                            chapter: chunk.startChapter,
-                            verse: chunk.startVerse,
-                          },
-                          end: {
-                            bookId: chunk.endBookId,
-                            chapter: chunk.endChapter,
-                            verse: chunk.endVerse,
-                          },
-                        })}
-                      </Text>
-                      <Text
-                        style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                        {getTranslation(goal.translationId).abbrev} ·{' '}
-                        {healthLabel(healthByChunk[chunk.id] ?? 'fresh')}
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-              ))}
-            </View>
-          )}
-          {loaded && memorizedChunks.length === 0 && (
-            <Card>
-              <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                Nothing memorized yet
-              </Text>
-              <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Chunks you’ve fully hidden in your heart appear here, with their health.
-              </Text>
-            </Card>
-          )}
+          <View style={[styles.segmented, { backgroundColor: colors.lapisWash }]}>
+            {(
+              [
+                ['inProgress', 'In progress'],
+                ['memorized', 'Memorized'],
+              ] as const
+            ).map(([value, label]) => {
+              const selected = segment === value;
+              return (
+                <Pressable
+                  key={value}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  onPress={() => setSegment(value)}
+                  style={[styles.segment, selected && { backgroundColor: colors.surfaceRaised }]}>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      { color: selected ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
+                    ]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {segment === 'inProgress' ? inProgress : memorized}
         </>
       )}
     </Screen>
@@ -298,13 +320,13 @@ function cellColor(chunk: Chunk, colors: ThemeColors): string {
 const styles = StyleSheet.create({
   // Matches the Screen scaffold's vertical rhythm between cards.
   stack: { gap: spacing.lg },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.lg,
+  shelfTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: -spacing.xs,
   },
-  gridItem: { width: '48.5%' },
   segmented: {
     flexDirection: 'row',
     borderRadius: radius.capsule,
