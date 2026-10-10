@@ -67,9 +67,11 @@ export default function ReaderRoute() {
       {/* Native bar: back chevron, chapter title, previous/next as symbols —
           on iPhone Duo the system moves them to the side with the status bar. */}
       {/* In the book pose a swipe turns the page, so the swipe-back gesture
-          is off there; the back chevron in the bar still leaves the reader. */}
-      <Stack.Screen options={{ gestureEnabled: !book }} />
-      <ScreenHeader title={`${bookInfo.name} ${ref.chapter}`}>
+          is off there; the back chevron in the bar still leaves the reader.
+          The bar is clear and the pages run beneath it, so a turning sheet
+          is not cut off where the bar begins. */}
+      <Stack.Screen options={{ gestureEnabled: !book, headerTransparent: book }} />
+      <ScreenHeader title={`${bookInfo.name} ${ref.chapter}`} transparent={book}>
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
             icon="chevron.left"
