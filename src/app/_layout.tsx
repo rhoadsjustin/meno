@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { AppState, Pressable, StyleSheet, useColorScheme, Text, View } from 'react-native';
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
@@ -145,45 +147,47 @@ function RootLayout() {
   if (!success) return null;
 
   return (
-    <ThemeProvider value={scheme === 'dark' ? menoDarkTheme : menoLightTheme}>
-      <StatusBar style="auto" />
-      <AppErrorBoundary>
-        {/* Publishes iPhone Duo's folding region and cameras to layouts. */}
-        <ReservedRegionsProvider>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="goal-wizard"
-              options={{ presentation: 'modal', headerShown: false }}
-            />
-            <Stack.Screen
-              name="challenge"
-              options={{ presentation: 'modal', headerShown: false }}
-            />
-            <Stack.Screen name="help" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen
-              name="onboarding"
-              options={{
-                presentation: 'fullScreenModal',
-                headerShown: false,
-                gestureEnabled: false,
-              }}
-            />
-            {/* Practice, review, reader and stitch configure their own native
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={scheme === 'dark' ? menoDarkTheme : menoLightTheme}>
+        <StatusBar style="auto" />
+        <AppErrorBoundary>
+          {/* Publishes iPhone Duo's folding region and cameras to layouts. */}
+          <ReservedRegionsProvider>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="goal-wizard"
+                options={{ presentation: 'modal', headerShown: false }}
+              />
+              <Stack.Screen
+                name="challenge"
+                options={{ presentation: 'modal', headerShown: false }}
+              />
+              <Stack.Screen name="help" options={{ presentation: 'modal', headerShown: false }} />
+              <Stack.Screen
+                name="onboarding"
+                options={{
+                  presentation: 'fullScreenModal',
+                  headerShown: false,
+                  gestureEnabled: false,
+                }}
+              />
+              {/* Practice, review, reader and stitch configure their own native
             header items in-page (ScreenHeader + Stack.Toolbar), so the
             controls follow the system's vertical bar on iPhone Duo. */}
-            <Stack.Screen name="practice/[goalId]" />
-            <Stack.Screen name="review/index" />
-            <Stack.Screen name="reader/[osis]" />
-            <Stack.Screen name="stitch/[goalId]" />
-            <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
-            {/* No swipe-back: leaving the unlock quiz goes through its own
+              <Stack.Screen name="practice/[goalId]" />
+              <Stack.Screen name="review/index" />
+              <Stack.Screen name="reader/[osis]" />
+              <Stack.Screen name="stitch/[goalId]" />
+              <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
+              {/* No swipe-back: leaving the unlock quiz goes through its own
             buttons (Override / close), never a half-dismissed gesture. */}
-            <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
-          </Stack>
-        </ReservedRegionsProvider>
-      </AppErrorBoundary>
-    </ThemeProvider>
+              <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
+            </Stack>
+          </ReservedRegionsProvider>
+        </AppErrorBoundary>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
