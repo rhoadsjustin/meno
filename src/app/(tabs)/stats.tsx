@@ -3,7 +3,8 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
-import { panes, useContentLayout } from '@/components/content-layout';
+import { useContentLayout } from '@/components/content-layout';
+import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { BADGE_DEFS, earnedBadges } from '@/services/db/repos/badges';
 import { loadStats, type Stats } from '@/services/db/repos/stats';
@@ -128,13 +129,13 @@ export default function StatsScreen() {
   return (
     <Screen title="Stats" wide>
       {isWide ? (
-        <View style={panes.row}>
-          <View style={panes.half}>
+        <FoldAwareRow>
+          <>
             {numerals}
             {practice}
-          </View>
-          <View style={panes.half}>{badges}</View>
-        </View>
+          </>
+          {badges}
+        </FoldAwareRow>
       ) : (
         <>
           {numerals}
