@@ -43,31 +43,30 @@ export function FoldAwareRow({
     fold.x + fold.width < frame.x + frame.width;
   const [left, right] = children;
 
-  if (vertical) {
-    const leftWidth = Math.max(0, fold.x - frame.x - spacing.md);
-    const rightWidth = Math.max(0, frame.x + frame.width - (fold.x + fold.width) - spacing.md);
-    return (
-      <View
-        ref={ref}
-        onLayout={onLayout}
-        style={[styles.row, styles.folded, fill && styles.fill, style]}>
-        <View style={[styles.pane, { width: leftWidth }]}>{left}</View>
-        <View style={[styles.pane, { width: rightWidth }]}>{right}</View>
-      </View>
-    );
-  }
+  // Panes are sized by flex weight, never by an explicit width: a width set
+  // while folded stuck to the native view after the fold cleared, and the
+  // flat render could not undo it. With weights, folded = the two distances
+  // to the crease and a spacer the width of the crease; flat = 1 : 1 and a
+  // spacer the width of the normal gap.
+  const weights = vertical
+    ? [
+        Math.max(0, fold.x - frame.x - spacing.md),
+        Math.max(0, frame.x + frame.width - (fold.x + fold.width) - spacing.md),
+      ]
+    : [1, 1];
+  const spacer = vertical ? fold.width + spacing.md * 2 : spacing.xl;
+
   return (
     <View ref={ref} onLayout={onLayout} style={[styles.row, fill && styles.fill, style]}>
-      <View style={[styles.pane, styles.half]}>{left}</View>
-      <View style={[styles.pane, styles.half]}>{right}</View>
+      <View style={[styles.pane, { flexGrow: weights[0] }]}>{left}</View>
+      <View style={{ width: spacer }} />
+      <View style={[styles.pane, { flexGrow: weights[1] }]}>{right}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xl },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
   fill: { flex: 1, alignItems: 'stretch' },
-  folded: { justifyContent: 'space-between', gap: 0 },
-  pane: { gap: spacing.lg },
-  half: { flex: 1 },
+  pane: { flexShrink: 1, flexBasis: 0, gap: spacing.lg },
 });
