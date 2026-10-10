@@ -6,6 +6,11 @@ fonts in `src/theme.ts`, and a piano soundtrack from `public/music/` (see Assets
 
 - **Promo** (`src/Promo.tsx`, ~30s): the feature tour — six practice modes, the
   dissolve, word-by-word checking, reviews, the shield, widgets.
+- **Duo** (`src/Duo.tsx`, 29.5s): Meno on iPhone Duo — the cover panel, the unfold into
+  two panes, the half-open book pose in the Reader, the wide screens, and the controls that
+  move to the side strip. Built from full-resolution simulator captures in `public/img/duo/`
+  (committed; regenerate with `npm run captures:duo`, see `scripts/duo-captures.sh`), with a
+  device that hinges in CSS 3D. Same length and music cue as Promo.
 - **Abide** (`src/Abide.tsx`, ~34s): why the name — μένω (menō) as a lexicon entry,
   then the verses that carry it (John 1:38–39, 15:4, 15:7; Isaiah 40:8; 1 John 2:24),
   the dissolve as "a verse that remains", widgets, and the tagline. Scripture is quoted
@@ -20,6 +25,7 @@ npm run music          # build the soundtracks first (see Assets)
 npm run studio         # preview and scrub in the browser
 npm run render         # -> out/meno-promo.mp4
 npm run render:abide   # -> out/meno-abide.mp4
+npm run render:duo     # -> out/meno-duo.mp4
 ```
 
 ## Assets (not committed)
