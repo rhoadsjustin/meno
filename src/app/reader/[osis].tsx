@@ -3,12 +3,12 @@
  * with superscript verse numbers, chapter navigation, and attribution.
  */
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
-import { FoldAwareRow } from '@/components/fold-aware-row';
+import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { ScreenHeader } from '@/components/screen-header';
+import { BookSpread } from '@/features/reader/BookSpread';
 import {
   DEFAULT_TRANSLATION_ID,
   getBook,
@@ -26,7 +26,8 @@ export default function ReaderRoute() {
   // Wide windows (iPhone Duo opened): a chapter sidebar beside the text.
   const { sides, isWide, foldAxis } = useContentLayout();
   // Book pose: the Duo half-open with the crease running top to bottom.
-  // The chapter reads as two facing pages and the sidebar steps aside.
+  // The chapter is paged, one page each side of the crease, and turns like
+  // a book instead of scrolling; the sidebar steps aside.
   const book = isWide && foldAxis === 'vertical';
 
   const translationId = translation ?? DEFAULT_TRANSLATION_ID;
@@ -60,12 +61,14 @@ export default function ReaderRoute() {
     router.setParams({ osis: `${ref.bookId}.${chapter}.1` });
   };
   const chapters = Array.from({ length: bookInfo.chapters }, (_, i) => i + 1);
-  const [leftPage, rightPage] = useMemo(() => splitPages(verses), [verses]);
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       {/* Native bar: back chevron, chapter title, previous/next as symbols —
           on iPhone Duo the system moves them to the side with the status bar. */}
+      {/* In the book pose a swipe turns the page, so the swipe-back gesture
+          is off there; the back chevron in the bar still leaves the reader. */}
+      <Stack.Screen options={{ gestureEnabled: !book }} />
       <ScreenHeader title={`${bookInfo.name} ${ref.chapter}`}>
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
@@ -85,68 +88,78 @@ export default function ReaderRoute() {
         </Stack.Toolbar>
       </ScreenHeader>
 
-      <View style={isWide ? styles.split : styles.flex}>
-        {isWide && !book && (
-          <ScrollView
-            style={[styles.sidebar, { borderColor: colors.separator }]}
-            contentContainerStyle={styles.sidebarContent}>
-            <Text style={[styles.sidebarTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {bookInfo.name}
-            </Text>
-            {chapters.map((n) => {
-              const selected = n === ref.chapter;
-              return (
-                <Pressable
-                  key={n}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => goToChapter(n)}
-                  style={[styles.chapterRow, selected && { backgroundColor: colors.lapisWash }]}>
-                  <Text
-                    style={[
-                      styles.chapterText,
-                      {
-                        color: selected ? colors.lapis : colors.ink,
-                        fontFamily: fonts?.ui,
-                        fontWeight: selected ? '600' : '400',
-                      },
-                    ]}>
-                    Chapter {n}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={[styles.content, book ? contentColumnWide : contentColumn]}>
+      {book ? (
+        <>
           {error && (
-            <Text style={[styles.attribution, { color: colors.error, fontFamily: fonts?.ui }]}>
+            <Text
+              style={[
+                styles.attribution,
+                styles.bookError,
+                { color: colors.error, fontFamily: fonts?.ui },
+              ]}>
               {error}
             </Text>
           )}
-          {book ? (
-            <FoldAwareRow>
-              <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                {renderVerses(leftPage, colors.inkFaint)}
+          <BookSpread
+            translationId={translationId}
+            bookId={ref.bookId}
+            chapter={ref.chapter}
+            chapterCount={bookInfo.chapters}
+            onChapterChange={goToChapter}
+          />
+        </>
+      ) : (
+        <View style={isWide ? styles.split : styles.flex}>
+          {isWide && (
+            <ScrollView
+              style={[styles.sidebar, { borderColor: colors.separator }]}
+              contentContainerStyle={styles.sidebarContent}>
+              <Text
+                style={[styles.sidebarTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {bookInfo.name}
               </Text>
-              <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                {renderVerses(rightPage, colors.inkFaint)}
+              {chapters.map((n) => {
+                const selected = n === ref.chapter;
+                return (
+                  <Pressable
+                    key={n}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() => goToChapter(n)}
+                    style={[styles.chapterRow, selected && { backgroundColor: colors.lapisWash }]}>
+                    <Text
+                      style={[
+                        styles.chapterText,
+                        {
+                          color: selected ? colors.lapis : colors.ink,
+                          fontFamily: fonts?.ui,
+                          fontWeight: selected ? '600' : '400',
+                        },
+                      ]}>
+                      Chapter {n}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+          <ScrollView style={styles.flex} contentContainerStyle={[styles.content, contentColumn]}>
+            {error && (
+              <Text style={[styles.attribution, { color: colors.error, fontFamily: fonts?.ui }]}>
+                {error}
               </Text>
-            </FoldAwareRow>
-          ) : (
+            )}
             <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {renderVerses(verses, colors.inkFaint)}
             </Text>
-          )}
-          {verses.length > 0 && (
-            <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {getTranslation(translationId).attribution}
-            </Text>
-          )}
-        </ScrollView>
-      </View>
+            {verses.length > 0 && (
+              <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {getTranslation(translationId).attribution}
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -158,21 +171,6 @@ function renderVerses(list: Verse[], numberColor: string) {
       {v.text}{' '}
     </Text>
   ));
-}
-
-/** Two facing pages of roughly equal length, split on a verse boundary. */
-function splitPages(list: Verse[]): [Verse[], Verse[]] {
-  const total = list.reduce((n, v) => n + v.text.length, 0);
-  let acc = 0;
-  let cut = list.length;
-  for (let i = 0; i < list.length; i++) {
-    acc += list[i].text.length;
-    if (acc >= total / 2) {
-      cut = i + 1;
-      break;
-    }
-  }
-  return [list.slice(0, cut), list.slice(cut)];
 }
 
 const styles = StyleSheet.create({
@@ -207,4 +205,5 @@ const styles = StyleSheet.create({
   },
   verseNum: { fontSize: 13 },
   attribution: { fontSize: 13, marginTop: spacing.xxl },
+  bookError: { marginTop: 0, paddingHorizontal: layout.screenMargin },
 });
