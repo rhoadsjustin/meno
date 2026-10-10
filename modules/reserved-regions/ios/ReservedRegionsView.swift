@@ -6,14 +6,18 @@ import UIKit
 /// window's, so the frames it emits are directly usable by React layouts.
 ///
 /// Regions change as an iPhone Duo folds, unfolds, rotates or enters Split
-/// View. UIKit has no dedicated notification, but every one of those events
-/// lays the view out again or changes the scene geometry, so both are hooked
-/// and the result is de-duplicated before it reaches JavaScript.
+/// View. UIKit has no dedicated notification: rotation and Split View lay the
+/// view out again and change the scene geometry, but a hinge change at the
+/// same orientation can do neither, so a light poll (while the app is active)
+/// backs up the layout and geometry hooks. Results are de-duplicated before
+/// they reach JavaScript, so the poll is silent unless something moved.
 final class ReservedRegionsView: ExpoView {
   let onRegionsChange = EventDispatcher()
 
   private var lastSignature: String?
   private var geometryObservation: NSKeyValueObservation?
+  private var poll: Timer?
+  private var lifecycleObservers: [NSObjectProtocol] = []
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -26,6 +30,21 @@ final class ReservedRegionsView: ExpoView {
         view.publish()
       }
     }
+    let center = NotificationCenter.default
+    lifecycleObservers = [
+      center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.startPolling()
+        self?.publish()
+      },
+      center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.stopPolling()
+      },
+    ]
+  }
+
+  deinit {
+    poll?.invalidate()
+    lifecycleObservers.forEach(NotificationCenter.default.removeObserver)
   }
 
   override func didMoveToWindow() {
@@ -35,8 +54,27 @@ final class ReservedRegionsView: ExpoView {
       geometryObservation = scene.observe(\.effectiveGeometry, options: [.new]) { [weak self] _, _ in
         DispatchQueue.main.async { self?.publish() }
       }
+      startPolling()
+    } else {
+      stopPolling()
     }
     publish()
+  }
+
+  /// Re-queries a few times a second while on screen. Cheap: the query is a
+  /// handful of rects, and nothing is sent unless they changed.
+  private func startPolling() {
+    guard poll == nil, window != nil else { return }
+    if #available(iOS 27.1, *) {
+      poll = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+        self?.publish()
+      }
+    }
+  }
+
+  private func stopPolling() {
+    poll?.invalidate()
+    poll = nil
   }
 
   override func layoutSubviews() {
