@@ -17,6 +17,7 @@ export {
   thresholdFor,
   meetsThreshold,
   ALMOST_BUDGET_FACTOR,
+  MIN_ALMOST_ACCURACY,
   almostBudget,
   almostThresholdFor,
   gradeBand,

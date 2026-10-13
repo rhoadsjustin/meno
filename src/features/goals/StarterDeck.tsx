@@ -8,7 +8,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
-import { formatRange, getTranslation, type StarterPassage } from '@/services/bible';
+import {
+  formatRange,
+  getTranslation,
+  trimUnbalancedQuotes,
+  type StarterPassage,
+} from '@/services/bible';
 import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
 
 /** Share of the row one card takes, so the next card peeks in as the cue to swipe. */
@@ -60,7 +65,7 @@ export function StarterDeck({
                   {reference}
                 </Text>
                 <Text style={[styles.scripture, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                  {passage.verses.map((v) => v.text).join(' ')}
+                  {trimUnbalancedQuotes(passage.verses.map((v) => v.text).join(' '))}
                 </Text>
                 <Text
                   accessibilityLabel={getTranslation(passage.translationId).name}

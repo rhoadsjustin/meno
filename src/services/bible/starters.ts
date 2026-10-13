@@ -95,3 +95,21 @@ export async function resolveStarterPassages(
   }
   return readAll(STARTER_FALLBACK_TRANSLATION_ID);
 }
+
+/**
+ * A verse lifted out of a longer speech can open a quotation it never closes
+ * (John 3:16 in the ESV) or close one it never opened (Joshua 1:9). On a card
+ * that stands alone the stray mark reads as a typo, so drop it — for display
+ * only; the practiced text is the translation's, untouched.
+ */
+export function trimUnbalancedQuotes(text: string): string {
+  let out = text.trim();
+  const count = (ch: string) => out.split(ch).length - 1;
+  if (out.startsWith('“') && count('“') > count('”')) out = out.slice(1).trimStart();
+  if (out.endsWith('”') && count('”') > count('“')) out = out.slice(0, -1).trimEnd();
+  if (count('"') % 2 === 1) {
+    if (out.startsWith('"')) out = out.slice(1).trimStart();
+    else if (out.endsWith('"')) out = out.slice(0, -1).trimEnd();
+  }
+  return out;
+}

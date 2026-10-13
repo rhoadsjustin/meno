@@ -7,6 +7,7 @@ import { getBook, isValidBookId } from '@/services/bible/canon';
 import { compareRefs, formatRange } from '@/services/bible/refs';
 import { TRANSLATIONS } from '@/services/bible/registry';
 import {
+  trimUnbalancedQuotes,
   DEFAULT_STARTER,
   resolveStarterPassages,
   STARTER_FALLBACK_TRANSLATION_ID,
@@ -121,5 +122,27 @@ describe('resolveStarterPassages', () => {
     await expect(
       resolveStarterPassages(starters, { preferredAvailable: true, read })
     ).rejects.toThrow('database unavailable');
+  });
+});
+
+describe('trimUnbalancedQuotes', () => {
+  it('drops an opening quotation the verse never closes', () => {
+    expect(trimUnbalancedQuotes('“For God so loved the world.')).toBe('For God so loved the world.');
+  });
+
+  it('drops a closing quotation the verse never opened', () => {
+    expect(trimUnbalancedQuotes('wherever you go.”')).toBe('wherever you go.');
+  });
+
+  it('leaves balanced quotations, inner marks and apostrophes alone', () => {
+    const balanced = 'He said, “Follow me,” and they followed.';
+    expect(trimUnbalancedQuotes(balanced)).toBe(balanced);
+    expect(trimUnbalancedQuotes('“Come to me.”')).toBe('“Come to me.”');
+    expect(trimUnbalancedQuotes('The LORD’s shepherd')).toBe('The LORD’s shepherd');
+  });
+
+  it('handles a straight double quote at either edge', () => {
+    expect(trimUnbalancedQuotes('"For God so loved')).toBe('For God so loved');
+    expect(trimUnbalancedQuotes('you go."')).toBe('you go.');
   });
 });

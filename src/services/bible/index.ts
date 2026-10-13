@@ -21,7 +21,11 @@ import type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
 export { BOOKS, getBook, isValidBookId, bookOrder } from '@/services/bible/canon';
 export * from '@/services/bible/refs';
 export { TRANSLATIONS, DEFAULT_TRANSLATION_ID, getTranslation, mayPersistText } from '@/services/bible/registry';
-export { DEFAULT_STARTER, STARTER_VERSES } from '@/services/bible/starters';
+export {
+  DEFAULT_STARTER,
+  STARTER_VERSES,
+  trimUnbalancedQuotes,
+} from '@/services/bible/starters';
 export type { StarterPassage, StarterVerse } from '@/services/bible/starters';
 export type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
 

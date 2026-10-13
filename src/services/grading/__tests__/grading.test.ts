@@ -141,8 +141,24 @@ describe('gradeBand (pass / almost / miss)', () => {
   const thirty = Array.from({ length: 30 }, (_, i) => `word${String.fromCharCode(97 + i)}x`);
   const drop = (words: string[], n: number) => words.slice(n).join(' ');
 
-  it('is twice the pass budget from five units up', () => {
-    for (const units of [5, 8, 10, 20, 30, 60]) {
+  it('never lets an almost fall below 75%, however short the chunk', () => {
+    // Five words: twice the one-word budget would be two wrong (60%).
+    expect(almostBudget(0.95, 5)).toBeCloseTo(1.25);
+    expect(gradeBand(0.95, 3 / 5, 5)).toBe('miss');
+    expect(gradeBand(0.9, 3 / 5, 5)).toBe('miss'); // five blanks, three right
+    for (let units = 5; units <= 60; units++) {
+      for (const threshold of [0.9, 0.95]) {
+        expect(almostThresholdFor(threshold, units)).toBeGreaterThanOrEqual(0.75 - 1e-9);
+        // ...and the band never sits inside the pass budget.
+        expect(almostBudget(threshold, units)).toBeGreaterThanOrEqual(
+          errorBudget(threshold, units) - 1e-9,
+        );
+      }
+    }
+  });
+
+  it('is twice the pass budget once the chunk is long enough', () => {
+    for (const units of [8, 10, 20, 30, 60]) {
       expect(almostBudget(0.95, units)).toBeCloseTo(2 * errorBudget(0.95, units));
     }
     expect(almostBudget(0.95, 10)).toBeCloseTo(2);

@@ -208,17 +208,29 @@ export type RoundBand = 'pass' | 'almost' | 'miss';
 export const ALMOST_BUDGET_FACTOR = 2;
 
 /**
+ * No almost below this, whatever twice the budget would allow. It binds on
+ * short chunks, where the one-word floor already makes the pass budget a
+ * large share of the text: doubled, a five-word verse would move on with two
+ * words wrong (60%), which is not "almost".
+ */
+export const MIN_ALMOST_ACCURACY = 0.75;
+
+/**
  * Weighted errors a round may carry and still land in the almost band.
  *
- * Twice the pass budget — but only where that budget is a whole slipped word
- * or more. Below that (chunks under five units) MAX_ERROR_FRACTION is what
+ * Twice the pass budget, never dropping below MIN_ALMOST_ACCURACY — and only
+ * where that budget is a whole slipped word or more. Below that (chunks under five units) MAX_ERROR_FRACTION is what
  * set the budget, and it exists so that a handful of words has to be recited
  * as written: doubling it would let "Jesus swept" through. There the band is
  * empty and the answer is pass or miss, as before.
  */
 export function almostBudget(threshold: number, unitCount: number): number {
   const budget = errorBudget(threshold, unitCount);
-  return budget < 1 ? budget : budget * ALMOST_BUDGET_FACTOR;
+  if (budget < 1) return budget;
+  // Twice the budget, held to MIN_ALMOST_ACCURACY — but never tighter than
+  // the pass budget itself, or an almost would outrank a pass.
+  const floored = Math.min(budget * ALMOST_BUDGET_FACTOR, unitCount * (1 - MIN_ALMOST_ACCURACY));
+  return Math.max(budget, floored);
 }
 
 /** `almostBudget` restated as the lowest honest accuracy that is still an
