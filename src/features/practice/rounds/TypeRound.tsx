@@ -3,11 +3,11 @@
  * (docs/03 §1, 07 §6 — New York, no autocorrect, reference watermark).
  */
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions } from 'react-native';
 
 import { gradeTyped, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
-import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
 
 export function TypeRound({
   text,
@@ -24,6 +24,10 @@ export function TypeRound({
   }) => void;
 }) {
   const colors = useThemeColors();
+  // On a short window (iPhone Duo opened in landscape, or its cover panel) the
+  // keyboard leaves little room: a smaller empty editor keeps Check in view.
+  // It still grows with the text.
+  const short = useWindowDimensions().height < layout.shortHeight;
   const [input, setInput] = useState('');
   const firstWord = useMemo(() => displayWords(text)[0] ?? '', [text]);
 
@@ -55,6 +59,7 @@ export function TypeRound({
         accessibilityLabel="Type the passage from memory"
         style={[
           styles.editor,
+          short && styles.editorShort,
           { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.scripture },
         ]}
       />
@@ -85,6 +90,7 @@ const styles = StyleSheet.create({
     lineHeight: scriptureType.defaultLineHeight,
     textAlignVertical: 'top',
   },
+  editorShort: { minHeight: 96 },
   button: {
     marginTop: spacing.xl,
     borderRadius: radius.capsule,

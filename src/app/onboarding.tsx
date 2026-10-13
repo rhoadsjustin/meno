@@ -8,8 +8,10 @@ import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { ReservedRegionsProvider } from '@modules/reserved-regions';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
+import { ModalSafeArea } from '@/components/modal-safe-area';
 import { DEFAULT_STARTER, formatRange } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
 import { startStarterGoal } from '@/services/db/repos/goals';
@@ -19,9 +21,32 @@ import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
 type Step = 'welcome' | 'notifications' | 'widget' | 'lock';
 
+/**
+ * A full-screen modal takes the root view out of the window, and with it the
+ * app-wide safe-area provider and reserved-regions observer. This route hosts
+ * its own of each: without them the insets froze at the pose onboarding
+ * opened in, and the fold was never reported here.
+ */
 export default function OnboardingRoute() {
+  return (
+    <ModalSafeArea>
+      <ReservedRegionsProvider>
+        <Onboarding />
+      </ReservedRegionsProvider>
+    </ModalSafeArea>
+  );
+}
+
+function Onboarding() {
   const colors = useThemeColors();
-  const { insets, sides } = useContentLayout();
+  const { insets, sides, fold, foldAxis } = useContentLayout();
+  // iPhone Duo half-open: a centred column would put its buttons on the
+  // crease, so the column moves into the leading half, clear of the folding
+  // region, and returns to the centre when the phone is flat again.
+  const besideFold =
+    fold && foldAxis === 'vertical' && fold.x > insets.left
+      ? ({ maxWidth: fold.x - insets.left, alignSelf: 'flex-start' } as const)
+      : null;
   const [step, setStep] = useState<Step>('welcome');
 
   const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
@@ -57,7 +82,7 @@ export default function OnboardingRoute() {
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
+      <ScrollView contentContainerStyle={[styles.content, contentColumn, besideFold]}>
         {step === 'welcome' && (
           <>
             <Text style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>M</Text>

@@ -43,9 +43,10 @@ async function initialTranslationId(): Promise<string> {
 
 export function GoalWizard() {
   const colors = useThemeColors();
-  // The side insets matter on iPhone Duo, where the status bar and camera
-  // sit in one corner of the cover panel.
-  const { sides } = useContentLayout();
+  // Insets are the sheet's own (the route wraps this in ModalSafeArea). The
+  // sides matter on iPhone Duo's cover panel, where the status bar and camera
+  // sit in one corner; the bottom keeps the buttons off the home indicator.
+  const { sides, insets } = useContentLayout();
   const [step, setStep] = useState<Step>('passage');
 
   const [initialTranslation] = useState(initialTranslationId);
@@ -174,7 +175,14 @@ export function GoalWizard() {
         </ScrollView>
       )}
 
-      <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: colors.separator,
+            paddingBottom: Math.max(spacing.xl, insets.bottom + spacing.sm),
+          },
+        ]}>
         <Pressable
           accessibilityRole="button"
           onPress={() => {
