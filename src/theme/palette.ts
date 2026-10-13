@@ -16,6 +16,8 @@ export const palette = {
     error: '#B3402E',
     errorWash: '#F9E9E4',
     success: '#2E7D5B',
+    amber: '#9A5B13',
+    amberWash: '#F8EEDD',
     separator: 'rgba(26, 29, 38, 0.12)',
   },
   dark: {
@@ -29,6 +31,8 @@ export const palette = {
     error: '#E06A56',
     errorWash: '#3B211C',
     success: '#4CAF8E',
+    amber: '#E59A4C',
+    amberWash: '#3A2C17',
     separator: 'rgba(233, 231, 225, 0.14)',
   },
 } as const;

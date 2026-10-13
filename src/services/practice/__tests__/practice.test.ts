@@ -10,6 +10,8 @@ import {
   gradeArrangement,
   isComplete,
   recordRound,
+  retryTier,
+  topTierStanding,
   selectBlanks,
   serializeSession,
   splitPhrases,
@@ -182,8 +184,10 @@ describe('recordRound tolerance', () => {
   it('lets a short chunk clear a 95% tier with one slipped word', () => {
     const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 4, now: 0 });
     expect(s.tier).toBe(5); // Type, threshold 0.95
-    expect(recordRound(s, { accuracy: 0.9, unitCount: 10 }).passed).toBe(true);
-    expect(recordRound(s, { accuracy: 0.9, unitCount: 40 }).passed).toBe(false);
+    expect(recordRound(s, { accuracy: 0.9, unitCount: 10 }).band).toBe('pass');
+    // Four slips in 40 words is outside the pass budget (2) — an almost now.
+    expect(recordRound(s, { accuracy: 0.9, unitCount: 40 }).band).toBe('almost');
+    expect(recordRound(s, { accuracy: 0.85, unitCount: 40 }).passed).toBe(false);
   });
 
   it('still freezes the round on a real miss', () => {
@@ -191,6 +195,108 @@ describe('recordRound tolerance', () => {
     for (let i = 0; i < 5; i++) s = recordRound(s, { accuracy: 0.5, unitCount: 26 }).state;
     expect(s.roundIndex).toBe(0);
     expect(s.failCount).toBe(5);
+  });
+});
+
+describe('recordRound almost band', () => {
+  const at = (highestClearedTier: number) =>
+    startSession({ goalId: 'g', chunkId: 'c', highestClearedTier, now: 0 });
+
+  it('advances the round like a pass and records the band', () => {
+    // Tier 3 is two rounds at 90%: 8 blanks tolerate 1 miss, almost at 2.
+    const s = at(2);
+    const r = recordRound(s, { accuracy: 6 / 8, unitCount: 8 });
+    expect(r.band).toBe('almost');
+    expect(r.passed).toBe(true);
+    expect(r.tierCleared).toBe(false);
+    expect(r.state.roundIndex).toBe(1);
+    expect(r.state.failCount).toBe(0);
+    expect(r.state.results[0]).toMatchObject({ mode: 'blanks50', passed: true, band: 'almost' });
+    expect(recordRound(r.state, { accuracy: 1, unitCount: 8 }).tierCleared).toBe(true);
+  });
+
+  it('clears a single-round tier and never suggests dropping', () => {
+    const r = recordRound(at(4), { accuracy: 0.8, unitCount: 10 }); // Type, two slips in ten
+    expect(r.band).toBe('almost');
+    expect(r.tierCleared).toBe(true);
+    expect(r.suggestDropTier).toBe(false);
+  });
+
+  it('still counts a real miss toward the drop-tier suggestion', () => {
+    let r = recordRound(at(4), { accuracy: 0.7, unitCount: 10 });
+    expect(r.band).toBe('miss');
+    r = recordRound(r.state, { accuracy: 0.7, unitCount: 10 });
+    expect(r.suggestDropTier).toBe(true);
+  });
+
+  it('keeps self-report rounds pass/miss', () => {
+    expect(recordRound(at(-1), {}).band).toBe('pass');
+    expect(recordRound(at(0), { selfPass: true }).band).toBe('pass');
+    const miss = recordRound(at(0), { selfPass: false });
+    expect(miss.band).toBe('miss');
+    expect(miss.passed).toBe(false);
+  });
+
+  it('has no band when the round reports no length', () => {
+    expect(recordRound(at(4), { accuracy: 0.94 }).band).toBe('miss');
+    expect(recordRound(at(4), { accuracy: 0.95 }).band).toBe('pass');
+  });
+
+  it('survives serialization, and reads sessions saved before the band', () => {
+    const r = recordRound(at(2), { accuracy: 6 / 8, unitCount: 8 });
+    expect(deserializeSession(serializeSession(r.state))).toEqual(r.state);
+    const legacy = { ...r.state, results: [{ mode: 'blanks50', accuracy: 0.75, passed: true }] };
+    expect(deserializeSession(JSON.stringify(legacy))?.roundIndex).toBe(1);
+  });
+});
+
+describe('topTierStanding', () => {
+  const base = { tier: 6, memorized: false, dayBanked: false } as const;
+
+  it('a clean Speak banks the day: sealed tomorrow', () => {
+    expect(topTierStanding({ ...base, band: 'pass' })).toBe('sealsTomorrow');
+  });
+
+  it('an almost at Speak banks nothing and must say so', () => {
+    expect(topTierStanding({ ...base, band: 'almost' })).toBe('needsCleanPass');
+  });
+
+  it('an almost at Speak after a clean Type today is still one day from sealed', () => {
+    expect(topTierStanding({ ...base, band: 'almost', dayBanked: true })).toBe('sealsTomorrow');
+  });
+
+  it('reports memorized whatever the band', () => {
+    expect(topTierStanding({ ...base, band: 'pass', memorized: true })).toBe('memorized');
+    expect(topTierStanding({ ...base, tier: 5, band: 'pass', memorized: true })).toBe('memorized');
+  });
+
+  it('is null below the top tier, where the next tier is simply served', () => {
+    expect(topTierStanding({ ...base, tier: 5, band: 'almost' })).toBeNull();
+    expect(topTierStanding({ ...base, tier: 5, band: 'pass' })).toBeNull();
+    expect(topTierStanding({ ...base, tier: 3, band: 'almost' })).toBeNull();
+  });
+
+  it('is null on a miss', () => {
+    expect(topTierStanding({ ...base, band: 'miss' })).toBeNull();
+  });
+});
+
+describe('retryTier', () => {
+  it('re-serves the same Speak round after an almost, as a fresh attempt', () => {
+    const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 5, now: 0 });
+    const done = recordRound(s, { accuracy: 0.8, unitCount: 10 });
+    expect(done.band).toBe('almost');
+    expect(isComplete(done.state)).toBe(true);
+
+    const again = retryTier(done.state, 99);
+    expect(again.chunkId).toBe('c');
+    expect(again.tier).toBe(6);
+    expect(currentMode(again)).toBe('speak');
+    expect(again.results).toEqual([]);
+    expect(again.attemptNo).toBeGreaterThan(done.state.attemptNo);
+    expect(again.startedAt).toBe(99);
+    // A clean recitation from here is an ordinary pass.
+    expect(recordRound(again, { accuracy: 1, unitCount: 10 }).band).toBe('pass');
   });
 });
 

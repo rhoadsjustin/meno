@@ -28,6 +28,8 @@ The overall feel: a quiet, serious reading instrument that happens to be delight
 | `error` | #B3402E | #E06A56 | Wrong words in feedback |
 | `errorWash` | #F9E9E4 | #3B211C | Highlight behind missed/wrong feedback words |
 | `success` | #2E7D5B | #4CAF8E | Correct-word feedback (grading only — general success uses lapis) |
+| `amber` | #9A5B13 | #E59A4C | The almost band (03 §3) ONLY: its score and slipped words. Warm, not an error; never decoration, never a stand-in for gold |
+| `amberWash` | #F8EEDD | #3A2C17 | Highlight behind slipped words in an almost |
 
 Contrast: all text pairs ≥ 4.5:1. Gold on surface is used at display sizes only (≥20pt) where 3:1 suffices.
 
@@ -61,7 +63,7 @@ Type scale follows Apple's text styles; do not invent sizes.
   - **Arrange**: phrase tiles, spring physics on drop.
   - **Type**: full-screen editor, New York, no autocorrect, reference watermark.
   - **Speak**: large mic button; live ghost transcript beneath the reference; waveform in lapis.
-- Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
+- Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. An almost (03 §3) marks the same slips in `amber` on `amberWash`, still struck through. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
 
 ### Library
 - Segmented: **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
@@ -90,6 +92,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 |---|---|---|
 | Correct word (live) | none (color only) | light tick |
 | Item passed | accuracy count-up 400ms | success |
+| Item almost (03 §3) | none; slipped words shown in place of the dissolution | warning |
 | Tier up | dissolution 1.2s | medium |
 | Chunk memorized | dissolution → gold seal stamp 1.5s, skippable | success ×2 |
 | Streak day secured | ember pulse | light |
