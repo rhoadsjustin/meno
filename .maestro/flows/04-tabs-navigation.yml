@@ -32,4 +32,6 @@ tags:
     visible: "Reminders"
     timeout: 10000
 - tapOn: "Today"
-- assertVisible: "Start a goal"
+- scrollUntilVisible:
+    element: "Choose my own passage"
+    direction: DOWN

@@ -20,4 +20,6 @@ appId: com.rhoadsdev.meno
     visible: "Nothing due for review"
     timeout: 10000
 - tapOn: "Done"
-- assertVisible: "Start a goal"
+- scrollUntilVisible:
+    element: "Choose my own passage"
+    direction: DOWN

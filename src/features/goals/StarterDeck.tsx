@@ -1,0 +1,121 @@
+/**
+ * The quick start: well-known verses as a row of swipeable cards, each with
+ * one button that starts practicing it straight away. Shown on Today until
+ * the user has a passage of their own.
+ */
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { Card } from '@/components/card';
+import { useContentLayout } from '@/components/content-layout';
+import { formatRange, getTranslation, type StarterPassage } from '@/services/bible';
+import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
+
+/** Share of the row one card takes, so the next card peeks in as the cue to swipe. */
+const CARD_SHARE = 0.86;
+/** Past this a verse stops reading as a card and becomes a banner. */
+const MAX_CARD_WIDTH = 420;
+
+export function StarterDeck({
+  passages,
+  startingId,
+  onStart,
+}: {
+  passages: StarterPassage[];
+  /** The starter being set up, if any; every button is disabled meanwhile. */
+  startingId: string | null;
+  onStart: (passage: StarterPassage) => void;
+}) {
+  const colors = useThemeColors();
+  const { width: windowWidth, isWide } = useContentLayout();
+  // The row's real width once laid out (it is half the window in the wide
+  // two-pane layout); until then, the single-column width is a fair guess.
+  const [rowWidth, setRowWidth] = useState<number | null>(null);
+  const available = rowWidth ?? windowWidth - layout.screenMargin * 2;
+  const cardWidth = Math.round(Math.min(available * CARD_SHARE, MAX_CARD_WIDTH));
+  // In a single column the cards run to the screen edges; inside a pane they
+  // stay within it, clear of the gutter (and of iPhone Duo's fold).
+  const bleed = isWide ? 0 : layout.screenMargin;
+  const translation = passages[0] ? getTranslation(passages[0].translationId) : null;
+
+  return (
+    <View onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)} style={styles.root}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={cardWidth + spacing.md}
+        snapToAlignment="start"
+        style={{ marginHorizontal: -bleed }}
+        contentContainerStyle={[styles.row, { paddingHorizontal: bleed }]}>
+        {passages.map((passage) => {
+          const reference = formatRange(passage.starter.range);
+          const starting = startingId === passage.starter.id;
+          return (
+            <Card key={passage.starter.id} style={{ ...styles.card, width: cardWidth }}>
+              <View>
+                <Text
+                  accessibilityRole="header"
+                  style={[styles.reference, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                  {reference}
+                </Text>
+                <Text style={[styles.scripture, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                  {passage.verses.map((v) => v.text).join(' ')}
+                </Text>
+                <Text
+                  accessibilityLabel={getTranslation(passage.translationId).name}
+                  style={[styles.abbrev, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {getTranslation(passage.translationId).abbrev}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Practice ${reference}`}
+                accessibilityState={{ disabled: startingId !== null, busy: starting }}
+                disabled={startingId !== null}
+                onPress={() => onStart(passage)}
+                style={[
+                  styles.button,
+                  { backgroundColor: colors.lapis },
+                  startingId !== null && styles.buttonDisabled,
+                ]}>
+                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>
+                  {starting ? 'Starting…' : 'Practice this verse'}
+                </Text>
+              </Pressable>
+            </Card>
+          );
+        })}
+      </ScrollView>
+      {translation && (
+        <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          {translation.attribution}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { gap: spacing.md },
+  row: { gap: spacing.md },
+  // Cards stretch to the tallest in the row; the button sits at the bottom
+  // of each so the row of buttons lines up.
+  card: { justifyContent: 'space-between' },
+  reference: { fontSize: 17, fontWeight: '600', marginBottom: spacing.sm },
+  scripture: {
+    fontSize: scriptureType.defaultSize,
+    lineHeight: scriptureType.defaultLineHeight,
+  },
+  abbrev: { fontSize: 13, marginTop: spacing.md },
+  button: {
+    marginTop: spacing.lg,
+    borderRadius: radius.capsule,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
+  attribution: { fontSize: 12, lineHeight: 17, paddingHorizontal: spacing.xs },
+});

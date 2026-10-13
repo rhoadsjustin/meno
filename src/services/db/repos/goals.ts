@@ -5,7 +5,7 @@
 import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
-import { getPassage } from '@/services/bible';
+import { formatRange, getPassage, refEquals, starterPassage, type StarterVerse } from '@/services/bible';
 import type { RefRange } from '@/services/bible/types';
 import { chunkPassage, type ChunkPlan } from '@/services/chunking';
 import { meetsThreshold, tokenize } from '@/services/grading';
@@ -84,6 +84,41 @@ export async function createGoal(input: {
   const goal = await getGoal(goalId);
   if (!goal) throw new Error('Goal insert failed');
   return goal;
+}
+
+/** Starter starts in flight, by starter id — a second tap joins the first. */
+const starterStarts = new Map<string, Promise<Goal>>();
+
+/**
+ * Quick start: turns a starter verse into an ordinary goal, ready to
+ * practice. ESV when it is available and arrives in time, bundled KJV
+ * otherwise (services/bible `starterPassage`), so this works offline.
+ *
+ * Safe to call twice: concurrent calls share one insert, and a starter the
+ * user is already working on returns that goal instead of a duplicate.
+ */
+export function startStarterGoal(
+  starter: StarterVerse,
+  options: { preferEsv?: boolean } = {}
+): Promise<Goal> {
+  let pending = starterStarts.get(starter.id);
+  if (!pending) {
+    pending = (async () => {
+      const existing = (await listActiveGoals()).find(
+        (g) =>
+          refEquals(
+            { bookId: g.startBookId, chapter: g.startChapter, verse: g.startVerse },
+            starter.range.start
+          ) &&
+          refEquals({ bookId: g.endBookId, chapter: g.endChapter, verse: g.endVerse }, starter.range.end)
+      );
+      if (existing) return existing;
+      const { translationId } = await starterPassage(starter, options);
+      return createGoal({ translationId, range: starter.range, title: formatRange(starter.range) });
+    })().finally(() => starterStarts.delete(starter.id));
+    starterStarts.set(starter.id, pending);
+  }
+  return pending;
 }
 
 export async function getGoal(id: string): Promise<Goal | undefined> {

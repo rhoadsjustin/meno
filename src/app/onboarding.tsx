@@ -1,16 +1,18 @@
 /**
  * First-launch onboarding (docs/08 M6): the thesis, the notification
  * opt-in ("Can we quiz you out of the blue?"), a visual tour of the widget
- * (Home + Lock Screen) and recite-to-unlock, then straight into the first
- * goal. Skippable at every step, never guilt (06 §6).
+ * (Home + Lock Screen) and recite-to-unlock, then straight into practicing
+ * a first verse. Skippable at every step, never guilt (06 §6).
  */
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
+import { DEFAULT_STARTER, formatRange } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
+import { startStarterGoal } from '@/services/db/repos/goals';
 import { isLockAvailable } from '@/services/lock';
 import { setNotificationsEnabled } from '@/services/notifications';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
@@ -27,6 +29,26 @@ export default function OnboardingRoute() {
     router.back();
     if (then) router.push(`/${then}`);
   }, []);
+
+  // "Try it" skips every decision: the default starter verse becomes the
+  // first passage and practice opens on it. One tap only — the ref covers
+  // the gap before the disabled button renders.
+  const [starting, setStarting] = useState(false);
+  const startBusy = useRef(false);
+  const tryStarter = useCallback(async () => {
+    if (startBusy.current) return;
+    startBusy.current = true;
+    setStarting(true);
+    try {
+      const goal = await startStarterGoal(DEFAULT_STARTER);
+      await markOnboardingDone();
+      router.back();
+      router.push(`/practice/${goal.id}`);
+    } catch {
+      // Couldn't set it up — Today offers the same verses and the picker.
+      await finish();
+    }
+  }, [finish]);
 
   const optIn = useCallback(async () => {
     await setNotificationsEnabled(true);
@@ -134,10 +156,21 @@ export default function OnboardingRoute() {
             )}
             <Pressable
               accessibilityRole="button"
-              onPress={() => void finish('goal-wizard')}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
+              accessibilityState={{ disabled: starting, busy: starting }}
+              disabled={starting}
+              onPress={() => void tryStarter()}
+              style={[
+                styles.primary,
+                { backgroundColor: colors.lapis },
+                starting && styles.primaryBusy,
+              ]}>
               <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                Pick your first passage
+                Try it with {formatRange(DEFAULT_STARTER.range)}
+              </Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => void finish('goal-wizard')}>
+              <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                Choose my own passage
               </Text>
             </Pressable>
             {isLockAvailable() && (
@@ -200,6 +233,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
+  primaryBusy: { opacity: 0.5 },
   primaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   quiet: { fontSize: 15, textAlign: 'center', marginTop: spacing.md },
 

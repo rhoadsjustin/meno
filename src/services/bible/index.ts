@@ -9,11 +9,20 @@ import { getBook } from '@/services/bible/canon';
 import { chaptersInRange, esvKeyConfigured, fetchEsvChapter } from '@/services/bible/esv';
 import { compareRefs, refInRange } from '@/services/bible/refs';
 import { getTranslation, mayPersistText, TRANSLATIONS } from '@/services/bible/registry';
+import {
+  resolveStarterPassages,
+  STARTER_TRANSLATION_ID,
+  STARTER_VERSES,
+  type StarterPassage,
+  type StarterVerse,
+} from '@/services/bible/starters';
 import type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
 
 export { BOOKS, getBook, isValidBookId, bookOrder } from '@/services/bible/canon';
 export * from '@/services/bible/refs';
 export { TRANSLATIONS, DEFAULT_TRANSLATION_ID, getTranslation, mayPersistText } from '@/services/bible/registry';
+export { DEFAULT_STARTER, STARTER_VERSES } from '@/services/bible/starters';
+export type { StarterPassage, StarterVerse } from '@/services/bible/starters';
 export type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
 
 // Bump the version suffix whenever bundled.db contents change, so devices
@@ -53,7 +62,22 @@ export async function getVerse(translationId: string, ref: Ref): Promise<Verse> 
 }
 
 /** All verses in an inclusive range, in canonical order. */
-export async function getPassage(translationId: string, range: RefRange): Promise<Verse[]> {
+export function getPassage(translationId: string, range: RefRange): Promise<Verse[]> {
+  return readPassage(translationId, range, true);
+}
+
+/**
+ * Passage text for display only, before the user has added it to a goal
+ * (the starter cards). Bundled translations read as usual. ESV comes from
+ * the cache when the chapter is already there; otherwise it is fetched and
+ * held in memory for this launch, never written to `verses` (02 §5: cache
+ * only what the user explicitly added to a goal).
+ */
+export function previewPassage(translationId: string, range: RefRange): Promise<Verse[]> {
+  return readPassage(translationId, range, false);
+}
+
+async function readPassage(translationId: string, range: RefRange, persist: boolean): Promise<Verse[]> {
   const translation = getTranslation(translationId);
   if (compareRefs(range.start, range.end) > 0) {
     throw new Error('Passage range start is after end');
@@ -83,9 +107,41 @@ export async function getPassage(translationId: string, range: RefRange): Promis
     return rows.map((row) => ({ ...row, translationId: translation.id }));
   }
   if (translation.source === 'esv_api') {
-    return getEsvPassage(translation, range);
+    return getEsvPassage(range, persist);
   }
   throw new Error(`Translation ${translation.abbrev} is not available yet`);
+}
+
+function starterTranslationAvailable(): boolean {
+  return availableTranslations().some((t) => t.id === STARTER_TRANSLATION_ID);
+}
+
+/**
+ * The starter set with its text, for the cards on Today's empty state: ESV
+ * when a key is configured and every verse arrives in time, bundled KJV
+ * otherwise. Display only — see `previewPassage`.
+ */
+export function starterPassages(): Promise<StarterPassage[]> {
+  return resolveStarterPassages(STARTER_VERSES, {
+    preferredAvailable: starterTranslationAvailable(),
+    read: previewPassage,
+  });
+}
+
+/**
+ * One starter the user has chosen to practice, about to become a goal — so
+ * ESV goes through the normal cache-first path here. `preferEsv: false`
+ * keeps a start in KJV when that is what the card showed.
+ */
+export async function starterPassage(
+  starter: StarterVerse,
+  options: { preferEsv?: boolean } = {}
+): Promise<StarterPassage> {
+  const [passage] = await resolveStarterPassages([starter], {
+    preferredAvailable: (options.preferEsv ?? true) && starterTranslationAvailable(),
+    read: getPassage,
+  });
+  return passage;
 }
 
 /** Number of verses in a chapter (goal wizard, chunking). */
@@ -117,10 +173,10 @@ export async function getChapterVerseCount(translationId: string, bookId: string
  * `api_cached` license, are fetched chapter-at-a-time on miss, and are
  * purged when the goals referencing them are deleted.
  */
-async function getEsvPassage(translation: Translation, range: RefRange): Promise<Verse[]> {
+async function getEsvPassage(range: RefRange, persist: boolean): Promise<Verse[]> {
   const out: Verse[] = [];
   for (const chapter of chaptersInRange(range.start, range.end)) {
-    const verses = await esvChapterCached(range.start.bookId, chapter);
+    const verses = await esvChapterCached(range.start.bookId, chapter, persist);
     for (const v of verses) {
       if (refInRange({ bookId: v.bookId, chapter: v.chapter, verse: v.verse }, range)) out.push(v);
     }
@@ -128,7 +184,10 @@ async function getEsvPassage(translation: Translation, range: RefRange): Promise
   return out;
 }
 
-async function esvChapterCached(bookId: string, chapter: number): Promise<Verse[]> {
+/** Chapters fetched for display only (`persist: false`); gone when the app quits. */
+const esvUnpersisted = new Map<string, Promise<Verse[]>>();
+
+async function esvChapterCached(bookId: string, chapter: number, persist = true): Promise<Verse[]> {
   const { db, tables } = await import('@/services/db');
   const { and, eq } = await import('drizzle-orm');
   const cached = await db
@@ -144,6 +203,17 @@ async function esvChapterCached(bookId: string, chapter: number): Promise<Verse[
     .orderBy(tables.verses.verse);
   if (cached.length > 0) {
     return cached.map((r) => ({ ...r, translationId: 'esv' }));
+  }
+  if (!persist) {
+    const key = `${bookId}.${chapter}`;
+    let pending = esvUnpersisted.get(key);
+    if (!pending) {
+      pending = fetchEsvChapter(bookId, chapter);
+      esvUnpersisted.set(key, pending);
+      // A failed fetch is retried next time rather than remembered.
+      pending.catch(() => esvUnpersisted.delete(key));
+    }
+    return pending;
   }
   const fetched = await fetchEsvChapter(bookId, chapter);
   if (fetched.length > 0 && mayPersistText('esv')) {

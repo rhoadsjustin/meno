@@ -2,7 +2,12 @@
 # translation). Assumes the empty Today tab is showing.
 appId: com.rhoadsdev.meno
 ---
-- tapOn: "Start a goal"
+# The wizard sits behind the quieter link under the starter-verse cards,
+# which can push it below the fold on short screens.
+- scrollUntilVisible:
+    element: "Choose my own passage"
+    direction: DOWN
+- tapOn: "Choose my own passage"
 - extendedWaitUntil:
     visible: "Choose a translation"
     timeout: 10000
