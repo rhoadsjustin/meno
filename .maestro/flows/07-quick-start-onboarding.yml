@@ -1,0 +1,31 @@
+# Quick start from onboarding: the last step's primary button turns
+# John 3:16 into the first passage and opens practice on it — no wizard.
+# The translation depends on the build (ESV with a key and network, bundled
+# KJV otherwise), so nothing here asserts verse text.
+appId: com.rhoadsdev.meno
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+# Same walk as helpers/complete-onboarding.yml, up to the last step.
+- extendedWaitUntil:
+    visible: "Let the Word remain in you\\."
+    timeout: 30000
+- tapOn: "Continue"
+- tapOn: "Later"
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+- tapOn: "Continue"
+- scrollUntilVisible:
+    element: "Try it with John 3:16"
+    direction: DOWN
+- assertVisible: "Choose my own passage"
+- tapOn: "Try it with John 3:16"
+# Round header is "<reference> · <tier name>". Generous: with an ESV key the
+# start may wait on the network before falling back to KJV.
+- extendedWaitUntil:
+    visible: "John 3:16 · Read"
+    timeout: 20000
+- assertVisible: "Step 1 of 9"

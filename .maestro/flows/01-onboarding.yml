@@ -6,5 +6,15 @@ tags:
 - launchApp:
     clearState: true
 - runFlow: ../helpers/complete-onboarding.yml
-- assertVisible: "Pick a passage to begin hiding it in your heart\\."
-- assertVisible: "Start a goal"
+# The empty state offers starter verses (John 3:16 first) as swipeable cards.
+# Their text loads a beat after the screen, and its translation depends on
+# the build (ESV with a key and network, bundled KJV otherwise), so assert
+# the reference and the action — never the verse text.
+- extendedWaitUntil:
+    visible: "John 3:16"
+    timeout: 15000
+- assertVisible: "Practice John 3:16"
+# The cards can push the quieter link below the fold on short screens.
+- scrollUntilVisible:
+    element: "Choose my own passage"
+    direction: DOWN

@@ -16,7 +16,8 @@ appId: com.rhoadsdev.meno
     element: "Continue"
     direction: DOWN
 - tapOn: "Continue"
-# Lock step — skip straight to Today.
+# Lock step — skip the quick start ("Try it with John 3:16") and the passage
+# picker, straight to Today.
 - scrollUntilVisible:
     element: "Explore first"
     direction: DOWN

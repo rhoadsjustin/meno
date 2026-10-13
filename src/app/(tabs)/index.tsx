@@ -1,20 +1,28 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
+import { StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
-import { formatRange, getPassage, getTranslation } from '@/services/bible';
+import {
+  formatRange,
+  getPassage,
+  getTranslation,
+  starterPassages,
+  type StarterPassage,
+} from '@/services/bible';
 import {
   activeGoal,
   chunkProgressLabel,
   chunksForGoal,
   currentChunk,
   listActiveGoals,
+  startStarterGoal,
   type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
@@ -64,6 +72,12 @@ export default function TodayScreen() {
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
   const [dueCount, setDueCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  // Quick start (empty state only): the starter cards, and which one is
+  // being turned into a passage right now.
+  const [starters, setStarters] = useState<StarterPassage[] | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [startFailed, setStartFailed] = useState(false);
+  const startBusy = useRef(false);
 
   // Reads everything this screen shows; `isCancelled` guards a blurred screen.
   const load = useCallback(async (isCancelled: () => boolean) => {
@@ -87,6 +101,13 @@ export default function TodayScreen() {
         setStreak(streakNow);
         setLoaded(true);
       }
+      // The empty state doesn't wait on the cards: bundled text is instant,
+      // but ESV may take a moment (and gives way to KJV if it can't be had).
+      starterPassages()
+        .then((passages) => {
+          if (!isCancelled()) setStarters(passages);
+        })
+        .catch(() => {});
       return;
     }
     const [focus, rest] = await Promise.all([
@@ -133,6 +154,28 @@ export default function TodayScreen() {
     [load],
   );
 
+  // One tap, one passage: the ref blocks a second tap before React has
+  // re-rendered the disabled buttons (and `startStarterGoal` dedupes too).
+  const startStarter = useCallback(async (passage: StarterPassage) => {
+    if (startBusy.current) return;
+    startBusy.current = true;
+    setStartingId(passage.starter.id);
+    setStartFailed(false);
+    void Haptics.selectionAsync();
+    try {
+      // Stay in the translation the card showed: no ESV attempt for a KJV card.
+      const goal = await startStarterGoal(passage.starter, {
+        preferEsv: passage.translationId !== 'kjv',
+      });
+      router.push(`/practice/${goal.id}`);
+    } catch {
+      setStartFailed(true);
+    } finally {
+      startBusy.current = false;
+      setStartingId(null);
+    }
+  }, []);
+
   const ember = streak && streak.current > 0 && (
     <Text
       accessibilityLabel={`${streak.current} day streak${streak.activeToday ? ', secured today' : ''}`}
@@ -154,20 +197,42 @@ export default function TodayScreen() {
   const hero = (
     <>
       {loaded && !data && (
-        <Card>
-          <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            Nothing memorized yet
-          </Text>
-          <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Pick a passage to begin hiding it in your heart.
-          </Text>
+        <>
+          <View style={styles.emptyIntro}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              Nothing memorized yet
+            </Text>
+            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              Start with a verse you may already half know. Swipe to choose one and try it now —
+              it takes a couple of minutes.
+            </Text>
+          </View>
+          {starters && (
+            <StarterDeck
+              passages={starters}
+              startingId={startingId}
+              onStart={(passage) => void startStarter(passage)}
+            />
+          )}
+          {startFailed && (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.emptyBody, styles.emptyIntro, { color: colors.error, fontFamily: fonts?.ui }]}>
+              That verse couldn’t be started. Try again, or choose your own passage.
+            </Text>
+          )}
           <Pressable
             accessibilityRole="button"
+            hitSlop={8}
             onPress={() => router.push('/goal-wizard')}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Start a goal</Text>
+            style={styles.quietAction}>
+            <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              Choose my own passage
+            </Text>
           </Pressable>
-        </Card>
+        </>
       )}
 
       {data && data.chunk && (
@@ -400,6 +465,8 @@ function chunkRangeLabel(chunk: Chunk): string {
 }
 
 const styles = StyleSheet.create({
+  emptyIntro: { paddingHorizontal: spacing.xs },
+  quietAction: { paddingVertical: spacing.sm },
   emptyTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },
   emptyBody: { fontSize: 15, lineHeight: 20 },
   scripture: {
