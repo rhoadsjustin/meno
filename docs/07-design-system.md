@@ -76,7 +76,16 @@ Type scale follows Apple's text styles; do not invent sizes.
 - Streak, 30-day accuracy, verses memorized as three large New York numerals; below, weekly practice grid and badge medallions (engraved-style, gold when earned, `inkFaint` outline when locked and visible-by-design).
 
 ### Goal wizard (sheet)
-- Steps: Translation → Passage (book/chapter/verse native pickers) → Preview (word count, chunk count, projected date) → Confirm. One screen per step, native sheet detents.
+- Two steps, one screen each: **Passage → Plan**. Cancel/Back and Continue/Start memorizing stay in the sheet's bottom bar.
+- **Passage.** Three native menus and nothing else to configure: Translation (remembers the last one chosen; WEB the first time), Book, Chapter (hidden for one-chapter books). Below them the chapter's own verses, set in New York as a virtualized list, with the translation's attribution at the foot.
+  - **Tap the first verse, then the last.** One tap is a single verse; a second tap closes the range in either direction; a tap on a settled range starts over. Selected rows carry the `lapisWash` fill plus a lapis rule on the leading edge and a heavier verse number — never color alone.
+  - **Whole chapter** selects every verse of the chapter in view. **Extend through** is a native menu of the book's later chapters; it keeps the first verse and runs the range to the end of the one picked, so "Philippians 1–4" is Whole chapter, then Extend through → Chapter 4. Changing chapter with the menu keeps an open selection, so tapping a verse in a later chapter also closes a cross-chapter range. Ranges stay inside one book; changing book resets to its 1:1.
+  - A bar pinned above the buttons echoes the reference ("John 3:16–18"), says what the next tap will do, and holds **Clear**. With nothing selected, Continue is disabled. The wizard opens on John 1:1 so it can be continued untouched.
+  - The menus and chapter actions scroll with the verses; only the echo bar and buttons are pinned, so the list keeps its room on short windows (iPhone Duo opened, landscape) and at accessibility sizes, where the control rows wrap.
+  - Licensed text (ESV) loads a chapter at a time through `services/bible`: a spinner while it loads; if it fails, a message in place of the verses with **Try again** and **Use the WEB instead**, and the menus stay usable.
+  - VoiceOver: each row reads "Verse 16. ‹text›", its selected state and what a double-tap will do, and offers the custom actions "Start passage here" / "End passage here"; every change is announced ("John 3:16–18 selected").
+- **Plan.** Editable goal name, then verses, words, chunks and estimated days.
+- Range logic is pure and unit-tested in `src/services/bible/selection.ts`.
 
 ### Lock setup & Unlock
 - Per 04 §5. Unlock screen is the app at its most minimal: verse reference in New York, mic button, Type toggle, Override quietly at the bottom. Dark-mode-first (people hit this at night).

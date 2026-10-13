@@ -45,6 +45,9 @@ function openBundledDb(): Promise<SQLite.SQLiteDatabase> {
   return bundledDbPromise;
 }
 
+/** Past any chapter's last verse (Psalm 119 has 176). */
+const CHAPTER_END = 999;
+
 type VerseRow = { bookId: string; chapter: number; verse: number; text: string };
 
 /** Translations usable right now (bundled always; ESV once a key is set). */
@@ -144,7 +147,23 @@ export async function starterPassage(
   return passage;
 }
 
-/** Number of verses in a chapter (goal wizard, chunking). */
+/**
+ * Every verse of one chapter, in order (the goal wizard's verse list). Take
+ * the chapter's length from the last row's verse number, not the row count:
+ * the ESV omits a few verses its base text lacks (John 5:4).
+ */
+export async function getChapter(translationId: string, bookId: string, chapter: number): Promise<Verse[]> {
+  const book = getBook(bookId);
+  if (chapter < 1 || chapter > book.chapters) {
+    throw new Error(`${book.name} has no chapter ${chapter}`);
+  }
+  return getPassage(translationId, {
+    start: { bookId, chapter, verse: 1 },
+    end: { bookId, chapter, verse: CHAPTER_END },
+  });
+}
+
+/** Number of verses in a chapter (reader, chunking). */
 export async function getChapterVerseCount(translationId: string, bookId: string, chapter: number): Promise<number> {
   const translation = getTranslation(translationId);
   const book = getBook(bookId);

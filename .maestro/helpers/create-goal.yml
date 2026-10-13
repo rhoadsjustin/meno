@@ -9,10 +9,8 @@ appId: com.rhoadsdev.meno
     direction: DOWN
 - tapOn: "Choose my own passage"
 - extendedWaitUntil:
-    visible: "Choose a translation"
+    visible: "Choose a passage"
     timeout: 10000
-- tapOn: "Continue"
-- assertVisible: "Choose a passage"
 - tapOn: "Continue"
 - assertVisible: "Your plan"
 - tapOn: "Start memorizing"
