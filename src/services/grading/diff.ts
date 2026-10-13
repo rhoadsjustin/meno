@@ -195,3 +195,48 @@ export function thresholdFor(threshold: number, unitCount: number): number {
 export function meetsThreshold(threshold: number, accuracy: number, unitCount: number): boolean {
   return accuracy >= thresholdFor(threshold, unitCount) - 1e-9;
 }
+
+/**
+ * How a graded round landed. `almost` is the band just outside a pass: close
+ * enough to move on up the ladder, not clean enough to count as one. Only
+ * `pass` satisfies `meetsThreshold`, so the Memorized rule, reviews and SM-2
+ * never see an almost as anything but a miss.
+ */
+export type RoundBand = 'pass' | 'almost' | 'miss';
+
+/** The almost band reaches this many times the pass budget. */
+export const ALMOST_BUDGET_FACTOR = 2;
+
+/**
+ * Weighted errors a round may carry and still land in the almost band.
+ *
+ * Twice the pass budget — but only where that budget is a whole slipped word
+ * or more. Below that (chunks under five units) MAX_ERROR_FRACTION is what
+ * set the budget, and it exists so that a handful of words has to be recited
+ * as written: doubling it would let "Jesus swept" through. There the band is
+ * empty and the answer is pass or miss, as before.
+ */
+export function almostBudget(threshold: number, unitCount: number): number {
+  const budget = errorBudget(threshold, unitCount);
+  return budget < 1 ? budget : budget * ALMOST_BUDGET_FACTOR;
+}
+
+/** `almostBudget` restated as the lowest honest accuracy that is still an
+ * almost. Without a length there is no band: it equals the bare threshold. */
+export function almostThresholdFor(threshold: number, unitCount: number): number {
+  if (unitCount <= 0) return threshold;
+  return Math.max(0, 1 - almostBudget(threshold, unitCount) / unitCount);
+}
+
+/** The three-way outcome for every graded mode. `pass` is exactly
+ * `meetsThreshold`; `almost` is the band beneath it. */
+export function gradeBand(threshold: number, accuracy: number, unitCount: number): RoundBand {
+  if (meetsThreshold(threshold, accuracy, unitCount)) return 'pass';
+  return accuracy >= almostThresholdFor(threshold, unitCount) - 1e-9 ? 'almost' : 'miss';
+}
+
+/** Slips in an attempt as the user would count them: every reference word
+ * that was not right, plus every extra word. Unweighted — a typo is one. */
+export function slipCount(result: GradeResult): number {
+  return result.words.filter((w) => w.tag !== 'correct').length + result.insertions.length;
+}
