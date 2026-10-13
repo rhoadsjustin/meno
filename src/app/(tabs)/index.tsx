@@ -471,7 +471,10 @@ export default function TodayScreen() {
                 </Text>
                 <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                   {o.chunk && copy
-                    ? `${chunkRangeLabel(o.chunk)} · ${copy.subline}`
+                    ? // A one-verse passage is its own chunk: no need to name it twice.
+                      chunkRangeLabel(o.chunk) === o.goal.title
+                      ? copy.subline
+                      : `${chunkRangeLabel(o.chunk)} · ${copy.subline}`
                     : 'Every chunk memorized'}
                 </Text>
                 <View style={styles.otherActions}>
