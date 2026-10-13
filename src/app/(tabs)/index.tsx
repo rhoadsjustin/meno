@@ -78,8 +78,14 @@ function stepCopy(p: GoalProgress & { chunk: Chunk; step: PracticeStep }) {
   );
   // Where the verse sits in a longer passage (07 §6); a one-chunk goal has
   // nothing to place.
-  const position = p.totalChunks > 1 ? `Chunk ${p.chunk.orderIndex + 1} of ${p.totalChunks} · ` : '';
-  return { ...copy, subline: `${position}${copy.subline}` };
+  const place = p.totalChunks > 1 ? `Chunk ${p.chunk.orderIndex + 1} of ${p.totalChunks}` : '';
+  return {
+    ...copy,
+    subline: place ? `${place} · ${copy.subline}` : copy.subline,
+    // The sub-line is not read on its own (the button says it all), so the
+    // spoken sentence carries the position too.
+    spoken: place ? `${copy.spoken} ${place}.` : copy.spoken,
+  };
 }
 
 function practiceHref(goalId: string, chunk?: Chunk): Href {
@@ -292,7 +298,13 @@ export default function TodayScreen() {
             const { display, mono } = dissolve(data.chunkText, data.chunk.tier);
             return display ? (
               <Text
-                accessibilityLabel={`Current passage, ${chunkRangeLabel(data.chunk)}`}
+                // First letters are a prompt for the eye; read aloud they are
+                // noise. The full text is read as it stands.
+                accessibilityLabel={
+                  mono
+                    ? `Current passage, ${chunkRangeLabel(data.chunk)}, shown as first letters`
+                    : `Current passage, ${chunkRangeLabel(data.chunk)}. ${display}`
+                }
                 style={[
                   styles.scripture,
                   mono
@@ -340,8 +352,10 @@ export default function TodayScreen() {
                   </Text>
                 </Pressable>
                 <Text
-                  accessible={false}
-                  importantForAccessibility="no"
+                  // Hidden from VoiceOver: the button's label already says it.
+                  // (`accessible={false}` alone still leaves text readable.)
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
                   style={[styles.subline, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                   {copy.subline}
                 </Text>

@@ -189,7 +189,7 @@ export function PracticeScreen({
     })();
   }, [load]);
 
-  const finishRound = useCallback(
+  const writeRound = useCallback(
     async (input: {
       accuracy?: number;
       unitCount?: number;
@@ -197,11 +197,7 @@ export function PracticeScreen({
       missedWords?: string[];
       result?: GradeResult;
     }) => {
-      // One result per round: the round stays on screen while the attempt is
-      // written (swapping the session in first left a blank frame before the
-      // feedback), so a second tap on Check must not record it twice.
-      if (!session || !chunk || finishing.current) return;
-      finishing.current = true;
+      if (!session || !chunk) return;
       const outcome = recordRound(session, input);
       setLog((prev) => [...prev, { accuracy: input.accuracy ?? null, passed: outcome.passed }]);
       await saveActiveSession(outcome.state);
@@ -265,8 +261,9 @@ export function PracticeScreen({
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
 
+      // The session is swapped in with the feedback, not before: until then
+      // the round stays on screen instead of a blank frame.
       setSession(outcome.state);
-      finishing.current = false;
       setPhase({
         kind: 'feedback',
         accuracy: input.accuracy ?? (input.selfPass ? 1 : 0),
@@ -285,6 +282,21 @@ export function PracticeScreen({
       });
     },
     [session, chunk, text, roundStartedAt],
+  );
+
+  // One result per round: the round is still on screen while its attempt is
+  // written, so a second tap on Check must not record it twice.
+  const finishRound = useCallback(
+    async (input: Parameters<typeof writeRound>[0]) => {
+      if (finishing.current) return;
+      finishing.current = true;
+      try {
+        await writeRound(input);
+      } finally {
+        finishing.current = false;
+      }
+    },
+    [writeRound],
   );
 
   /** Ends the session on its summary (docs/03 §8) rather than just closing. */
