@@ -289,7 +289,10 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
 
   // The round itself; on extra-wide windows it shares the row with the rail.
   const round = (
+    // Keyed by phase so each screen opens at its top: at large text sizes
+    // the feedback scrolls, and the summary must not inherit that offset.
     <ScrollView
+      key={phase.kind}
       style={styles.flex}
       contentContainerStyle={[styles.content, contentColumn]}
       keyboardShouldPersistTaps="handled">
@@ -472,7 +475,8 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}>
-        {showRail && session && chunk && goal ? (
+        {/* The summary carries its own ladder, so the rail steps aside. */}
+        {showRail && session && chunk && goal && phase.kind !== 'summary' ? (
           <FoldAwareRow fill>
             {round}
             <View style={styles.rail}>
@@ -488,7 +492,15 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
                   {chunkProgressLabel(chunk, totalChunks)}
                 </Text>
                 <View style={styles.railLadder}>
-                  <TierLadder highestCleared={chunk.tier} current={session.tier} />
+                  <TierLadder
+                    // `chunk` is as loaded; a tier cleared on this screen counts.
+                    highestCleared={
+                      phase.kind === 'feedback' && phase.tierCleared
+                        ? Math.max(chunk.tier, session.tier)
+                        : chunk.tier
+                    }
+                    current={session.tier}
+                  />
                 </View>
               </Card>
             </View>
@@ -642,7 +654,13 @@ const styles = StyleSheet.create({
   railTitle: { fontSize: 22, lineHeight: 28 },
   railSub: { fontSize: 13, marginTop: spacing.xs },
   railLadder: { marginTop: spacing.lg },
-  summaryStats: { flexDirection: 'row', gap: spacing.xxl, marginVertical: spacing.lg },
+  summaryStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: spacing.xxl,
+    rowGap: spacing.md,
+    marginVertical: spacing.lg,
+  },
   statValue: { fontSize: 28 },
   statLabel: { fontSize: 13 },
   summaryLadder: { marginTop: spacing.sm },
