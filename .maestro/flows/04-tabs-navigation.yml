@@ -13,7 +13,7 @@ tags:
 - assertVisible: ".*day streak.*"
 - assertVisible: "Badges"
 - tapOn: "Settings"
-- assertVisible: "Review reminders"
+- assertVisible: "Reminders"
 # The row merges title + subtitle into one accessibility element.
 - assertVisible: ".*Recite to Unlock.*"
 # Setup guide opens as a sheet and closes back to Settings.
@@ -23,13 +23,13 @@ tags:
 # was only caught because the runner's retry happened to pass).
 # Overview rows merge the feature name with its status.
 - extendedWaitUntil:
-    visible: ".*Surprise quizzes.*"
+    visible: ".*Reminders and quizzes.*"
     timeout: 10000
 - assertVisible: ".*Home Screen widget.*"
 - tapOn: "Done"
 # Dismissal animates too.
 - extendedWaitUntil:
-    visible: "Review reminders"
+    visible: "Reminders"
     timeout: 10000
 - tapOn: "Today"
 - assertVisible: "Start a goal"

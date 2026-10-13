@@ -1,27 +1,29 @@
 /**
- * Local notification strategy (docs/03 §7, 05): random pop-quiz review
- * prompts within allowed windows (default 9am–9pm, max 2/day), plus a
- * streak-guard nudge in the evening. Copy is encouraging, never guilt
- * (docs/06 §6). All scheduling is local; reschedule on every app
- * foreground / session completion.
+ * Local notification strategy (docs/03 §7, 05): a daily practice reminder at
+ * the user's chosen time plus random pop-quiz review prompts, max 2/day in
+ * all. What gets planned is decided in `plan.ts` (pure, unit-tested); this
+ * file reads the app state and hands the plan to iOS. All scheduling is
+ * local; reschedule on every app foreground / session completion.
  */
 import * as Notifications from 'expo-notifications';
 import { eq } from 'drizzle-orm';
 
 import { db, tables } from '@/services/db';
+import { listActiveGoals } from '@/services/db/repos/goals';
 import { countDueReviews } from '@/services/db/repos/reviews';
 import { loadStreak, localToday } from '@/services/db/repos/streaks';
+import {
+  formatReminderTime,
+  parseReminderTime,
+  planNotifications,
+  type ReminderTime,
+} from '@/services/notifications/plan';
 import { streakDisplay } from '@/services/streaks';
 
-const ENABLED_KEY = 'notificationsEnabled';
-export const POP_QUIZ_PREFIX = 'popquiz';
-export const STREAK_GUARD_ID = 'streak-guard';
+export { DEFAULT_REMINDER_TIME, type ReminderTime } from '@/services/notifications/plan';
 
-/** Allowed window (quiet hours outside): 9:00–21:00, max 2/day (03 §7). */
-const WINDOW_START_HOUR = 9;
-const WINDOW_END_HOUR = 21;
-const MAX_PER_DAY = 2;
-const DAYS_AHEAD = 3;
+const ENABLED_KEY = 'notificationsEnabled';
+const REMINDER_TIME_KEY = 'reminderTime';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -32,13 +34,20 @@ Notifications.setNotificationHandler({
   }),
 });
 
+async function readSetting(key: string): Promise<string | undefined> {
+  const rows = await db.select().from(tables.settings).where(eq(tables.settings.key, key)).limit(1);
+  return rows[0]?.value;
+}
+
+async function writeSetting(key: string, value: string): Promise<void> {
+  await db
+    .insert(tables.settings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: tables.settings.key, set: { value } });
+}
+
 export async function notificationsEnabled(): Promise<boolean> {
-  const rows = await db
-    .select()
-    .from(tables.settings)
-    .where(eq(tables.settings.key, ENABLED_KEY))
-    .limit(1);
-  return rows[0]?.value === 'true';
+  return (await readSetting(ENABLED_KEY)) === 'true';
 }
 
 export async function setNotificationsEnabled(enabled: boolean): Promise<boolean> {
@@ -46,13 +55,29 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<boolean
     const perm = await Notifications.requestPermissionsAsync();
     if (!perm.granted) return false;
   }
-  await db
-    .insert(tables.settings)
-    .values({ key: ENABLED_KEY, value: String(enabled) })
-    .onConflictDoUpdate({ target: tables.settings.key, set: { value: String(enabled) } });
+  await writeSetting(ENABLED_KEY, String(enabled));
   if (enabled) await rescheduleAll();
   else await Notifications.cancelAllScheduledNotificationsAsync();
   return true;
+}
+
+/**
+ * True when reminders are switched on in Meno but iOS will not deliver them
+ * (permission declined or later revoked in iPhone Settings).
+ */
+export async function notificationsBlocked(): Promise<boolean> {
+  if (!(await notificationsEnabled())) return false;
+  return !(await Notifications.getPermissionsAsync()).granted;
+}
+
+/** When the daily practice reminder arrives. */
+export async function reminderTime(): Promise<ReminderTime> {
+  return parseReminderTime(await readSetting(REMINDER_TIME_KEY));
+}
+
+export async function setReminderTime(time: ReminderTime): Promise<void> {
+  await writeSetting(REMINDER_TIME_KEY, formatReminderTime(time));
+  await rescheduleAll();
 }
 
 /**
@@ -61,71 +86,34 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<boolean
  */
 export async function rescheduleAll(): Promise<void> {
   if (!(await notificationsEnabled())) return;
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  await schedulePopQuizzes();
-  await scheduleStreakGuard();
-}
-
-/** Deterministic-enough random times inside the allowed window. */
-function randomTimeInWindow(dayOffset: number, slot: number): Date {
-  const date = new Date();
-  date.setDate(date.getDate() + dayOffset);
-  // Split the window into MAX_PER_DAY slots so quizzes spread out.
-  const windowHours = WINDOW_END_HOUR - WINDOW_START_HOUR;
-  const slotHours = windowHours / MAX_PER_DAY;
-  const hour = WINDOW_START_HOUR + slot * slotHours + Math.random() * slotHours;
-  date.setHours(Math.floor(hour), Math.floor(Math.random() * 60), 0, 0);
-  return date;
-}
-
-async function schedulePopQuizzes(): Promise<void> {
-  const memorizedCount = await db
-    .select({ id: tables.reviewItems.id })
-    .from(tables.reviewItems);
-  if (memorizedCount.length === 0) return; // nothing to quiz yet
-
-  const now = Date.now();
-  for (let day = 0; day < DAYS_AHEAD; day++) {
-    for (let slot = 0; slot < MAX_PER_DAY; slot++) {
-      const when = randomTimeInWindow(day, slot);
-      if (when.getTime() <= now + 60_000) continue; // skip past times today
-      await Notifications.scheduleNotificationAsync({
-        identifier: `${POP_QUIZ_PREFIX}-${day}-${slot}`,
-        content: {
-          title: 'Pop quiz',
-          body: 'A verse you’ve hidden is ready to shine. 30 seconds?',
-          data: { url: '/review', source: 'popquiz' },
-        },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
-      });
-    }
-  }
-}
-
-async function scheduleStreakGuard(): Promise<void> {
-  const streak = streakDisplay(await loadStreak(), localToday());
-  if (streak.current === 0) return;
-
-  const today = new Date();
-  const guardTime = new Date(today);
-  guardTime.setHours(20, 0, 0, 0);
-
-  // If today is already secured, guard tomorrow evening instead.
-  if (streak.activeToday || guardTime.getTime() <= Date.now()) {
-    guardTime.setDate(guardTime.getDate() + 1);
-  }
-
-  const dueCount = await countDueReviews();
-  await Notifications.scheduleNotificationAsync({
-    identifier: STREAK_GUARD_ID,
-    content: {
-      title: `${streak.current}-day streak`,
-      body:
-        dueCount > 0
-          ? `A quick review keeps it going — ${dueCount} ${dueCount === 1 ? 'verse is' : 'verses are'} ready.`
-          : 'A minute of practice keeps it going.',
-      data: { url: '/review', source: 'streakGuard' },
-    },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: guardTime },
+  const [time, goals, dueCount, streakState, reviewItems] = await Promise.all([
+    reminderTime(),
+    listActiveGoals(),
+    countDueReviews(),
+    loadStreak(),
+    db.select({ id: tables.reviewItems.id }).from(tables.reviewItems).limit(1),
+  ]);
+  const streak = streakDisplay(streakState, localToday());
+  const plan = planNotifications({
+    now: new Date(),
+    reminderTime: time,
+    hasPractice: goals.length > 0 || dueCount > 0,
+    practicedToday: streak.activeToday,
+    streak: streak.current,
+    dueCount,
+    hasMemorized: reviewItems.length > 0,
   });
+
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  for (const item of plan) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: item.id,
+      content: {
+        title: item.title,
+        body: item.body,
+        data: { url: item.url, source: item.kind },
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: item.at },
+    });
+  }
 }

@@ -13,6 +13,8 @@ import {
   selectBlanks,
   serializeSession,
   splitPhrases,
+  ladderProgress,
+  LADDER_ROUNDS,
   startSession,
   displayWords,
 } from '@/services/practice';
@@ -231,5 +233,40 @@ describe('gradeArrangement transpositions', () => {
 
   it('scores an incomplete placement without crashing', () => {
     expect(gradeArrangement(round, [0, 1])).toBeCloseTo(1 - 4 / 6);
+  });
+});
+
+describe('ladderProgress', () => {
+  const fresh = () => startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: -1, now: 0 });
+
+  it('counts the whole ladder, not just the tier in progress', () => {
+    expect(LADDER_ROUNDS).toBe(9);
+    expect(ladderProgress(fresh())).toEqual({ done: 0, total: 9, pass: null });
+  });
+
+  it('carries the tiers already cleared into a later session', () => {
+    // Blanks 50/75 (tier 3) sits behind Read, First Letters ×2 and Blanks 25.
+    const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 2, now: 0 });
+    expect(ladderProgress(s).done).toBe(4);
+    expect(ladderProgress(recordRound(s, { accuracy: 1, unitCount: 8 }).state).done).toBe(5);
+  });
+
+  it('names the repeat when an exercise runs twice', () => {
+    let s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 0, now: 0 });
+    expect(ladderProgress(s).pass).toEqual({ index: 1, of: 2 });
+    s = recordRound(s, { selfPass: true }).state;
+    expect(ladderProgress(s)).toEqual({ done: 2, total: 9, pass: { index: 2, of: 2 } });
+  });
+
+  it('does not advance on a failed round', () => {
+    const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 4, now: 0 });
+    const failed = recordRound(s, { accuracy: 0.5, unitCount: 20 }).state;
+    expect(ladderProgress(failed).done).toBe(ladderProgress(s).done);
+  });
+
+  it('is full once Speak is cleared', () => {
+    const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 5, now: 0 });
+    const cleared = recordRound(s, { accuracy: 1, unitCount: 20 }).state;
+    expect(ladderProgress(cleared)).toEqual({ done: 9, total: 9, pass: null });
   });
 });

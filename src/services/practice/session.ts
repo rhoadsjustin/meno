@@ -4,7 +4,14 @@
  * killing the app mid-session resumes correctly).
  */
 import { meetsThreshold } from '@/services/grading';
-import { blanksDensity, nextTier, tierDef, type PracticeMode } from '@/services/practice/tiers';
+import {
+  blanksDensity,
+  LADDER_ROUNDS,
+  nextTier,
+  tierDef,
+  TIERS,
+  type PracticeMode,
+} from '@/services/practice/tiers';
 
 export type RoundResult = {
   mode: PracticeMode;
@@ -104,6 +111,35 @@ export function recordRound(state: SessionState, result: RoundInput): RoundOutco
     tierCleared: passed && next.roundIndex >= next.rounds.length,
     suggestDropTier: !passed && next.failCount >= 2 && next.tier > 0,
   };
+}
+
+export type LadderProgress = {
+  /** Rounds behind the user on the whole ladder, Read through Speak. */
+  done: number;
+  total: number;
+  /** Set while the current round is one of several passes of the same
+   * exercise (First Letters runs twice), so the repeat reads as intended. */
+  pass: { index: number; of: number } | null;
+};
+
+/**
+ * Where the session sits on the chunk's whole ladder. A session only holds
+ * one tier's rounds, so on its own it cannot say how much is left — and a
+ * practice run that never shows its end reads as stuck.
+ */
+export function ladderProgress(state: SessionState): LadderProgress {
+  const before = TIERS.filter((t) => t.tier < state.tier).reduce((n, t) => n + t.modes.length, 0);
+  const done = before + Math.min(state.roundIndex, state.rounds.length);
+  let pass: LadderProgress['pass'] = null;
+  if (!isComplete(state)) {
+    const mode = currentMode(state);
+    const of = state.rounds.filter((m) => m === mode).length;
+    if (of > 1) {
+      const index = state.rounds.slice(0, state.roundIndex).filter((m) => m === mode).length + 1;
+      pass = { index, of };
+    }
+  }
+  return { done, total: LADDER_ROUNDS, pass };
 }
 
 /**

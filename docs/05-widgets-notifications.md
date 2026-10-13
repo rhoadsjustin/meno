@@ -86,12 +86,13 @@ During an active practice session: chunk progress dots + current accuracy in Dyn
 | Type | Default | Copy style | Deep link |
 |---|---|---|---|
 | Pop quiz (F4) | ≤2/day within 9am–9pm windows | "Pop quiz — Psalm 23:1. 30 seconds." | `review/[itemId]?source=popquiz` |
-| Streak guard | 1, evening (only if no activity today) | "3 minutes keeps the streak at 12." | Today |
+| Practice reminder | 1/day at the user's chosen time (default 7pm), planned a week ahead, skipped once today is practiced. Doubles as the streak guard: the next one carries the streak count. | "Your verse is waiting. A few minutes is plenty." | Today |
 | Review pileup | Weekly max | "4 passages are fading. Quick rescue session?" | Review queue |
 | Challenge events (Phase 2) | On join/completion | — | Challenge screen |
 
 Rules:
 - Quiet hours honored; all categories individually toggleable; sensible defaults chosen in onboarding ("Can we quiz you out of the blue? That's the secret sauce." Yes/Later).
-- Never notify twice within 3 hours. Never guilt-based copy.
+- Never more than 2 a day, the practice reminder included, and never twice within 3 hours. Never guilt-based copy.
+- Pop quizzes need a memorized verse; the practice reminder only needs a passage in progress, so a new user who opts in hears from Meno on day one. The plan is pure and unit-tested (`services/notifications/plan.ts`).
 - Notification categories with actions: pop quiz gets a "Later today" action (reschedules once) alongside default open.
 - Verse **text** in notification bodies only for license-permitting translations; otherwise reference only.

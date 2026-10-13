@@ -22,6 +22,7 @@ import { recordAttempt } from '@/services/db/repos/attempts';
 import { getGoal } from '@/services/db/repos/goals';
 import { recordStitchResult, stitchPlan, STITCH_PASS } from '@/services/db/repos/stitch';
 import { secureToday } from '@/services/db/repos/streaks';
+import { rescheduleAll } from '@/services/notifications';
 import type { GradeResult } from '@/services/grading';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
 import { WordFeedback } from '@/features/practice/WordFeedback';
@@ -104,7 +105,7 @@ export default function StitchRoute() {
       const { goalCompleted } = passed
         ? await recordStitchResult(goalId, outcome.accuracy, data.chunkCount, data.isFinal)
         : { goalCompleted: false };
-      await secureToday();
+      if ((await secureToday()).daySecured) void rescheduleAll();
       void Haptics.notificationAsync(
         passed
           ? Haptics.NotificationFeedbackType.Success
