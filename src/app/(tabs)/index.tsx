@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -81,7 +81,7 @@ function stepCopy(p: GoalProgress & { chunk: Chunk; step: PracticeStep }) {
   return { ...copy, subline: `${position}${copy.subline}` };
 }
 
-function practiceHref(goalId: string, chunk?: Chunk): string {
+function practiceHref(goalId: string, chunk?: Chunk): Href {
   return chunk
     ? `/practice/${goalId}?chunk=${encodeURIComponent(chunk.id)}`
     : `/practice/${goalId}`;
@@ -422,7 +422,7 @@ export default function TodayScreen() {
             const copy = o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
             // A stitch outranks the next chunk; a resting verse has no action.
             const action = o.stitchDue
-              ? { label: 'Stitch', spoken: `Stitch ${o.goal.title}`, href: `/stitch/${o.goal.id}` }
+              ? { label: 'Stitch', spoken: `Stitch ${o.goal.title}`, href: `/stitch/${o.goal.id}` as Href }
               : copy && o.step?.kind !== 'rest'
                 ? {
                     label: copy.verb,

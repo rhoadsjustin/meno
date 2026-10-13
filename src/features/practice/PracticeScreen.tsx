@@ -24,6 +24,7 @@ import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
   applyTierCleared,
+  awaitingSecondDay,
   chunkProgressLabel,
   getGoal,
   practicePlan,
