@@ -24,11 +24,9 @@ import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
   applyTierCleared,
-  awaitingSecondDay,
   chunkProgressLabel,
-  chunksForGoal,
-  currentChunk,
   getGoal,
+  practicePlan,
   type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
@@ -93,7 +91,15 @@ type Phase =
       streak: number;
     };
 
-export function PracticeScreen({ goalId }: { goalId: string }) {
+export function PracticeScreen({
+  goalId,
+  chunkId,
+}: {
+  goalId: string;
+  /** Practice this chunk rather than the goal's next one — Today's optional
+   * seal check opens the verse it names. */
+  chunkId?: string;
+}) {
   const colors = useThemeColors();
   // Extra-wide windows (iPhone Duo opened in its landscape pose, iPad): the
   // round keeps its reading column and a context rail sits beside it —
@@ -107,6 +113,8 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   const [text, setText] = useState('');
   const [session, setSession] = useState<SessionState | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
+  // The chunk topped the ladder on an earlier day; this round can seal it.
+  const [sealing, setSealing] = useState(false);
   const [roundStartedAt, setRoundStartedAt] = useState(0);
   // Every round finished since the screen opened, across tiers — the
   // session state itself only remembers the tier in progress.
@@ -115,9 +123,17 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   const load = useCallback(async () => {
     const g = await getGoal(goalId);
     if (!g) throw new Error('Goal not found');
-    const c = await currentChunk(goalId);
-    setTotalChunks((await chunksForGoal(goalId)).length);
-    if (!c) {
+    const { plan, chunks } = await practicePlan(goalId);
+    setTotalChunks(chunks.length);
+    // A requested chunk is honoured only while it has something to do today.
+    // Once it is sealed (or resting) the reload after a cleared tier falls
+    // through to the goal's next step, like any other session.
+    const requested = chunkId
+      ? plan.steps.find((s) => s.chunkId === chunkId && s.kind !== 'rest')
+      : undefined;
+    const step = requested ?? plan.next;
+    const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
+    if (!step || !c) {
       setPhase({ kind: 'error', message: 'Every chunk in this goal is memorized. Well done.' });
       setGoal(g);
       return;
@@ -127,10 +143,11 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
     });
     const chunkText = verses.map((v) => v.text).join(' ');
+    setSealing(step.kind === 'seal');
 
     // Topped the ladder and already banked today: serving Speak again would
     // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
-    if (await awaitingSecondDay(c, tokenize(chunkText).length)) {
+    if (step.kind === 'rest') {
       setGoal(g);
       setChunk(c);
       setText(chunkText);
@@ -153,7 +170,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     setSession(s);
     setPhase({ kind: 'round' });
     setRoundStartedAt(Date.now());
-  }, [goalId]);
+  }, [goalId, chunkId]);
 
   useEffect(() => {
     void (async () => {
@@ -334,6 +351,13 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
           <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {reference} · {tierDef(session.tier).name}
           </Text>
+          {/* Type seals as well as Speak (03 §1), so a session rebuilt one
+              tier down still says so; lower than that it cannot. */}
+          {sealing && session.tier >= 5 && (
+            <Text style={[styles.sealNote, { color: colors.gold, fontFamily: fonts?.ui }]}>
+              Sealing {reference} · one clean pass makes it memorized
+            </Text>
+          )}
           <RoundBody
             key={`${session.roundIndex}-${session.attemptNo}`}
             session={session}
@@ -670,6 +694,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   reference: { fontSize: 14, marginBottom: spacing.lg },
+  // Sits under the reference line, inside the gap it leaves above the round.
+  sealNote: { fontSize: 15, fontWeight: '600', marginTop: -spacing.md, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
   suggestion: { fontSize: 15, lineHeight: 20, marginTop: spacing.md },

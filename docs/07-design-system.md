@@ -51,7 +51,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 
 ### Today (home tab)
 - Large title "Today" with streak ember (small flame glyph + count, lapis; turns hollow if today not yet active).
-- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button **Practice** (capsule, lapis). Sub-line: "Chunk 4 of 12 · Blanks 50".
+- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button (capsule, lapis) that names its step and reference — **Start John 3:17**, **Continue John 3:16**, **Seal John 3:16** (03 §5). Sub-line: "Chunk 4 of 12 · Next step · Blanks 50/75".
 - Below: **Due for review** row (count + up-to-3 references, tap → review session), then a quiet reading shortcut ("Continue reading Philippians 3").
 
 ### Practice session

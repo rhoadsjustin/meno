@@ -49,6 +49,13 @@ the Edit Widget sheet: expo-widgets parameters are string/number/boolean or a
 static enum fixed at build time, so WidgetKit cannot list the user's goals.
 Picking republishes the snapshot immediately rather than on the next app close.
 
+Within the focus goal, widgets and the shield show its **current verse**: the
+chunk Today's main Practice button opens (03 §5, "Practice order"), so a widget
+tap lands on the verse the widget shows. The day after a verse tops the ladder
+that is the next verse with new work, not the one waiting on its seal; the
+sealing verse is back (reference only, its dissolution level) whenever the seal
+is the next step.
+
 Mechanics: `configuration.parameters.mode` in the expo-widgets plugin block of
 `app.config.ts` generates a `WidgetConfigurationIntent`; WidgetKit stores the
 per-instance choice and passes it to the layout as

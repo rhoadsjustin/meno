@@ -13,5 +13,5 @@ appId: com.rhoadsdev.meno
 - tapOn: "Start memorizing"
 # Back on Today with the new goal's practice card.
 - extendedWaitUntil:
-    visible: "Practice"
+    visible: "Start John 1:1.*"
     timeout: 10000
