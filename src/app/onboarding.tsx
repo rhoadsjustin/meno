@@ -42,8 +42,9 @@ export default function OnboardingRoute() {
     try {
       const goal = await startStarterGoal(DEFAULT_STARTER);
       await markOnboardingDone();
-      router.back();
-      router.push(`/practice/${goal.id}`);
+      // Replace, not back-then-push: Today's empty state showed for a moment
+      // between the two.
+      router.replace(`/practice/${goal.id}`);
     } catch {
       // Couldn't set it up — Today offers the same verses and the picker.
       await finish();

@@ -5,17 +5,10 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
@@ -136,12 +129,8 @@ export default function StitchRoute() {
         </Stack.Toolbar>
       </ScreenHeader>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}>
-        <ScrollView
-          contentContainerStyle={[styles.content, contentColumn]}
-          keyboardShouldPersistTaps="handled">
+      <View style={styles.flex}>
+        <KeyboardScroll contentContainerStyle={[styles.content, contentColumn]}>
           {phase.kind === 'error' && (
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {phase.message}
@@ -207,8 +196,8 @@ export default function StitchRoute() {
               )}
             </>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScroll>
+      </View>
     </View>
   );
 }

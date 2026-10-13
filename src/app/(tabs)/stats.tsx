@@ -58,7 +58,14 @@ export default function StatsScreen() {
       <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
         Practice
       </Text>
-      <View style={styles.grid} accessibilityLabel="Practice days, last five weeks">
+      <View
+        style={styles.grid}
+        accessible
+        accessibilityLabel={
+          stats
+            ? `Practiced on ${stats.practiceDays.filter((d) => d.practiced).length} of the last ${stats.practiceDays.length} days`
+            : 'Practice days'
+        }>
         {stats?.practiceDays.map((d) => (
           <View
             key={d.date}
@@ -90,6 +97,7 @@ export default function StatsScreen() {
           return (
             <View
               key={b.code}
+              accessible
               accessibilityLabel={`${b.name}: ${isEarned ? 'earned' : b.hint}`}
               style={styles.badge}>
               <View
@@ -149,7 +157,7 @@ export default function StatsScreen() {
 
 function Numeral({ value, label, colors }: { value: string; label: string; colors: ThemeColors }) {
   return (
-    <View style={styles.numeral}>
+    <View accessible accessibilityLabel={`${value} ${label}`} style={styles.numeral}>
       <Text style={[styles.numeralValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {value}
       </Text>

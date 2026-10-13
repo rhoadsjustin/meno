@@ -6,11 +6,12 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
+import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
@@ -379,16 +380,10 @@ export function PracticeScreen({
   const round = (
     // Keyed by phase so each screen opens at its top: at large text sizes
     // the feedback scrolls, and the summary must not inherit that offset.
-    <ScrollView
+    <KeyboardScroll
       key={phase.kind}
       style={styles.flex}
-      contentContainerStyle={[styles.content, contentColumn]}
-      // The scroll view makes room for the keyboard itself. A
-      // KeyboardAvoidingView here came up short by the native bar's height,
-      // which at large text sizes left Check under the keyboard with no way
-      // to scroll it into view.
-      automaticallyAdjustKeyboardInsets
-      keyboardShouldPersistTaps="handled">
+      contentContainerStyle={[styles.content, contentColumn]}>
       {phase.kind === 'error' && (
         <>
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -430,7 +425,7 @@ export function PracticeScreen({
           {/* Type seals as well as Speak (03 §1), so a session rebuilt one
               tier down still says so; lower than that it cannot. */}
           {sealing && session.tier >= 5 && (
-            <Text style={[styles.sealNote, { color: colors.gold, fontFamily: fonts?.ui }]}>
+            <Text style={[styles.sealNote, { color: colors.lapis, fontFamily: fonts?.ui }]}>
               Sealing {reference} · one clean pass makes it memorized
             </Text>
           )}
@@ -456,12 +451,12 @@ export function PracticeScreen({
             style={[
               styles.accuracy,
               {
-                // Amber, not error red and not the clean-clear gold: an
-                // almost moved on, but it was not a pass.
-                color: almost
-                  ? colors.amber
-                  : phase.tierCleared
-                    ? colors.gold
+                // Amber for an almost: it moved on, but it was not a pass.
+                // Gold only when the verse was just memorized.
+                color: phase.memorized
+                  ? colors.gold
+                  : almost
+                    ? colors.amber
                     : phase.passed
                       ? colors.success
                       : colors.error,
@@ -606,7 +601,7 @@ export function PracticeScreen({
           streak={phase.streak}
         />
       )}
-    </ScrollView>
+    </KeyboardScroll>
   );
 
   return (

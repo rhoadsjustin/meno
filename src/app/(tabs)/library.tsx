@@ -111,7 +111,10 @@ export default function LibraryScreen() {
                 {chunks.filter((c) => c.status === 'memorized').length} of {chunks.length} chunks
                 memorized
               </Text>
-              <View style={styles.heatmap} accessibilityLabel={`Chunk progress for ${goal.title}`}>
+              <View
+                style={styles.heatmap}
+                accessible
+                accessibilityLabel={`Chunk progress for ${goal.title}: ${chunks.filter((c) => c.status === 'memorized').length} memorized, ${chunks.filter((c) => c.status === 'learning' || c.status === 'active').length} in progress, ${chunks.filter((c) => c.status === 'locked').length} not started`}>
                 {chunks.map((c) => (
                   <View
                     key={c.id}

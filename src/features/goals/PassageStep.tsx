@@ -80,6 +80,8 @@ type Props = {
   setSelection: Dispatch<SetStateAction<PassageSelection | null>>;
   /** A failure from the wizard's Continue, shown in the pinned bar. */
   error: string | null;
+  /** Reports whether the chapter on screen has its verses; the wizard holds Continue until it does. */
+  onReadyChange?: (ready: boolean) => void;
 };
 
 /** Plain words for a passage that would not load; bundled text never needs the network. */
@@ -101,6 +103,7 @@ export function PassageStep({
   selection,
   setSelection,
   error,
+  onReadyChange,
 }: Props) {
   const colors = useThemeColors();
   const book = getBook(bookId);
@@ -139,6 +142,11 @@ export function PassageStep({
       cancelled = true;
     };
   }, [translationId, bookId, chapter, loadKey, setSelection]);
+
+  const ready = verses !== null;
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
 
   // A new chapter starts at its first verse.
   useEffect(() => {

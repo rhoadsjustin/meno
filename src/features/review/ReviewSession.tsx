@@ -6,9 +6,10 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage } from '@/services/bible';
 import { db, tables } from '@/services/db';
@@ -179,12 +180,7 @@ export function ReviewSession() {
       </ScreenHeader>
 
       <View style={styles.flex}>
-        {/* The scroll view makes room for the keyboard itself, as in practice:
-            a KeyboardAvoidingView came up short by the native bar's height. */}
-        <ScrollView
-          contentContainerStyle={[styles.content, contentColumn]}
-          automaticallyAdjustKeyboardInsets
-          keyboardShouldPersistTaps="handled">
+        <KeyboardScroll contentContainerStyle={[styles.content, contentColumn]}>
           {phase.kind === 'empty' && (
             <>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -298,7 +294,7 @@ export function ReviewSession() {
               </Pressable>
             </>
           )}
-        </ScrollView>
+        </KeyboardScroll>
       </View>
     </View>
   );

@@ -1,13 +1,20 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
-import { StarterDeck } from '@/features/goals/StarterDeck';
+import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
 import {
   formatRange,
@@ -107,6 +114,10 @@ export default function TodayScreen() {
   // Wide windows (iPhone Duo opened, Split View): hero on the left, the
   // ladder and secondary cards on the right instead of one long stack.
   const { isWide } = useContentLayout();
+  // At accessibility text sizes the starter cards stack (StarterDeck), so
+  // there is nothing to swipe and the stack is long: the way into the picker
+  // goes above it instead of several screens below.
+  const stackedStarters = useWindowDimensions().fontScale >= STARTER_STACK_TEXT_SCALE;
   const [data, setData] = useState<TodayData | null>(null);
   const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
@@ -252,8 +263,8 @@ export default function TodayScreen() {
       </Text>
       <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {hasFinished
-          ? 'Nothing is in progress. Swipe to choose a verse and start it now, or choose your own passage.'
-          : 'Start with a verse you may already half know. Swipe to choose one and try it now — it takes a couple of minutes.'}
+          ? `Nothing is in progress. ${stackedStarters ? 'Choose' : 'Swipe to choose'} a verse and start it now, or choose your own passage.`
+          : `Start with a verse you may already half know. ${stackedStarters ? 'Choose' : 'Swipe to choose'} one and try it now — it takes a couple of minutes.`}
       </Text>
     </View>
   );
@@ -316,7 +327,9 @@ export default function TodayScreen() {
               </Text>
             ) : (
               <Text
-                style={[styles.scripture, { color: colors.gold, fontFamily: fonts?.scripture }]}>
+                // Ink, not gold: the text is hidden because the ladder is
+                // topped, but the verse is not memorized until it is sealed.
+                style={[styles.scripture, { color: colors.ink, fontFamily: fonts?.scripture }]}>
                 {chunkRangeLabel(data.chunk)}
               </Text>
             );
@@ -331,7 +344,7 @@ export default function TodayScreen() {
             if (data.step.kind === 'rest') {
               return (
                 <View accessible accessibilityLabel={copy.spoken} style={styles.restNote}>
-                  <Text style={[styles.restTitle, { color: colors.gold, fontFamily: fonts?.ui }]}>
+                  <Text style={[styles.restTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
                     {copy.button}
                   </Text>
                   <Text style={[styles.subline, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -596,8 +609,9 @@ export default function TodayScreen() {
       ) : (
         <>
           {emptyIntro}
+          {stackedStarters && emptyActions}
           {emptyDeck}
-          {emptyActions}
+          {!stackedStarters && emptyActions}
           {hero}
           {secondary}
           {links}
