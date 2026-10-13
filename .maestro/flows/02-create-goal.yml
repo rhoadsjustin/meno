@@ -6,7 +6,11 @@ tags:
 - launchApp:
     clearState: true
 - runFlow: ../helpers/complete-onboarding.yml
-- tapOn: "Start a goal"
+# The wizard sits behind the quieter link under the starter-verse cards.
+- scrollUntilVisible:
+    element: "Choose my own passage"
+    direction: DOWN
+- tapOn: "Choose my own passage"
 - extendedWaitUntil:
     visible: "Choose a passage"
     timeout: 10000
@@ -21,10 +25,9 @@ tags:
 - assertVisible: "Your plan"
 - assertVisible: "Step 2 of 2"
 - tapOn: "Start memorizing"
+# The practice button says what it will do: a fresh verse starts.
 - extendedWaitUntil:
-    visible: "Practice"
+    visible: "Start John 1:1.*"
     timeout: 10000
 # Attribution line reads "<range> · <ABBREV>", e.g. "John 1:1 · WEB".
-- assertVisible: "John 1:1.*"
-# The practice button says what it will do: a fresh verse starts.
-- assertVisible: "Start John 1:1.*"
+- assertVisible: "John 1:1 · .*"
