@@ -119,7 +119,11 @@ export function Dissolution({
       </Animated.View>
       <Animated.View style={[styles.layer, refStyle]}>
         <View style={styles.refWrap}>
+          {/* A long reference at an accessibility text size shrinks to fit
+              rather than running off the sides of the stage. */}
           <Text
+            numberOfLines={2}
+            adjustsFontSizeToFit
             style={[
               styles.reference,
               { color: memorized ? colors.gold : colors.ink, fontFamily: fonts?.scripture },
@@ -145,7 +149,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   cipher: { fontSize: 15, lineHeight: 24 },
-  refWrap: { alignItems: 'center', gap: spacing.sm },
+  refWrap: { alignItems: 'stretch', gap: spacing.sm },
   reference: { fontSize: 30, textAlign: 'center' },
-  sealNote: { fontSize: 14 },
+  sealNote: { fontSize: 14, textAlign: 'center' },
 });

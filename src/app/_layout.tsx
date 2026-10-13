@@ -176,6 +176,9 @@ function RootLayout() {
             header items in-page (ScreenHeader + Stack.Toolbar), so the
             controls follow the system's vertical bar on iPhone Duo. */}
               <Stack.Screen name="practice/[goalId]" />
+              {/* A redirect only (widget and reminder taps): no bar, or its
+            route name flashes as a title on the way through. */}
+              <Stack.Screen name="practice/index" options={{ headerShown: false }} />
               <Stack.Screen name="review/index" />
               <Stack.Screen name="reader/[osis]" />
               <Stack.Screen name="stitch/[goalId]" />

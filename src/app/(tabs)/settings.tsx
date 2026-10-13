@@ -9,6 +9,7 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { TimeField } from '@/components/time-field';
 import { HelpGuide } from '@/features/help/HelpGuide';
+import { availableTranslations } from '@/services/bible';
 import { loadLockConfig, lockEventCounts, saveLockConfig } from '@/services/db/repos/lock';
 import { isLockAvailable, killSwitch } from '@/services/lock';
 import {
@@ -88,6 +89,15 @@ export default function SettingsScreen() {
   const rowCard = (d: Detail) =>
     selected(d) ? { backgroundColor: colors.lapisWash, borderColor: colors.lapisWash } : undefined;
   const titleColor = (d: Detail) => (selected(d) ? colors.lapis : colors.ink);
+
+  // The footer credits whatever the wizard offers, so a licensed translation
+  // (ESV, when its key is configured) is never listed as public domain.
+  const translations = availableTranslations();
+  const publicDomain = translations
+    .filter((t) => t.licenseType === 'public_domain')
+    .map((t) => t.abbrev)
+    .join(', ');
+  const licensed = translations.filter((t) => t.licenseType !== 'public_domain');
 
   const rows = (
     <>
@@ -191,9 +201,16 @@ export default function SettingsScreen() {
 
       <Card>
         <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Meno {Constants.expoConfig?.version ?? ''} · Scripture: WEB, KJV, ASV — public domain.
+          Meno {Constants.expoConfig?.version ?? ''} · Scripture: {publicDomain} — public domain.
           Recitation audio never leaves this device.
         </Text>
+        {licensed.map((t) => (
+          <Text
+            key={t.id}
+            style={[styles.rowSub, styles.credit, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            {t.attribution}
+          </Text>
+        ))}
       </Card>
     </>
   );
@@ -228,6 +245,7 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 17, fontWeight: '600' },
   rowSub: { fontSize: 14, lineHeight: 19 },
   rowLabel: { flex: 1, fontSize: 16 },
+  credit: { marginTop: spacing.sm },
   rowAction: { fontSize: 15, fontWeight: '600', marginTop: spacing.xs },
   subRow: {
     marginTop: spacing.md,
