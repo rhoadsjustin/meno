@@ -23,6 +23,7 @@ import { db, tables } from '@/services/db';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { dueReviewItems, recordReviewResult, type ReviewItem } from '@/services/db/repos/reviews';
 import { secureToday } from '@/services/db/repos/streaks';
+import { rescheduleAll } from '@/services/notifications';
 import type { GradeResult } from '@/services/grading';
 import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
@@ -123,7 +124,7 @@ export function ReviewSession() {
         source: 'review',
       });
       await recordReviewResult(entry.item, outcome.accuracy);
-      await secureToday();
+      if ((await secureToday()).daySecured) void rescheduleAll();
       const { refreshBadges } = await import('@/services/db/repos/badges');
       void refreshBadges();
       setAccuracies((a) => [...a, outcome.accuracy]);

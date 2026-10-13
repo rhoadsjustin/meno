@@ -43,7 +43,7 @@ type Status = 'ready' | 'notYet' | 'openSettings' | 'unavailable' | 'manual';
 type Statuses = Record<SectionKey, Status>;
 
 const SECTIONS: { key: SectionKey; title: string }[] = [
-  { key: 'quizzes', title: 'Surprise quizzes' },
+  { key: 'quizzes', title: 'Reminders and quizzes' },
   { key: 'homeWidget', title: 'Home Screen widget' },
   { key: 'lockWidget', title: 'Lock Screen widget' },
   { key: 'speak', title: 'Speaking your verse' },
@@ -114,8 +114,8 @@ const FAQ: { q: string; a: string }[] = [
     a: 'That’s on purpose once you know a verse well — try reciting it from memory! To show more, touch and hold the widget, tap Edit Widget, and change “Show verse as.”',
   },
   {
-    q: 'I’m not getting any quizzes.',
-    a: 'Check that Surprise quizzes says Ready at the top of this page. Quizzes only come between 9am and 9pm, at most two a day, and a Focus mode like Sleep or Do Not Disturb holds them until it ends.',
+    q: 'I’m not getting any reminders or quizzes.',
+    a: 'Check that Reminders and quizzes says Ready at the top of this page. The daily reminder comes at the time you set in Settings → Reminders, and skips a day you’ve already practiced. Quizzes start once a verse is memorized, and only come between 9am and 9pm. A Focus mode like Sleep or Do Not Disturb holds both until it ends.',
   },
   {
     q: 'An app is shielded and I need it right now.',
@@ -249,12 +249,12 @@ export function HelpGuide({
       {shown.has('quizzes') && (
         <Section
           sectionKey="quizzes"
-          title="Surprise quizzes"
+          title="Reminders and quizzes"
           status={statuses.quizzes}
           onSectionLayout={recordOffset}>
           <Text style={[styles.body, text]}>
-            Up to two short quizzes a day, only between 9am and 9pm. Each takes about 30 seconds and
-            keeps the verses you’ve learned from fading.
+            A daily reminder to practice, at a time you choose, and short surprise quizzes on verses
+            you’ve memorized (between 9am and 9pm). Never more than two notifications a day.
           </Text>
           {statuses.quizzes === 'openSettings' ? (
             <>
@@ -270,14 +270,14 @@ export function HelpGuide({
             </>
           ) : statuses.quizzes === 'ready' ? (
             <Text style={[styles.tip, faint]}>
-              You’re all set. You can turn quizzes off anytime in Settings → Review reminders.
+              You’re all set. You can turn quizzes off anytime in Settings → Reminders.
             </Text>
           ) : (
             <>
               <Text style={[styles.tip, faint]}>
                 Your iPhone will ask if Meno can send notifications — tap Allow.
               </Text>
-              <Action label="Turn on quizzes" onPress={() => void turnOnQuizzes()} />
+              <Action label="Turn on reminders" onPress={() => void turnOnQuizzes()} />
             </>
           )}
         </Section>

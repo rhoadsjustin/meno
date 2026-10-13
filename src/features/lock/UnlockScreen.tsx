@@ -13,6 +13,7 @@ import { formatRange, getPassage } from '@/services/bible';
 import { activeGoal, chunksForGoal, currentChunk, type Chunk } from '@/services/db/repos/goals';
 import { loadLockConfig, recordLockEvent } from '@/services/db/repos/lock';
 import { secureToday } from '@/services/db/repos/streaks';
+import { rescheduleAll } from '@/services/notifications';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { clearShields, registerUnlockMount, scheduleRelock } from '@/services/lock';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
@@ -98,7 +99,8 @@ export function UnlockScreen() {
         source: 'unlock',
       });
     }
-    await secureToday(); // recite-to-unlock counts toward the streak (04 §4)
+    // Recite-to-unlock counts toward the streak (04 §4).
+    if ((await secureToday()).daySecured) void rescheduleAll();
     const { refreshBadges } = await import('@/services/db/repos/badges');
     void refreshBadges();
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

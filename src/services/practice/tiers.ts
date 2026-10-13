@@ -33,6 +33,17 @@ export const TIERS: readonly TierDef[] = [
   { tier: 6, name: 'Speak', modes: ['speak'], passThreshold: 0.95 },
 ];
 
+/**
+ * Where a day's work on a fresh chunk naturally ends (docs/03 §5: the pace is
+ * one new chunk a day reaching Tier 3, which is also what unlocks the next
+ * chunk). The practice screen offers to stop here instead of running the
+ * whole ladder in one sitting.
+ */
+export const REST_TIER = 3;
+
+/** Rounds on the whole ladder for one chunk, Read through Speak. */
+export const LADDER_ROUNDS = TIERS.reduce((n, t) => n + t.modes.length, 0);
+
 /** XP base points per tier (docs/06 §3): xp = basePoints × accuracy. */
 export const TIER_BASE_POINTS = [5, 10, 15, 20, 30, 40, 50] as const;
 

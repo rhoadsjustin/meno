@@ -65,8 +65,8 @@ export default function OnboardingRoute() {
               Can we quiz you out of the blue?
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              That’s the secret sauce. Up to two surprise pop quizzes a day, only between 9am and
-              9pm — each takes about 30 seconds and keeps memorized verses from fading.
+              That’s the secret sauce. A daily nudge to practice, then surprise pop quizzes on the
+              verses you’ve memorized — never more than two a day, and each takes about 30 seconds.
             </Text>
             <Pressable
               accessibilityRole="button"

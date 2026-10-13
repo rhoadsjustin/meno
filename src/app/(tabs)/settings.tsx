@@ -1,16 +1,25 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
+import { TimeField } from '@/components/time-field';
 import { HelpGuide } from '@/features/help/HelpGuide';
 import { loadLockConfig, lockEventCounts, saveLockConfig } from '@/services/db/repos/lock';
 import { isLockAvailable, killSwitch } from '@/services/lock';
-import { notificationsEnabled, setNotificationsEnabled } from '@/services/notifications';
+import {
+  DEFAULT_REMINDER_TIME,
+  notificationsBlocked,
+  notificationsEnabled,
+  reminderTime,
+  setNotificationsEnabled,
+  setReminderTime,
+  type ReminderTime,
+} from '@/services/notifications';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
 /** Which row's detail the right pane shows on wide windows. */
@@ -25,6 +34,9 @@ export default function SettingsScreen() {
   const { isWide } = useContentLayout();
   const [detail, setDetail] = useState<Detail>('guide');
   const [notifsOn, setNotifsOn] = useState(false);
+  // On in Meno but declined in iPhone Settings: nothing would arrive.
+  const [notifsBlocked, setNotifsBlocked] = useState(false);
+  const [remindAt, setRemindAt] = useState<ReminderTime>(DEFAULT_REMINDER_TIME);
   const [lockEnabled, setLockEnabled] = useState(false);
   const [lockStats, setLockStats] = useState({ recitations: 0, overrides: 0 });
 
@@ -32,13 +44,17 @@ export default function SettingsScreen() {
     useCallback(() => {
       let cancelled = false;
       void (async () => {
-        const [notifs, lock, stats] = await Promise.all([
+        const [notifs, blocked, time, lock, stats] = await Promise.all([
           notificationsEnabled(),
+          notificationsBlocked(),
+          reminderTime(),
           loadLockConfig(),
           lockEventCounts(),
         ]);
         if (!cancelled) {
           setNotifsOn(notifs);
+          setNotifsBlocked(blocked);
+          setRemindAt(time);
           setLockEnabled(lock.enabled);
           setLockStats(stats);
         }
@@ -52,6 +68,14 @@ export default function SettingsScreen() {
   const toggleNotifications = useCallback(async (value: boolean) => {
     const applied = await setNotificationsEnabled(value);
     setNotifsOn(value && applied);
+    // Asked for, and iOS said no: point at iPhone Settings instead of
+    // leaving a switch that silently snaps back.
+    setNotifsBlocked(value && !applied);
+  }, []);
+
+  const changeReminderTime = useCallback(async (time: ReminderTime) => {
+    setRemindAt(time);
+    await setReminderTime(time);
   }, []);
 
   const disableLock = useCallback(async () => {
@@ -96,19 +120,46 @@ export default function SettingsScreen() {
             style={styles.rowText}>
             <Text
               style={[styles.rowTitle, { color: titleColor('reminders'), fontFamily: fonts?.ui }]}>
-              Review reminders
+              Reminders
             </Text>
             <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Up to two surprise pop quizzes a day, between 9am and 9pm.
+              A daily nudge to practice, plus surprise pop quizzes on verses you’ve memorized. Never
+              more than two a day.
             </Text>
           </Pressable>
           <Switch
             value={notifsOn}
             onValueChange={(v) => void toggleNotifications(v)}
             trackColor={{ true: colors.lapis }}
-            accessibilityLabel="Review reminders"
+            accessibilityLabel="Reminders"
           />
         </View>
+        {notifsOn && !notifsBlocked && (
+          <View style={[styles.row, styles.subRow, { borderTopColor: colors.separator }]}>
+            <Text style={[styles.rowLabel, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              Remind me at
+            </Text>
+            <TimeField
+              hour={remindAt.hour}
+              minute={remindAt.minute}
+              onChange={(time) => void changeReminderTime(time)}
+              accessibilityLabel="Daily reminder time"
+            />
+          </View>
+        )}
+        {notifsBlocked && (
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => void Linking.openSettings()}
+            style={[styles.subRow, { borderTopColor: colors.separator }]}>
+            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              Notifications are turned off for Meno on this iPhone, so reminders can’t arrive.
+            </Text>
+            <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              Open iPhone Settings
+            </Text>
+          </Pressable>
+        )}
       </Card>
 
       <Card style={rowCard('lock')}>
@@ -176,5 +227,12 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: spacing.xs },
   rowTitle: { fontSize: 17, fontWeight: '600' },
   rowSub: { fontSize: 14, lineHeight: 19 },
+  rowLabel: { flex: 1, fontSize: 16 },
+  rowAction: { fontSize: 15, fontWeight: '600', marginTop: spacing.xs },
+  subRow: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   killSwitch: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
 });

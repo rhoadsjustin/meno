@@ -111,3 +111,5 @@ Today → goal card → Practice session:
 ```
 
 Sessions are resumable (persisted queue position) and interruptible without penalty.
+
+**Progress and stopping points.** The practice screen shows one bar across the chunk's whole ladder — nine rounds, Read through Speak — not just the rounds of the tier in progress, with "pass 1 of 2" where an exercise repeats (`ladderProgress`). The first time a chunk reaches Tier 3 (`REST_TIER`, the day's pace in §5) the session offers to stop: "Done for today" leads to the summary, "Keep going" carries on up the ladder. The summary also closes a session that banked its first mastery day.

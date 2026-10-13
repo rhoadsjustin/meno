@@ -1,6 +1,7 @@
 /**
- * Practice session (docs/03 §8, 07 §6): minimal chrome, progress dots,
- * mode-specific rounds, word-level feedback, resumable at any point.
+ * Practice session (docs/03 §8, 07 §6): minimal chrome, one progress bar
+ * across the verse's whole ladder, mode-specific rounds, word-level feedback,
+ * a place to stop for the day, and a summary. Resumable at any point.
  */
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
@@ -36,19 +37,23 @@ import {
   loadActiveSession,
   saveActiveSession,
 } from '@/services/db/repos/sessionStore';
-import { secureToday } from '@/services/db/repos/streaks';
+import { currentStreakDisplay, secureToday } from '@/services/db/repos/streaks';
+import { rescheduleAll } from '@/services/notifications';
 import { tokenize, type GradeResult } from '@/services/grading';
 import {
   blanksDensity,
   currentMode,
   dropTier,
+  ladderProgress,
   nextTier,
   recordRound,
+  REST_TIER,
   startSession,
   tierDef,
   type SessionState,
 } from '@/services/practice';
 import { Dissolution } from '@/features/practice/Dissolution';
+import { LadderProgress } from '@/features/practice/LadderProgress';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { WordFeedback } from '@/features/practice/WordFeedback';
 import { ArrangeRound } from '@/features/practice/rounds/ArrangeRound';
@@ -74,8 +79,18 @@ type Phase =
       memorized: boolean;
       /** Cleared the top tier without sealing: do not serve it again. */
       sealsTomorrow: boolean;
+      /** Just reached REST_TIER: offer to stop for the day. */
+      restPoint: boolean;
       suggestDropTier: boolean;
       result?: GradeResult;
+    }
+  | {
+      kind: 'summary';
+      /** The chunk's highest cleared tier as the session ends. */
+      standing: number;
+      sealsTomorrow: boolean;
+      memorized: boolean;
+      streak: number;
     };
 
 export function PracticeScreen({ goalId }: { goalId: string }) {
@@ -93,6 +108,9 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   const [session, setSession] = useState<SessionState | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [roundStartedAt, setRoundStartedAt] = useState(0);
+  // Every round finished since the screen opened, across tiers — the
+  // session state itself only remembers the tier in progress.
+  const [log, setLog] = useState<{ accuracy: number | null; passed: boolean }[]>([]);
 
   const load = useCallback(async () => {
     const g = await getGoal(goalId);
@@ -158,6 +176,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       if (!session || !chunk) return;
       const outcome = recordRound(session, input);
       setSession(outcome.state);
+      setLog((prev) => [...prev, { accuracy: input.accuracy ?? null, passed: outcome.passed }]);
       await saveActiveSession(outcome.state);
 
       await recordAttempt({
@@ -168,7 +187,9 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         missedWords: input.missedWords ?? [],
         source: 'practice',
       });
-      await secureToday(); // any completed practice item counts (docs/06 §1)
+      // Any completed practice item counts (docs/06 §1); today's reminder
+      // is no longer needed once the day is secured.
+      if ((await secureToday()).daySecured) void rescheduleAll();
 
       let memorized = false;
       let sealsTomorrow = false;
@@ -207,6 +228,9 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         tierCleared: outcome.tierCleared,
         memorized,
         sealsTomorrow,
+        // Only the clear that first lifts the chunk to the rest tier: a
+        // session rebuilt at a lower tier passes through it again.
+        restPoint: outcome.tierCleared && session.tier === REST_TIER && chunk.tier < REST_TIER,
         suggestDropTier: outcome.suggestDropTier,
         result: input.result,
       });
@@ -214,10 +238,23 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     [session, chunk, text, roundStartedAt],
   );
 
+  /** Ends the session on its summary (docs/03 §8) rather than just closing. */
+  const finishSession = useCallback(async () => {
+    if (phase.kind !== 'feedback' || !session || !chunk) return;
+    const streak = await currentStreakDisplay();
+    setPhase({
+      kind: 'summary',
+      standing: phase.memorized ? 6 : Math.max(chunk.tier, phase.tierCleared ? session.tier : -1),
+      sealsTomorrow: phase.sealsTomorrow,
+      memorized: phase.memorized,
+      streak: streak.current,
+    });
+  }, [phase, session, chunk]);
+
   const continueSession = useCallback(async () => {
     if (phase.kind !== 'feedback') return;
     if (phase.sealsTomorrow) {
-      router.back();
+      await finishSession();
     } else if (phase.tierCleared) {
       // Reload: next tier for this chunk, or the next chunk.
       setPhase({ kind: 'loading' });
@@ -226,7 +263,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       setPhase({ kind: 'round' });
       setRoundStartedAt(Date.now());
     }
-  }, [phase, load]);
+  }, [phase, load, finishSession]);
 
   /** The "rebuild the foundation" escape (docs/03 §1) — session-local, so
    * the chunk keeps its highest cleared tier and nothing is lost. */
@@ -290,6 +327,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
 
       {phase.kind === 'round' && session && chunk && (
         <>
+          <LadderProgress progress={ladderProgress(session)} current />
           <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {reference} · {tierDef(session.tier).name}
           </Text>
@@ -306,6 +344,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
 
       {phase.kind === 'feedback' && session && (
         <>
+          <LadderProgress progress={ladderProgress(session)} current={false} />
           <Text
             accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
             style={[
@@ -340,6 +379,13 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
               back tomorrow and this one is sealed.
             </Text>
           )}
+          {phase.restPoint && (
+            <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              This is a good place to stop for today. {tierDef(REST_TIER + 1).name},{' '}
+              {tierDef(REST_TIER + 2).name} and {tierDef(REST_TIER + 3).name} will be waiting — or
+              keep going if you have the time.
+            </Text>
+          )}
           {phase.suggestDropTier && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               Want to rebuild the foundation? Drop back a tier — no penalty, and{' '}
@@ -348,18 +394,35 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
           )}
           <Pressable
             accessibilityRole="button"
-            onPress={() => void continueSession()}
+            onPress={() => void (phase.restPoint ? finishSession() : continueSession())}
             style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
             <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
               {phase.sealsTomorrow
-                ? 'Done'
-                : phase.tierCleared
+                ? 'Finish'
+                : phase.restPoint
+                  ? 'Done for today'
+                  : phase.tierCleared
                   ? 'Continue'
                   : phase.passed
                     ? 'Next round'
                     : 'Try again'}
             </Text>
           </Pressable>
+          {phase.restPoint && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint={`Carries on to ${tierDef(REST_TIER + 1).name}`}
+              onPress={() => void continueSession()}
+              style={styles.secondaryButton}>
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: colors.lapis, fontFamily: fonts?.ui },
+                ]}>
+                Keep going
+              </Text>
+            </Pressable>
+          )}
           {phase.suggestDropTier && (
             <Pressable
               accessibilityRole="button"
@@ -377,32 +440,25 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
           )}
         </>
       )}
+
+      {phase.kind === 'summary' && (
+        <SessionSummary
+          reference={reference}
+          log={log}
+          standing={phase.standing}
+          sealsTomorrow={phase.sealsTomorrow}
+          memorized={phase.memorized}
+          streak={phase.streak}
+        />
+      )}
     </ScrollView>
   );
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
-      {/* Native bar: Close at the top of the vertical axis, progress dots in
-          the title slot (docs/07 §6 chrome, placed where the system puts it). */}
-      <ScreenHeader
-        backHidden
-        titleView={
-          session ? (
-            <View
-              style={styles.dots}
-              accessibilityLabel={`Round ${Math.min(session.roundIndex + 1, session.rounds.length)} of ${session.rounds.length}`}>
-              {session.rounds.map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.dot,
-                    { backgroundColor: i < session.roundIndex ? colors.lapis : colors.separator },
-                  ]}
-                />
-              ))}
-            </View>
-          ) : undefined
-        }>
+      {/* Native bar: Close at the top of the vertical axis. Progress lives in
+          the content, where a bar spanning the whole ladder has room. */}
+      <ScreenHeader backHidden title="Practice">
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon="xmark"
@@ -429,9 +485,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
                   {goal.title} · {getTranslation(goal.translationId).abbrev}
                 </Text>
                 <Text style={[styles.railSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  {chunkProgressLabel(chunk, totalChunks)} · Round{' '}
-                  {Math.min(session.roundIndex + 1, session.rounds.length)} of{' '}
-                  {session.rounds.length}
+                  {chunkProgressLabel(chunk, totalChunks)}
                 </Text>
                 <View style={styles.railLadder}>
                   <TierLadder highestCleared={chunk.tier} current={session.tier} />
@@ -506,6 +560,78 @@ function RoundBody({
   }
 }
 
+/** Session summary (docs/03 §8): what was done, where the verse stands on
+ * the ladder, the streak, and what comes next. */
+function SessionSummary({
+  reference,
+  log,
+  standing,
+  sealsTomorrow,
+  memorized,
+  streak,
+}: {
+  reference: string;
+  log: { accuracy: number | null; passed: boolean }[];
+  standing: number;
+  sealsTomorrow: boolean;
+  memorized: boolean;
+  streak: number;
+}) {
+  const colors = useThemeColors();
+  const steps = log.filter((r) => r.passed).length;
+  const graded = log.filter((r) => r.accuracy !== null);
+  const accuracy =
+    graded.length > 0
+      ? Math.round((graded.reduce((n, r) => n + (r.accuracy ?? 0), 0) / graded.length) * 100)
+      : null;
+  const stats: { label: string; value: string }[] = [
+    { label: steps === 1 ? 'Step done' : 'Steps done', value: String(steps) },
+    ...(accuracy === null ? [] : [{ label: 'Accuracy', value: `${accuracy}%` }]),
+    ...(streak > 0 ? [{ label: 'Day streak', value: String(streak) }] : []),
+  ];
+
+  return (
+    <>
+      <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        {memorized ? `${reference} is memorized` : 'Done for today'}
+      </Text>
+      <View style={styles.summaryStats}>
+        {stats.map((stat) => (
+          <View key={stat.label} accessible accessibilityLabel={`${stat.value} ${stat.label}`}>
+            <Text style={[styles.statValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+              {stat.value}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              {stat.label}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Card>
+        <Text style={[styles.railSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          {reference}
+        </Text>
+        <View style={styles.summaryLadder}>
+          <TierLadder highestCleared={standing} />
+        </View>
+      </Card>
+      {!memorized && (
+        <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          {sealsTomorrow
+            ? 'Next: one clean recitation tomorrow seals it as memorized.'
+            : `Next time you pick up at ${tierDef(nextTier(standing)).name}.`}
+        </Text>
+      )}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.back()}
+        style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
+        <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
+      </Pressable>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
@@ -516,8 +642,10 @@ const styles = StyleSheet.create({
   railTitle: { fontSize: 22, lineHeight: 28 },
   railSub: { fontSize: 13, marginTop: spacing.xs },
   railLadder: { marginTop: spacing.lg },
-  dots: { flexDirection: 'row', gap: spacing.sm },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  summaryStats: { flexDirection: 'row', gap: spacing.xxl, marginVertical: spacing.lg },
+  statValue: { fontSize: 28 },
+  statLabel: { fontSize: 13 },
+  summaryLadder: { marginTop: spacing.sm },
   content: {
     padding: layout.screenMargin,
     paddingBottom: spacing.xxxl,
