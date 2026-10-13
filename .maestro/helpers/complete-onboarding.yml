@@ -10,9 +10,16 @@ appId: com.rhoadsdev.meno
 - tapOn: "Continue"
 # Notifications step — decline so no OS permission dialog appears.
 - tapOn: "Later"
-# Widget step.
+# Widget step. Its captures push the button below the fold on short screens
+# (the iPhone Duo's cover panel), so scroll to it rather than assume it shows.
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
 - tapOn: "Continue"
 # Lock step — skip straight to Today.
+- scrollUntilVisible:
+    element: "Explore first"
+    direction: DOWN
 - tapOn: "Explore first"
 - extendedWaitUntil:
     visible: "Nothing memorized yet"

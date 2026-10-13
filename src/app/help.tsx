@@ -14,7 +14,9 @@ import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 export default function HelpRoute() {
   const colors = useThemeColors();
-  const { insets } = useContentLayout();
+  // The side insets matter on iPhone Duo's cover panel, where the status bar
+  // is a strip down one side: without them Done sits underneath it.
+  const { insets, sides } = useContentLayout();
   const reduceMotion = useReducedMotion();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -28,7 +30,7 @@ export default function HelpRoute() {
   const faint = { color: colors.inkFaint, fontFamily: fonts?.ui };
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.surface }]}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       <View style={styles.topBar}>
         <Pressable accessibilityRole="button" hitSlop={12} onPress={() => router.back()}>
           <Text style={[styles.done, { color: colors.lapis, fontFamily: fonts?.ui }]}>Done</Text>
