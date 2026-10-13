@@ -227,47 +227,57 @@ export default function TodayScreen() {
     </Text>
   );
 
+  // First run, before the user has a passage: the quick-start cards and the
+  // way into the wizard. Kept apart from `hero` so a wide window can give the
+  // cards a pane of their own instead of leaving half the screen empty.
+  const isEmpty = loaded && !data;
+  const emptyIntro = isEmpty && (
+    <View style={styles.emptyIntro}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        Nothing memorized yet
+      </Text>
+      <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+        Start with a verse you may already half know. Swipe to choose one and try it now — it takes
+        a couple of minutes.
+      </Text>
+    </View>
+  );
+  const emptyDeck = isEmpty && starters && (
+    <StarterDeck
+      passages={starters}
+      startingId={startingId}
+      onStart={(passage) => void startStarter(passage)}
+    />
+  );
+  const emptyActions = isEmpty && (
+    <>
+      {startFailed && (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[
+            styles.emptyBody,
+            styles.emptyIntro,
+            { color: colors.error, fontFamily: fonts?.ui },
+          ]}>
+          That verse couldn’t be started. Try again, or choose your own passage.
+        </Text>
+      )}
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={() => router.push('/goal-wizard')}
+        style={styles.quietAction}>
+        <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+          Choose my own passage
+        </Text>
+      </Pressable>
+    </>
+  );
+
   const hero = (
     <>
-      {loaded && !data && (
-        <>
-          <View style={styles.emptyIntro}>
-            <Text
-              accessibilityRole="header"
-              style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Nothing memorized yet
-            </Text>
-            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Start with a verse you may already half know. Swipe to choose one and try it now —
-              it takes a couple of minutes.
-            </Text>
-          </View>
-          {starters && (
-            <StarterDeck
-              passages={starters}
-              startingId={startingId}
-              onStart={(passage) => void startStarter(passage)}
-            />
-          )}
-          {startFailed && (
-            <Text
-              accessibilityLiveRegion="polite"
-              style={[styles.emptyBody, styles.emptyIntro, { color: colors.error, fontFamily: fonts?.ui }]}>
-              That verse couldn’t be started. Try again, or choose your own passage.
-            </Text>
-          )}
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => router.push('/goal-wizard')}
-            style={styles.quietAction}>
-            <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Choose my own passage
-            </Text>
-          </Pressable>
-        </>
-      )}
-
       {data && data.chunk && data.step && (
         <Card>
           {focusLabel}
@@ -546,16 +556,22 @@ export default function TodayScreen() {
       {isWide ? (
         <FoldAwareRow>
           <>
+            {emptyIntro}
+            {emptyActions}
             {hero}
             {links}
           </>
           <>
+            {emptyDeck}
             {ladder}
             {secondary}
           </>
         </FoldAwareRow>
       ) : (
         <>
+          {emptyIntro}
+          {emptyDeck}
+          {emptyActions}
           {hero}
           {secondary}
           {links}
