@@ -3,7 +3,7 @@
  * fully serializable so sessions survive an app kill (M2 acceptance:
  * killing the app mid-session resumes correctly).
  */
-import { meetsThreshold } from '@/services/grading';
+import { gradeBand, type RoundBand } from '@/services/grading';
 import {
   blanksDensity,
   LADDER_ROUNDS,
@@ -17,7 +17,11 @@ export type RoundResult = {
   mode: PracticeMode;
   /** 0–1 for graded modes; null for read/self-report rounds. */
   accuracy: number | null;
+  /** True for a pass or an almost: the round moved on. */
   passed: boolean;
+  /** Which band the round landed in; self-report rounds are only ever `pass`
+   * or `miss`. Absent on sessions persisted before the band existed. */
+  band?: RoundBand;
 };
 
 export type SessionState = {
@@ -38,7 +42,11 @@ export type SessionState = {
 
 export type RoundOutcome = {
   state: SessionState;
+  /** The round advanced — a pass or an almost. */
   passed: boolean;
+  /** `almost` advances like a pass but is not one: it never counts toward
+   * Memorized (docs/03 §1), so callers must not treat it as a clean clear. */
+  band: RoundBand;
   /** Set when the whole tier was just cleared. */
   tierCleared: boolean;
   /** True when two fails suggest rebuilding at a lower tier (never forced). */
@@ -91,12 +99,16 @@ export function recordRound(state: SessionState, result: RoundInput): RoundOutco
   const mode = currentMode(state);
   const def = tierDef(state.tier);
 
-  const passed =
+  const selfBand: RoundBand = (result.selfPass ?? true) ? 'pass' : 'miss';
+  const band =
     def.passThreshold === null
-      ? (result.selfPass ?? true)
-      : meetsThreshold(def.passThreshold, result.accuracy ?? 0, result.unitCount ?? 0);
+      ? selfBand
+      : gradeBand(def.passThreshold, result.accuracy ?? 0, result.unitCount ?? 0);
+  // An almost moves on up the ladder like a pass; what it does not do is
+  // count toward Memorized, which is decided from the attempts themselves.
+  const passed = band !== 'miss';
 
-  const entry: RoundResult = { mode, accuracy: result.accuracy ?? null, passed };
+  const entry: RoundResult = { mode, accuracy: result.accuracy ?? null, passed, band };
   const next: SessionState = {
     ...state,
     results: [...state.results, entry],
@@ -108,8 +120,59 @@ export function recordRound(state: SessionState, result: RoundInput): RoundOutco
   return {
     state: next,
     passed,
+    band,
     tierCleared: passed && next.roundIndex >= next.rounds.length,
     suggestDropTier: !passed && next.failCount >= 2 && next.tier > 0,
+  };
+}
+
+/** Where a chunk stands after a round at the top of the ladder. */
+export type TopTierStanding =
+  /** Sealed: the second mastery day is in. */
+  | 'memorized'
+  /** Today's mastery day is banked; only another day can seal it. */
+  | 'sealsTomorrow'
+  /** Speak was cleared on an almost and no clean pass is banked today. */
+  | 'needsCleanPass';
+
+/**
+ * What a cleared tier means for Memorized, or null below the top tier, where
+ * the next tier is simply served.
+ *
+ * Tier 6 has nowhere to advance to, so the screen has to end the session
+ * there rather than reload into the same Speak round — and what it may say
+ * depends on the band. A pass banks today by definition. An almost banks
+ * nothing, so the day only counts if a clean Type or Speak earlier today
+ * already banked it (`dayBanked`); otherwise a clean recitation is still
+ * owed and the screen must say so rather than promise tomorrow.
+ */
+export function topTierStanding(input: {
+  tier: number;
+  band: RoundBand;
+  memorized: boolean;
+  /** A clean Type/Speak attempt today already counts toward Memorized. */
+  dayBanked: boolean;
+}): TopTierStanding | null {
+  if (input.band === 'miss') return null;
+  if (input.memorized) return 'memorized';
+  if (nextTier(input.tier) !== input.tier) return null;
+  return input.band === 'pass' || input.dayBanked ? 'sealsTomorrow' : 'needsCleanPass';
+}
+
+/**
+ * A fresh run at the tier just attempted — "try again" after an almost at
+ * the top tier. Built here rather than by reloading so the retry is the same
+ * chunk and the same round whatever else has become practiceable.
+ */
+export function retryTier(state: SessionState, now: number): SessionState {
+  return {
+    ...state,
+    rounds: [...tierDef(state.tier).modes],
+    roundIndex: 0,
+    results: [],
+    failCount: 0,
+    attemptNo: state.attemptNo + 1,
+    startedAt: now,
   };
 }
 

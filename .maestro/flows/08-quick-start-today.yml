@@ -1,0 +1,20 @@
+# Quick start from Today's empty state: the first starter card's button
+# starts practicing John 3:16 immediately — no wizard. Asserts references
+# and actions only; the verse text's translation depends on the build.
+appId: com.rhoadsdev.meno
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+# The cards load a beat after the screen.
+- extendedWaitUntil:
+    visible: "Practice John 3:16"
+    timeout: 15000
+- tapOn: "Practice John 3:16"
+# Round header is "<reference> · <tier name>".
+- extendedWaitUntil:
+    visible: "John 3:16 · Read"
+    timeout: 20000
+- assertVisible: "Step 1 of 9"

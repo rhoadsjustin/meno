@@ -15,7 +15,7 @@ for follow-up questions.
 
 2. PURPOSE: Meno helps Christians (individuals, students, small groups, families; rated 4+) memorize Scripture and keep it. Rote memorization is tedious, verses are forgotten without review, and the phone is the distraction. Meno splits any passage into day-sized pieces, walks each up a ladder of practice modes while the text visibly dissolves as it is learned, brings memorized verses back for spaced-repetition review and pop quizzes (max 2/day), shows the current verse on widgets, and can optionally ask for a recitation before opening apps the user restricts, always with a one-tap override. Free, no ads, no account, no tracking; all progress stays on the device.
 
-3. SETUP: No credentials or sample files. Launch > onboarding (notifications optional) > Today > "Start a goal" > pick a passage and translation (WEB, KJV, ASV are built in and offline; ESV downloads once per passage) > Practice. Speak mode asks for mic/speech permission (processed on-device); a Type toggle is always available instead. Recite to Unlock (physical iPhone only): Settings > Recite to Unlock > Grant permission > Pick apps > choose "Every pickup" > Turn on > Done. Open that app: the shield offers "Override" (clears instantly) and "Recite to unlock" (a notification opens Meno; recite or type at 85%+ to clear). Settings > "Turn off and clear all shields now" disables everything; deleting the app removes all restrictions. Widgets: long-press the Home or Lock Screen and add Meno.
+3. SETUP: No credentials or sample files. Launch > onboarding (notifications optional) > Today > swipe to a starter verse and tap "Practice this verse", or "Choose my own passage" to pick a translation, book, chapter and verses (WEB, KJV, ASV are built in and offline; ESV downloads once per chapter) > the practice session opens. Speak mode asks for mic/speech permission (processed on-device); a Type toggle is always available instead. Recite to Unlock (physical iPhone only): Settings > Recite to Unlock > Grant permission > Pick apps > choose "Every pickup" > Turn on > Done. Open that app: the shield offers "Override" (clears instantly) and "Recite to unlock" (a notification opens Meno; recite or type at 85%+ to clear). Settings > "Turn off and clear all shields now" disables everything; deleting the app removes all restrictions. Widgets: long-press the Home or Lock Screen and add Meno.
 
 4. EXTERNAL SERVICES: Crossway ESV API (api.esv.org) for ESV text only; requests contain just the passage reference and our API key. Expo EAS Observe for anonymous crash and performance diagnostics (not linked to identity). Apple on-device frameworks: Speech with on-device recognition required (audio never leaves the phone), FamilyControls/ManagedSettings/DeviceActivity, WidgetKit, and local UserNotifications (no push service). No authentication service, payment processor, ad or analytics SDK, AI service, or backend of our own.
 
@@ -83,8 +83,9 @@ available immediately after install.
 
 1. Launch Meno. The onboarding tour takes four taps. Notification permission is
    optional (used only for review reminders and pop quizzes, scheduled locally).
-2. On the Today tab, tap "Start a goal". Choose a book, chapter, and verse
-   range, and a translation. World English Bible (default), King James Version,
+2. On the Today tab, swipe to a starter verse and tap "Practice this verse", or
+   tap "Choose my own passage" to pick a translation, book and chapter and tap
+   the first and last verse of a range. World English Bible (default), King James Version,
    and American Standard Version are built in and work offline. The English
    Standard Version downloads once per passage from Crossway's ESV API and then
    works offline. A short passage such as Philippians 4:4–7 is a good test.

@@ -26,9 +26,8 @@ import {
   applyTierCleared,
   awaitingSecondDay,
   chunkProgressLabel,
-  chunksForGoal,
-  currentChunk,
   getGoal,
+  practicePlan,
   type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
@@ -39,7 +38,7 @@ import {
 } from '@/services/db/repos/sessionStore';
 import { currentStreakDisplay, secureToday } from '@/services/db/repos/streaks';
 import { rescheduleAll } from '@/services/notifications';
-import { tokenize, type GradeResult } from '@/services/grading';
+import { slipCount, tokenize, type GradeResult, type RoundBand } from '@/services/grading';
 import {
   blanksDensity,
   currentMode,
@@ -48,9 +47,12 @@ import {
   nextTier,
   recordRound,
   REST_TIER,
+  retryTier,
   startSession,
   tierDef,
+  topTierStanding,
   type SessionState,
+  type TopTierStanding,
 } from '@/services/practice';
 import { Dissolution } from '@/features/practice/Dissolution';
 import { LadderProgress } from '@/features/practice/LadderProgress';
@@ -74,11 +76,19 @@ type Phase =
   | {
       kind: 'feedback';
       accuracy: number;
+      /** The round moved on: a pass or an almost. */
       passed: boolean;
+      band: RoundBand;
+      /** Slipped words in a graded text round; null where there is no
+       * word-level result (self-report, Blanks, Arrange). */
+      slips: number | null;
       tierCleared: boolean;
       memorized: boolean;
       /** Cleared the top tier without sealing: do not serve it again. */
       sealsTomorrow: boolean;
+      /** Cleared the top tier on an almost with nothing banked today: say
+       * so, and offer the clean recitation instead of promising tomorrow. */
+      needsCleanPass: boolean;
       /** Just reached REST_TIER: offer to stop for the day. */
       restPoint: boolean;
       suggestDropTier: boolean;
@@ -93,7 +103,15 @@ type Phase =
       streak: number;
     };
 
-export function PracticeScreen({ goalId }: { goalId: string }) {
+export function PracticeScreen({
+  goalId,
+  chunkId,
+}: {
+  goalId: string;
+  /** Practice this chunk rather than the goal's next one — Today's optional
+   * seal check opens the verse it names. */
+  chunkId?: string;
+}) {
   const colors = useThemeColors();
   // Extra-wide windows (iPhone Duo opened in its landscape pose, iPad): the
   // round keeps its reading column and a context rail sits beside it —
@@ -107,6 +125,8 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   const [text, setText] = useState('');
   const [session, setSession] = useState<SessionState | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
+  // The chunk topped the ladder on an earlier day; this round can seal it.
+  const [sealing, setSealing] = useState(false);
   const [roundStartedAt, setRoundStartedAt] = useState(0);
   // Every round finished since the screen opened, across tiers — the
   // session state itself only remembers the tier in progress.
@@ -115,9 +135,17 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
   const load = useCallback(async () => {
     const g = await getGoal(goalId);
     if (!g) throw new Error('Goal not found');
-    const c = await currentChunk(goalId);
-    setTotalChunks((await chunksForGoal(goalId)).length);
-    if (!c) {
+    const { plan, chunks } = await practicePlan(goalId);
+    setTotalChunks(chunks.length);
+    // A requested chunk is honoured only while it has something to do today.
+    // Once it is sealed (or resting) the reload after a cleared tier falls
+    // through to the goal's next step, like any other session.
+    const requested = chunkId
+      ? plan.steps.find((s) => s.chunkId === chunkId && s.kind !== 'rest')
+      : undefined;
+    const step = requested ?? plan.next;
+    const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
+    if (!step || !c) {
       setPhase({ kind: 'error', message: 'Every chunk in this goal is memorized. Well done.' });
       setGoal(g);
       return;
@@ -127,10 +155,11 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
     });
     const chunkText = verses.map((v) => v.text).join(' ');
+    setSealing(step.kind === 'seal');
 
     // Topped the ladder and already banked today: serving Speak again would
     // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
-    if (await awaitingSecondDay(c, tokenize(chunkText).length)) {
+    if (step.kind === 'rest') {
       setGoal(g);
       setChunk(c);
       setText(chunkText);
@@ -153,7 +182,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     setSession(s);
     setPhase({ kind: 'round' });
     setRoundStartedAt(Date.now());
-  }, [goalId]);
+  }, [goalId, chunkId]);
 
   useEffect(() => {
     void (async () => {
@@ -192,12 +221,27 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       if ((await secureToday()).daySecured) void rescheduleAll();
 
       let memorized = false;
-      let sealsTomorrow = false;
+      let standing: TopTierStanding | null = null;
       if (outcome.tierCleared) {
-        ({ memorized } = await applyTierCleared(chunk, session.tier, tokenize(text).length));
+        const unitCount = tokenize(text).length;
+        ({ memorized } = await applyTierCleared(chunk, session.tier, unitCount));
         // Tier 6 is the top of the ladder, so a clear that didn't seal the
-        // chunk would otherwise reload into the identical Speak round.
-        sealsTomorrow = !memorized && nextTier(session.tier) === session.tier;
+        // chunk would otherwise reload into the identical Speak round. A
+        // pass has banked today; an almost has not, so ask the attempts
+        // whether a clean pass earlier today did, rather than assume it.
+        const dayBanked =
+          outcome.band === 'almost' &&
+          !memorized &&
+          (await awaitingSecondDay(
+            { ...chunk, tier: Math.max(chunk.tier, session.tier), status: 'learning' },
+            unitCount,
+          ));
+        standing = topTierStanding({
+          tier: session.tier,
+          band: outcome.band,
+          memorized,
+          dayBanked,
+        });
         await clearActiveSession();
         const { refreshBadges } = await import('@/services/db/repos/badges');
         void refreshBadges();
@@ -206,13 +250,15 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       }
 
       // Haptics per 07 §8: pass = success, tier-up = medium, memorized =
-      // success ×2, miss = soft buzz.
+      // success ×2, almost = warning, miss = soft buzz.
       if (memorized) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setTimeout(
           () => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
           300,
         );
+      } else if (outcome.band === 'almost') {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       } else if (outcome.tierCleared) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } else if (outcome.passed) {
@@ -225,9 +271,12 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         kind: 'feedback',
         accuracy: input.accuracy ?? (input.selfPass ? 1 : 0),
         passed: outcome.passed,
+        band: outcome.band,
+        slips: input.result ? slipCount(input.result) : null,
         tierCleared: outcome.tierCleared,
         memorized,
-        sealsTomorrow,
+        sealsTomorrow: standing === 'sealsTomorrow',
+        needsCleanPass: standing === 'needsCleanPass',
         // Only the clear that first lifts the chunk to the rest tier: a
         // session rebuilt at a lower tier passes through it again.
         restPoint: outcome.tierCleared && session.tier === REST_TIER && chunk.tier < REST_TIER,
@@ -255,6 +304,16 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
     if (phase.kind !== 'feedback') return;
     if (phase.sealsTomorrow) {
       await finishSession();
+    } else if (phase.needsCleanPass) {
+      // Speak again, by choice: nothing is banked, so a reload would serve
+      // this same round anyway — but silently, and only if this chunk is
+      // still the one the goal hands back.
+      if (!session) return;
+      const next = retryTier(session, Date.now());
+      setSession(next);
+      await saveActiveSession(next);
+      setPhase({ kind: 'round' });
+      setRoundStartedAt(Date.now());
     } else if (phase.tierCleared) {
       // Reload: next tier for this chunk, or the next chunk.
       setPhase({ kind: 'loading' });
@@ -263,7 +322,7 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
       setPhase({ kind: 'round' });
       setRoundStartedAt(Date.now());
     }
-  }, [phase, load, finishSession]);
+  }, [phase, session, load, finishSession]);
 
   /** The "rebuild the foundation" escape (docs/03 §1) — session-local, so
    * the chunk keeps its highest cleared tier and nothing is lost. */
@@ -286,6 +345,22 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
         end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
       })
     : '';
+
+  // Feedback for the almost band (docs/03 §3), and for a pass that leaned on
+  // the error budget — the score alone would not say a slip was let through.
+  const almost = phase.kind === 'feedback' && phase.band === 'almost';
+  // Type and Speak are the tiers that count toward Memorized (docs/03 §1);
+  // an almost at Type moves on to Speak without banking the day.
+  const almostAtType =
+    almost && !!session && phase.tierCleared && session.tier === 5 && !phase.memorized;
+  const forgiven =
+    phase.kind === 'feedback' && phase.band === 'pass' && phase.accuracy < 1
+      ? phase.slips === null
+        ? 'a slip forgiven'
+        : phase.slips === 1
+          ? 'one slip forgiven'
+          : `${phase.slips} slips forgiven`
+      : null;
 
   // The round itself; on extra-wide windows it shares the row with the rail.
   const round = (
@@ -334,6 +409,13 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
           <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {reference} · {tierDef(session.tier).name}
           </Text>
+          {/* Type seals as well as Speak (03 §1), so a session rebuilt one
+              tier down still says so; lower than that it cannot. */}
+          {sealing && session.tier >= 5 && (
+            <Text style={[styles.sealNote, { color: colors.gold, fontFamily: fonts?.ui }]}>
+              Sealing {reference} · one clean pass makes it memorized
+            </Text>
+          )}
           <RoundBody
             key={`${session.roundIndex}-${session.attemptNo}`}
             session={session}
@@ -353,33 +435,64 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
             style={[
               styles.accuracy,
               {
-                color: phase.tierCleared
-                  ? colors.gold
-                  : phase.passed
-                    ? colors.success
-                    : colors.error,
+                // Amber, not error red and not the clean-clear gold: an
+                // almost moved on, but it was not a pass.
+                color: almost
+                  ? colors.amber
+                  : phase.tierCleared
+                    ? colors.gold
+                    : phase.passed
+                      ? colors.success
+                      : colors.error,
                 fontFamily: fonts?.scripture,
               },
             ]}>
             {Math.round(phase.accuracy * 100)}%
           </Text>
-          {phase.tierCleared && (
+          {/* The dissolve marks a clean clear; an almost shows its slips. */}
+          {phase.tierCleared && !almost && (
             <Dissolution text={text} reference={reference} memorized={phase.memorized} />
           )}
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {phase.memorized
               ? 'Memorized'
-              : phase.tierCleared
-                ? `${tierDef(session.tier).name} cleared`
-                : phase.passed
-                  ? 'Round passed'
-                  : 'Not quite — the slipped words are marked below'}
+              : almost
+                ? phase.needsCleanPass
+                  ? 'Almost — not a clean pass yet'
+                  : phase.result
+                    ? 'Almost — the slipped words are marked below'
+                    : 'Almost — close enough to move on'
+                : phase.tierCleared
+                  ? `${tierDef(session.tier).name} cleared${forgiven ? `, ${forgiven}` : ''}`
+                  : phase.passed
+                    ? forgiven
+                      ? `Passed, ${forgiven}`
+                      : 'Round passed'
+                    : 'Not quite — the slipped words are marked below'}
           </Text>
-          {phase.result && !phase.tierCleared && <WordFeedback result={phase.result} />}
+          {phase.result && (almost || !phase.tierCleared) && (
+            <WordFeedback result={phase.result} tone={almost ? 'almost' : 'error'} />
+          )}
           {phase.sealsTomorrow && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              That is today’s pass banked. Memorized takes a clean pass on two separate days — come
-              back tomorrow and this one is sealed.
+              {almost
+                ? 'Your clean pass from earlier today is still banked.'
+                : 'That is today’s pass banked.'}{' '}
+              Memorized takes a clean pass on two separate days — come back tomorrow and this one is
+              sealed.
+            </Text>
+          )}
+          {phase.needsCleanPass && (
+            <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              That was close, but it does not count toward Memorized: sealing {reference} takes a
+              clean recitation on two separate days, and today’s is not banked yet. Try it again
+              now, or stop here and come back to it.
+            </Text>
+          )}
+          {almostAtType && (
+            <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              Close enough to move on to {tierDef(nextTier(session.tier)).name}. It does not count
+              toward Memorized, though — that takes a clean pass on two separate days.
             </Text>
           )}
           {phase.restPoint && (
@@ -402,7 +515,9 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
             <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
               {phase.sealsTomorrow
                 ? 'Finish'
-                : phase.restPoint
+                : phase.needsCleanPass
+                  ? 'Try again'
+                  : phase.restPoint
                   ? 'Done for today'
                   : phase.tierCleared
                   ? 'Continue'
@@ -423,6 +538,21 @@ export function PracticeScreen({ goalId }: { goalId: string }) {
                   { color: colors.lapis, fontFamily: fonts?.ui },
                 ]}>
                 Keep going
+              </Text>
+            </Pressable>
+          )}
+          {phase.needsCleanPass && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint="Ends the session; Speak will be waiting next time"
+              onPress={() => void finishSession()}
+              style={styles.secondaryButton}>
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: colors.lapis, fontFamily: fonts?.ui },
+                ]}>
+                Stop for today
               </Text>
             </Pressable>
           )}
@@ -670,6 +800,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   reference: { fontSize: 14, marginBottom: spacing.lg },
+  // Sits under the reference line, inside the gap it leaves above the round.
+  sealNote: { fontSize: 15, fontWeight: '600', marginTop: -spacing.md, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
   suggestion: { fontSize: 15, lineHeight: 20, marginTop: spacing.md },

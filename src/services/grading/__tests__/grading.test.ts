@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  almostBudget,
+  almostThresholdFor,
   errorBudget,
+  gradeBand,
+  slipCount,
   gradeSpoken,
   gradeTyped,
   meetsThreshold,
@@ -127,5 +131,122 @@ describe('errorBudget / meetsThreshold', () => {
 
   it('reports the reference length it graded against', () => {
     expect(gradeTyped('For God so loved the world', 'For God so loved the world').unitCount).toBe(6);
+  });
+});
+
+describe('gradeBand (pass / almost / miss)', () => {
+  // Phil 4:13 (WEB), 10 words.
+  const phil = 'I can do all things through Christ, who strengthens me.';
+  // A 30-word chunk, built so slips are easy to count.
+  const thirty = Array.from({ length: 30 }, (_, i) => `word${String.fromCharCode(97 + i)}x`);
+  const drop = (words: string[], n: number) => words.slice(n).join(' ');
+
+  it('never lets an almost fall below 75%, however short the chunk', () => {
+    // Five words: twice the one-word budget would be two wrong (60%).
+    expect(almostBudget(0.95, 5)).toBeCloseTo(1.25);
+    expect(gradeBand(0.95, 3 / 5, 5)).toBe('miss');
+    expect(gradeBand(0.9, 3 / 5, 5)).toBe('miss'); // five blanks, three right
+    for (let units = 5; units <= 60; units++) {
+      for (const threshold of [0.9, 0.95]) {
+        expect(almostThresholdFor(threshold, units)).toBeGreaterThanOrEqual(0.75 - 1e-9);
+        // ...and the band never sits inside the pass budget.
+        expect(almostBudget(threshold, units)).toBeGreaterThanOrEqual(
+          errorBudget(threshold, units) - 1e-9,
+        );
+      }
+    }
+  });
+
+  it('is twice the pass budget once the chunk is long enough', () => {
+    for (const units of [8, 10, 20, 30, 60]) {
+      expect(almostBudget(0.95, units)).toBeCloseTo(2 * errorBudget(0.95, units));
+    }
+    expect(almostBudget(0.95, 10)).toBeCloseTo(2);
+    expect(almostBudget(0.95, 30)).toBeCloseTo(3);
+    expect(almostThresholdFor(0.95, 10)).toBeCloseTo(0.8);
+    expect(almostThresholdFor(0.95, 30)).toBeCloseTo(0.9);
+  });
+
+  it('bands a 10-word verse at the Type tier', () => {
+    const band = (said: string) => {
+      const g = gradeTyped(phil, said);
+      return gradeBand(0.95, g.accuracy, g.unitCount);
+    };
+    expect(band(phil)).toBe('pass');
+    expect(band('I can do all things through Christ, who strengthens us.')).toBe('pass'); // 1
+    expect(band('I can do all things through Christ who strengthens')).toBe('pass'); // 1 missing
+    expect(band('I can do all things through Jesus, who strengthens us.')).toBe('almost'); // 2
+    expect(band('I can do things through Christ, who strengthens')).toBe('almost'); // 2 missing
+    expect(band('I can do things through Jesus, who strengthens us.')).toBe('miss'); // 3
+    // One wrong word and one typo is 1.5 weighted errors: past the pass, inside the band.
+    expect(band('I can do all thigns through Christ, who strengthens us.')).toBe('almost');
+  });
+
+  it('bands a 30-word chunk at the Type tier', () => {
+    const band = (missing: number) => {
+      const g = gradeTyped(thirty.join(' '), drop(thirty, missing));
+      return gradeBand(0.95, g.accuracy, g.unitCount);
+    };
+    expect(band(0)).toBe('pass');
+    expect(band(1)).toBe('pass'); // budget 1.5
+    expect(band(2)).toBe('almost');
+    expect(band(3)).toBe('almost'); // 2 × 1.5
+    expect(band(4)).toBe('miss');
+  });
+
+  it('pass is exactly meetsThreshold, at every length and score', () => {
+    for (const units of [1, 2, 3, 4, 5, 10, 19, 20, 30, 60]) {
+      for (let errors = 0; errors <= units; errors += 0.5) {
+        const accuracy = 1 - errors / units;
+        for (const threshold of [0.9, 0.95]) {
+          expect(gradeBand(threshold, accuracy, units) === 'pass').toBe(
+            meetsThreshold(threshold, accuracy, units)
+          );
+        }
+      }
+    }
+  });
+
+  it('an almost never satisfies the strict bar the Memorized rule uses', () => {
+    const g = gradeTyped(phil, 'I can do all things through Jesus, who strengthens us.');
+    expect(gradeBand(0.95, g.accuracy, g.unitCount)).toBe('almost');
+    expect(meetsThreshold(0.95, g.accuracy, g.unitCount)).toBe(false);
+  });
+
+  it('has no almost band under five units: "Jesus wept." must be exact', () => {
+    const near = gradeSpoken('Jesus wept.', 'Jesus swept');
+    expect(gradeBand(0.95, near.accuracy, near.unitCount)).toBe('miss');
+    expect(gradeBand(0.95, gradeTyped('Jesus wept.', 'Jesus').accuracy, 2)).toBe('miss');
+    expect(gradeBand(0.95, gradeTyped('Jesus wept.', 'Jesus wept').accuracy, 2)).toBe('pass');
+    for (const units of [1, 2, 3, 4]) {
+      expect(almostBudget(0.95, units)).toBeCloseTo(errorBudget(0.95, units));
+      expect(almostThresholdFor(0.95, units)).toBeCloseTo(thresholdFor(0.95, units));
+      // One whole wrong word is a miss at these lengths, as it was before.
+      expect(gradeBand(0.95, 1 - 1 / units, units)).toBe('miss');
+    }
+  });
+
+  it('has no band without a length: the strict rule, never a free almost', () => {
+    expect(gradeBand(0.95, 0.94, 0)).toBe('miss');
+    expect(gradeBand(0.95, 0.95, 0)).toBe('pass');
+  });
+
+  it('applies to blanks and tiles as well as words', () => {
+    // 8 blanks at the 90% tiers: 1 miss passes, 2 is an almost, 3 a miss.
+    expect(gradeBand(0.9, 7 / 8, 8)).toBe('pass');
+    expect(gradeBand(0.9, 6 / 8, 8)).toBe('almost');
+    expect(gradeBand(0.9, 5 / 8, 8)).toBe('miss');
+  });
+
+  it('never bands a wild answer as almost', () => {
+    for (const units of [5, 10, 30, 60]) expect(gradeBand(0.95, 0.5, units)).toBe('miss');
+  });
+});
+
+describe('slipCount', () => {
+  it('counts wrong, missed, typo and extra words once each', () => {
+    expect(slipCount(gradeTyped(verse, verse))).toBe(0);
+    expect(slipCount(gradeTyped('receive the word', 'recieve the word'))).toBe(1);
+    expect(slipCount(gradeTyped('For God so loved the world', 'For God loved the whole world'))).toBe(2);
   });
 });

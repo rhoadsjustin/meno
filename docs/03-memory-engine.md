@@ -18,7 +18,9 @@ Each **chunk** (2–4 verses, see §5) climbs seven tiers. `chunks.tier` stores 
 
 - **Memorized** = pass Tier 5 **or** 6 at ≥95% on two separate days (`attempts` provides the audit trail). Both is encouraged; either suffices (accessibility: typing-only and speaking-only paths are both complete).
 - **Thresholds scale to chunk length.** A flat ≥95% means a literally word-perfect answer for any chunk under 20 words — most single-verse goals — so one slip repeats the round forever. Every tier therefore tolerates at least one whole slipped word, capped so nothing passes below 80% (`services/grading` §3). The displayed accuracy is always the honest score; only the pass bar moves.
+- **Almost is a third outcome, not a softer pass.** A graded round that lands just outside the pass bar — within twice its error budget (§3) — is an *almost*: it moves on up the ladder exactly as a pass does, and is shown as such rather than as a miss. It is never a pass for Memorized, reviews or SM-2, which all keep the strict bar. Read and First Letters are self-reported and stay pass/miss.
 - **Tier 6 is the top of the ladder.** Clearing Speak when the chunk has only banked one mastery day ends the session with "one day from sealed" — it is never re-served the same day, because the chunk stays `learning` until Memorized and would otherwise loop.
+- **An almost at the top banks nothing.** Type on an almost moves on to Speak and says it did not count toward Memorized. Speak on an almost has nowhere to move on to, so the session stops and says so (`topTierStanding` → `needsCleanPass`): a clean recitation is what seals the verse, with "Try again" (the same Speak round, by choice) or "Stop for today". It only reads "one day from sealed" if a clean Type or Speak earlier the same day already banked it.
 - Users may practice any unlocked tier anytime; progression just requires thresholds in order.
 - Failing a tier twice in a session suggests dropping one tier ("Let's rebuild the foundation") — suggestion, never forced. The suggestion carries a **working control**: dropping is session-local, so `chunks.tier` is untouched and the harder tier is waiting again once the lower one clears.
 - Blank selection: prefer content words (nouns/verbs/adjectives via a small stopword list) at 25%; random beyond stopwords at 50/75%. Deterministic per (chunkId, density, attemptNo) seed so retries vary but tests are reproducible.
@@ -43,7 +45,11 @@ Verse-number markers are never part of graded text.
 - Word-level leniency: a substituted word with character-level similarity ≥0.8 (Damerau-Levenshtein ratio) counts as a **typo**, weighted 0.5 instead of 1.0 error. ("recieve" ≈ receive.)
 - `accuracy = 1 − (weightedErrors / referenceWordCount)`, floored at 0. This is the honest score: it is what the user sees, what `attempts` stores, and what SM-2 consumes.
 - Pass/fail is a separate decision — `errorBudget(threshold, unitCount)`: the proportional budget `(1 − threshold) × length`, raised to at least one whole word so short chunks can't demand perfection, and capped at 20% of the passage so a two-word verse still has to be exact. `unitCount` is words for type/speak, blanks for a blanks round, tiles for arrange.
-- **Arrange scores like the text graders**: `1 − weightedErrors / tileCount`, where two tiles displaced by a single adjacent swap cost 0.5 each rather than 1 each. Tapping neighbouring tiles out of order is one slip but leaves two tiles wrong; at full weight no tile count in the 6–12 range could absorb it, so every swap failed the tier. Larger derangements (a tile dragged well out of place, two separate swaps) still cost full weight and still fail.
+- **Three bands** — `gradeBand(threshold, accuracy, unitCount)` returns `pass | almost | miss`. `pass` is exactly `meetsThreshold` (within `errorBudget`). `almost` is within `almostBudget` = 2 × `errorBudget`, held to a floor of 75% accuracy (`MIN_ALMOST_ACCURACY`) so a short chunk cannot move on with two of five words wrong. Anything past that is a `miss`. At the 95% tiers a 10-word verse passes with up to 1 weighted error (≥90%) and is an almost up to 2 (≥80%); a 30-word chunk passes up to 1.5 (≥95%) and is an almost up to 3 (≥90%).
+  - The band is empty where the 20% cap, not the one-word floor, set the pass budget — chunks under five units. Doubling there would let "Jesus swept" through, so those stay pass or miss.
+  - With no `unitCount` there is no band either: the bare threshold, pass or miss.
+  - `meetsThreshold` is untouched and is the only test the Memorized rule (`masteryDays`), review sessions, stitch sessions, recite-to-unlock and SM-2 use. An almost is stored in `attempts` as its honest accuracy, which fails that test, so it cannot bank a mastery day.
+- **Arrange scores like the text graders**: `1 − weightedErrors / tileCount`, where two tiles displaced by a single adjacent swap cost 0.5 each rather than 1 each. Tapping neighbouring tiles out of order is one slip but leaves two tiles wrong; at full weight no tile count in the 6–12 range could absorb it, so every swap failed the tier. Larger derangements (a tile dragged well out of place, two separate swaps) still cost full weight and are never a pass; two separate swaps land in the almost band.
 - Output structure feeds the feedback UI: each reference word tagged `correct | typo | wrong | missed`, plus inserted extras.
 - **Reveal = miss**: tap-and-hold on a blank/next-word hint reveals it but tags it `missed`.
 
@@ -65,7 +71,16 @@ Verse-number markers are never part of graded text.
 - Prefer breaking at sentence-final punctuation and paragraph markers when the translation data has them.
 - Deterministic: same passage + translation → same chunks (stable ids across reinstalls).
 
-**Practice order:** the next chunk practiced is the lowest-order unfinished one that still has something to do today. A chunk that topped the ladder and banked its first mastery day stays `learning` until a second day seals it, so it is skipped in favour of the next unlocked chunk rather than parking the whole goal. When every unfinished chunk is waiting on tomorrow, the lowest-order one is still what the Today card and recite-to-unlock show.
+**Practice order** (`planPractice` in `services/practice/plan`, pure; `practicePlan` in the goals repo feeds it). Each unfinished chunk has one step today:
+
+- **start** — untouched; the ladder from Read.
+- **continue** — part-way up; picks up at the next tier.
+- **seal** — topped the ladder on an earlier day; one clean Type/Speak pass makes it Memorized.
+- **rest** — topped the ladder today; nothing to do until a second day can seal it.
+
+The main Practice button takes, in order: (1) a seal whose last mastery day is more than one day old (`SEAL_GRACE_DAYS`); (2) new work — the lowest-order start or continue; (3) any other seal; (4) the lowest-order resting chunk, shown as "seals tomorrow" with no button. When new work is first and a seal is waiting from yesterday, Today offers the seal beside it as an optional check ("Still have John 3:16? One recitation seals it") that opens practice on that chunk (`/practice/[goalId]?chunk=<chunkId>`). So on day two the new verse comes first and yesterday's is optional; left alone, the seal takes the main button on day three, and it also takes it as soon as the day's new work runs out — tapping only the main button still seals every verse. A single-chunk goal has no new work to put ahead, so its seal is simply next and is labelled as a seal.
+
+Today's button and sub-line name the step and its reference (`describeStep`): "Start John 3:17" over "New verse · begins with Read", "Continue John 3:16" over "Next step · Arrange", "Seal John 3:16" over "One recitation makes it memorized". The chunk the main button opens is the goal's **current verse** (`currentChunk`), which is also what the widgets and recite-to-unlock show (05 §1).
 
 **Sequential unlock with overlap stitching:** chunk N+1 unlocks when chunk N reaches Tier 3. Every 5 chunks (and at each chapter completion), a **Stitch session** runs: recite from chunk 1 (or chapter start) through the current chunk at Type/Speak tier, graded as one long text. A goal is Memorized when all chunks are Memorized **and** a full-passage stitch passes ≥90%.
 
@@ -113,3 +128,5 @@ Today → goal card → Practice session:
 Sessions are resumable (persisted queue position) and interruptible without penalty.
 
 **Progress and stopping points.** The practice screen shows one bar across the chunk's whole ladder — nine rounds, Read through Speak — not just the rounds of the tier in progress, with "pass 1 of 2" where an exercise repeats (`ladderProgress`). The first time a chunk reaches Tier 3 (`REST_TIER`, the day's pace in §5) the session offers to stop: "Done for today" leads to the summary, "Keep going" carries on up the ladder. The summary also closes a session that banked its first mastery day.
+
+**Feedback by band.** A pass that used the error budget says so ("Type cleared, one slip forgiven"). An almost shows its score and slipped words in amber rather than error red, under its own "Almost" heading, with a warning haptic, and moves on; the tier-up dissolve is kept for a clean clear. A miss is unchanged: error red, "Not quite", the same round again.

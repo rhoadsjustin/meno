@@ -16,9 +16,16 @@ export {
   MIN_PASS_ACCURACY,
   thresholdFor,
   meetsThreshold,
+  ALMOST_BUDGET_FACTOR,
+  MIN_ALMOST_ACCURACY,
+  almostBudget,
+  almostThresholdFor,
+  gradeBand,
+  slipCount,
   TYPO_SIMILARITY,
   type GradeResult,
   type GradedWord,
+  type RoundBand,
   type WordTag,
 } from '@/services/grading/diff';
 export { metaphone } from '@/services/grading/metaphone';

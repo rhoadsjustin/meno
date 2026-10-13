@@ -28,6 +28,8 @@ The overall feel: a quiet, serious reading instrument that happens to be delight
 | `error` | #B3402E | #E06A56 | Wrong words in feedback |
 | `errorWash` | #F9E9E4 | #3B211C | Highlight behind missed/wrong feedback words |
 | `success` | #2E7D5B | #4CAF8E | Correct-word feedback (grading only — general success uses lapis) |
+| `amber` | #9A5B13 | #E59A4C | The almost band (03 §3) ONLY: its score and slipped words. Warm, not an error; never decoration, never a stand-in for gold |
+| `amberWash` | #F8EEDD | #3A2C17 | Highlight behind slipped words in an almost |
 
 Contrast: all text pairs ≥ 4.5:1. Gold on surface is used at display sizes only (≥20pt) where 3:1 suffices.
 
@@ -51,7 +53,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 
 ### Today (home tab)
 - Large title "Today" with streak ember (small flame glyph + count, lapis; turns hollow if today not yet active).
-- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button **Practice** (capsule, lapis). Sub-line: "Chunk 4 of 12 · Blanks 50".
+- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button (capsule, lapis) that names its step and reference — **Start John 3:17**, **Continue John 3:16**, **Seal John 3:16** (03 §5). Sub-line: "Chunk 4 of 12 · Next step · Blanks 50/75".
 - Below: **Due for review** row (count + up-to-3 references, tap → review session), then a quiet reading shortcut ("Continue reading Philippians 3").
 
 ### Practice session
@@ -61,7 +63,7 @@ Type scale follows Apple's text styles; do not invent sizes.
   - **Arrange**: phrase tiles, spring physics on drop.
   - **Type**: full-screen editor, New York, no autocorrect, reference watermark.
   - **Speak**: large mic button; live ghost transcript beneath the reference; waveform in lapis.
-- Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
+- Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. An almost (03 §3) marks the same slips in `amber` on `amberWash`, still struck through. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
 
 ### Library
 - Segmented: **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
@@ -74,7 +76,16 @@ Type scale follows Apple's text styles; do not invent sizes.
 - Streak, 30-day accuracy, verses memorized as three large New York numerals; below, weekly practice grid and badge medallions (engraved-style, gold when earned, `inkFaint` outline when locked and visible-by-design).
 
 ### Goal wizard (sheet)
-- Steps: Translation → Passage (book/chapter/verse native pickers) → Preview (word count, chunk count, projected date) → Confirm. One screen per step, native sheet detents.
+- Two steps, one screen each: **Passage → Plan**. Cancel/Back and Continue/Start memorizing stay in the sheet's bottom bar.
+- **Passage.** Three native menus and nothing else to configure: Translation (remembers the last one chosen; WEB the first time), Book, Chapter (hidden for one-chapter books). Below them the chapter's own verses, set in New York as a virtualized list, with the translation's attribution at the foot.
+  - **Tap the first verse, then the last.** One tap is a single verse; a second tap closes the range in either direction; a tap on a settled range starts over. Selected rows carry the `lapisWash` fill plus a lapis rule on the leading edge and a heavier verse number — never color alone.
+  - **Whole chapter** selects every verse of the chapter in view. **Extend through** is a native menu of the book's later chapters; it keeps the first verse and runs the range to the end of the one picked, so "Philippians 1–4" is Whole chapter, then Extend through → Chapter 4. Changing chapter with the menu keeps an open selection, so tapping a verse in a later chapter also closes a cross-chapter range. Ranges stay inside one book; changing book resets to its 1:1.
+  - A bar pinned above the buttons echoes the reference ("John 3:16–18"), says what the next tap will do, and holds **Clear**. With nothing selected, Continue is disabled. The wizard opens on John 1:1 so it can be continued untouched.
+  - The menus and chapter actions scroll with the verses; only the echo bar and buttons are pinned, so the list keeps its room on short windows (iPhone Duo opened, landscape) and at accessibility sizes, where the control rows wrap.
+  - Licensed text (ESV) loads a chapter at a time through `services/bible`: a spinner while it loads; if it fails, a message in place of the verses with **Try again** and **Use the WEB instead**, and the menus stay usable.
+  - VoiceOver: each row reads "Verse 16. ‹text›", its selected state and what a double-tap will do, and offers the custom actions "Start passage here" / "End passage here"; every change is announced ("John 3:16–18 selected").
+- **Plan.** Editable goal name, then verses, words, chunks and estimated days.
+- Range logic is pure and unit-tested in `src/services/bible/selection.ts`.
 
 ### Lock setup & Unlock
 - Per 04 §5. Unlock screen is the app at its most minimal: verse reference in New York, mic button, Type toggle, Override quietly at the bottom. Dark-mode-first (people hit this at night).
@@ -90,6 +101,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 |---|---|---|
 | Correct word (live) | none (color only) | light tick |
 | Item passed | accuracy count-up 400ms | success |
+| Item almost (03 §3) | none; slipped words shown in place of the dissolution | warning |
 | Tier up | dissolution 1.2s | medium |
 | Chunk memorized | dissolution → gold seal stamp 1.5s, skippable | success ×2 |
 | Streak day secured | ember pulse | light |
