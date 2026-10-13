@@ -247,8 +247,75 @@ export function gradeBand(threshold: number, accuracy: number, unitCount: number
   return accuracy >= almostThresholdFor(threshold, unitCount) - 1e-9 ? 'almost' : 'miss';
 }
 
+/**
+ * The band against a fixed pass line — one that does not bend with length,
+ * as review feedback's 90% does not. A pass is `accuracy >= passAccuracy`,
+ * exactly; beneath it the almost band is the one the ladder would give a
+ * round of that length. For display: review scheduling takes the accuracy
+ * itself and never sees a band.
+ */
+export function gradeBandAtLine(
+  passAccuracy: number,
+  accuracy: number,
+  unitCount: number
+): RoundBand {
+  if (accuracy >= passAccuracy) return 'pass';
+  return accuracy >= almostThresholdFor(passAccuracy, unitCount) - 1e-9 ? 'almost' : 'miss';
+}
+
 /** Slips in an attempt as the user would count them: every reference word
  * that was not right, plus every extra word. Unweighted — a typo is one. */
 export function slipCount(result: GradeResult): number {
   return result.words.filter((w) => w.tag !== 'correct').length + result.insertions.length;
+}
+
+/**
+ * The word-by-word feedback as one spoken sentence, for VoiceOver: what was
+ * missed, mistyped and added, by name. Read word by word instead, a verse is
+ * dozens of swipes of "correct" with the slips buried among them.
+ */
+export function feedbackSummary(result: GradeResult): string {
+  const list = (tag: WordTag) => result.words.filter((w) => w.tag === tag).map((w) => w.word);
+  const parts: string[] = [];
+  const missed = list('missed');
+  const wrong = result.words
+    .filter((w) => w.tag === 'wrong')
+    .map((w) => (w.said ? `${w.word}, you had ${w.said}` : w.word));
+  const typos = list('typo');
+  const extras = result.insertions.map((i) => i.word);
+  if (missed.length > 0) parts.push(`Missed: ${missed.join(', ')}.`);
+  if (wrong.length > 0) parts.push(`Wrong: ${wrong.join('; ')}.`);
+  if (typos.length > 0) parts.push(`Close: ${typos.join(', ')}.`);
+  if (extras.length > 0) parts.push(`Added, not in the verse: ${extras.join(', ')}.`);
+  return parts.length > 0 ? parts.join(' ') : 'Every word correct.';
+}
+
+/** One mark in the word-by-word feedback: a reference word with its tag, or
+ * a word the user added that the verse does not have. */
+export type FeedbackToken =
+  | { kind: 'word'; word: GradedWord }
+  | { kind: 'extra'; word: string; key: string };
+
+/**
+ * The reference words and the user's extra words in the order they were
+ * said, for display. Extra words cost accuracy like any other slip, so a
+ * result made only of them must still have something to show: without them
+ * the feedback is a verse marked entirely correct under a failing score.
+ */
+export function feedbackSequence(result: GradeResult): FeedbackToken[] {
+  const out: FeedbackToken[] = [];
+  const extras = result.insertions.map((ins, i) => ({ ...ins, key: `extra-${i}` }));
+  let next = 0;
+  const flushBefore = (index: number) => {
+    while (next < extras.length && extras[next].beforeIndex <= index) {
+      out.push({ kind: 'extra', word: extras[next].word, key: extras[next].key });
+      next++;
+    }
+  };
+  for (const word of result.words) {
+    flushBefore(word.index);
+    out.push({ kind: 'word', word });
+  }
+  flushBefore(Infinity);
+  return out;
 }

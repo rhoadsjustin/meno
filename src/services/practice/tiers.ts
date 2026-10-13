@@ -41,6 +41,12 @@ export const TIERS: readonly TierDef[] = [
  */
 export const REST_TIER = 3;
 
+/**
+ * The first tier whose clean passes count toward Memorized (docs/03 §1: a
+ * Type or Speak pass on two separate days).
+ */
+export const MASTERY_TIER = 5;
+
 /** Rounds on the whole ladder for one chunk, Read through Speak. */
 export const LADDER_ROUNDS = TIERS.reduce((n, t) => n + t.modes.length, 0);
 

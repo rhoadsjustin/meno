@@ -178,7 +178,7 @@ export default function LibraryScreen() {
       {loaded && active.length === 0 && (
         <Card>
           <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            No goals yet
+            No passages yet
           </Text>
           <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             Your passages in progress will live here.
@@ -191,7 +191,7 @@ export default function LibraryScreen() {
           onPress={() => router.push('/goal-wizard')}
           style={[styles.newGoal, { borderColor: colors.lapis }]}>
           <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {active.length > 0 ? '+ New goal' : 'Start a goal'}
+            {active.length > 0 ? '+ Practice another passage' : 'Choose a passage'}
           </Text>
         </Pressable>
       )}

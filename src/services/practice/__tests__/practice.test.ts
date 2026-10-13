@@ -375,4 +375,19 @@ describe('ladderProgress', () => {
     const cleared = recordRound(s, { accuracy: 1, unitCount: 20 }).state;
     expect(ladderProgress(cleared)).toEqual({ done: 9, total: 9, pass: null });
   });
+
+  it('holds short of full while an almost at Speak is still owed, matching the retry', () => {
+    const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 5, now: 0 });
+    const almost = recordRound(s, { accuracy: 0.8, unitCount: 10 });
+    expect(almost.band).toBe('almost');
+    const owed = ladderProgress(almost.state, { lastRoundOwed: true });
+    expect(owed).toEqual({ done: 8, total: 9, pass: null });
+    // "Try again" serves the same round: the bar must not step backwards.
+    expect(ladderProgress(retryTier(almost.state, 1)).done).toBe(owed.done);
+  });
+
+  it('never counts below the tiers already behind the session', () => {
+    const s = startSession({ goalId: 'g', chunkId: 'c', highestClearedTier: 5, now: 0 });
+    expect(ladderProgress(s, { lastRoundOwed: true }).done).toBe(8);
+  });
 });

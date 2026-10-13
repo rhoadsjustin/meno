@@ -4,7 +4,7 @@
  * the user has a passage of their own.
  */
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
@@ -18,6 +18,8 @@ import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@
 
 /** Share of the row one card takes, so the next card peeks in as the cue to swipe. */
 const CARD_SHARE = 0.86;
+/** Dynamic Type scale from which cards stop sharing one height (the accessibility sizes). */
+const LARGE_TEXT_SCALE = 1.4;
 /** Past this a verse stops reading as a card and becomes a banner. */
 const MAX_CARD_WIDTH = 420;
 
@@ -42,6 +44,12 @@ export function StarterDeck({
   // stay within it, clear of the gutter (and of iPhone Duo's fold).
   const bleed = isWide ? 0 : layout.screenMargin;
   const translation = passages[0] ? getTranslation(passages[0].translationId) : null;
+  // Cards normally stretch to the tallest so the buttons line up. At
+  // accessibility text sizes the longest verse runs to several screens, and
+  // a short verse's button would sit that far below its text — so each card
+  // keeps its own height instead.
+  const { fontScale } = useWindowDimensions();
+  const ownHeight = fontScale >= LARGE_TEXT_SCALE;
 
   return (
     <View onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)} style={styles.root}>
@@ -52,7 +60,11 @@ export function StarterDeck({
         snapToInterval={cardWidth + spacing.md}
         snapToAlignment="start"
         style={{ marginHorizontal: -bleed }}
-        contentContainerStyle={[styles.row, { paddingHorizontal: bleed }]}>
+        contentContainerStyle={[
+          styles.row,
+          ownHeight && styles.rowOwnHeight,
+          { paddingHorizontal: bleed },
+        ]}>
         {passages.map((passage) => {
           const reference = formatRange(passage.starter.range);
           const starting = startingId === passage.starter.id;
@@ -104,6 +116,7 @@ export function StarterDeck({
 const styles = StyleSheet.create({
   root: { gap: spacing.md },
   row: { gap: spacing.md },
+  rowOwnHeight: { alignItems: 'flex-start' },
   // Cards stretch to the tallest in the row; the button sits at the bottom
   // of each so the row of buttons lines up.
   card: { justifyContent: 'space-between' },

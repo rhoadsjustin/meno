@@ -6,15 +6,7 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { ScreenHeader } from '@/components/screen-header';
@@ -24,7 +16,7 @@ import { recordAttempt } from '@/services/db/repos/attempts';
 import { dueReviewItems, recordReviewResult, type ReviewItem } from '@/services/db/repos/reviews';
 import { secureToday } from '@/services/db/repos/streaks';
 import { rescheduleAll } from '@/services/notifications';
-import type { GradeResult } from '@/services/grading';
+import { gradeBandAtLine, type GradeResult } from '@/services/grading';
 import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
@@ -42,6 +34,10 @@ type QueueEntry = {
    * Blanks 75 to keep sessions short (docs/03 §6). */
   mode: 'type' | 'speak' | 'blanks75';
 };
+
+/** A review reads as kept at this accuracy; the colour only, SM-2 is fed the score itself. */
+const REVIEW_PASS = 0.9;
+
 
 type Phase =
   | { kind: 'loading' }
@@ -129,7 +125,7 @@ export function ReviewSession() {
       void refreshBadges();
       setAccuracies((a) => [...a, outcome.accuracy]);
       void Haptics.notificationAsync(
-        outcome.accuracy >= 0.9
+        outcome.accuracy >= REVIEW_PASS
           ? Haptics.NotificationFeedbackType.Success
           : Haptics.NotificationFeedbackType.Warning,
       );
@@ -154,6 +150,14 @@ export function ReviewSession() {
     }
   }, [phase, queue.length, accuracies]);
 
+  const tone =
+    // The pass line is where it has always been; beneath it the ladder's
+    // almost band reads amber rather than error red (docs/03 §3). Display
+    // only — SM-2 was already fed the honest accuracy in `finishRound`.
+    phase.kind === 'feedback'
+      ? gradeBandAtLine(REVIEW_PASS, phase.accuracy, phase.result.unitCount)
+      : null;
+
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       {/* Native bar: Close, with the queue position as the title. */}
@@ -174,11 +178,12 @@ export function ReviewSession() {
         </Stack.Toolbar>
       </ScreenHeader>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}>
+      <View style={styles.flex}>
+        {/* The scroll view makes room for the keyboard itself, as in practice:
+            a KeyboardAvoidingView came up short by the native bar's height. */}
         <ScrollView
           contentContainerStyle={[styles.content, contentColumn]}
+          automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled">
           {phase.kind === 'empty' && (
             <>
@@ -244,16 +249,29 @@ export function ReviewSession() {
           {phase.kind === 'feedback' && (
             <>
               <Text
+                accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
                 style={[
                   styles.accuracy,
                   {
-                    color: phase.accuracy >= 0.9 ? colors.success : colors.error,
+                    color:
+                      tone === 'pass'
+                        ? colors.success
+                        : tone === 'almost'
+                          ? colors.amber
+                          : colors.error,
                     fontFamily: fonts?.scripture,
                   },
                 ]}>
                 {Math.round(phase.accuracy * 100)}%
               </Text>
-              <WordFeedback result={phase.result} />
+              {tone === 'almost' && (
+                <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                  {phase.result.words.length > 0
+                    ? 'Almost — the slipped words are marked below'
+                    : 'Almost'}
+                </Text>
+              )}
+              <WordFeedback result={phase.result} tone={tone === 'almost' ? 'almost' : 'error'} />
               <Pressable
                 accessibilityRole="button"
                 onPress={advance}
@@ -281,7 +299,7 @@ export function ReviewSession() {
             </>
           )}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

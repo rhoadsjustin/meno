@@ -153,7 +153,7 @@ export function GoalWizard() {
                   styles.titleInput,
                   { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.ui },
                 ]}
-                accessibilityLabel="Goal name"
+                accessibilityLabel="Passage name"
               />
               <View style={styles.statsRow}>
                 <Stat label="Verses" value={String(preview.verseCount)} />
@@ -231,7 +231,7 @@ function StepHeading({ title, step }: { title: string; step: number }) {
 function Stat({ label, value }: { label: string; value: string }) {
   const colors = useThemeColors();
   return (
-    <View style={styles.stat}>
+    <View accessible accessibilityLabel={`${value} ${label}`} style={styles.stat}>
       <Text style={[styles.statValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {value}
       </Text>

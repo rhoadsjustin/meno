@@ -20,6 +20,7 @@ import {
   activeGoal,
   chunkProgressLabel,
   listActiveGoals,
+  listGoals,
   practicePlan,
   startStarterGoal,
   type Chunk,
@@ -110,6 +111,9 @@ export default function TodayScreen() {
   const [starters, setStarters] = useState<StarterPassage[] | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startFailed, setStartFailed] = useState(false);
+  // Nothing in progress, but passages finished earlier: the empty state
+  // must not tell someone with memorized verses that they have none.
+  const [hasFinished, setHasFinished] = useState(false);
   const startBusy = useRef(false);
 
   // Reads everything this screen shows; `isCancelled` guards a blurred screen.
@@ -128,7 +132,9 @@ export default function TodayScreen() {
     const due = await countDueReviews();
     if (!isCancelled()) setDueCount(due);
     if (!goal) {
+      const finished = (await listGoals()).length > 0;
       if (!isCancelled()) {
+        setHasFinished(finished);
         setData(null);
         setOthers([]);
         setStreak(streakNow);
@@ -236,11 +242,12 @@ export default function TodayScreen() {
       <Text
         accessibilityRole="header"
         style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        Nothing memorized yet
+        {hasFinished ? 'Ready for another passage?' : 'Nothing memorized yet'}
       </Text>
       <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        Start with a verse you may already half know. Swipe to choose one and try it now — it takes
-        a couple of minutes.
+        {hasFinished
+          ? 'Nothing is in progress. Swipe to choose a verse and start it now, or choose your own passage.'
+          : 'Start with a verse you may already half know. Swipe to choose one and try it now — it takes a couple of minutes.'}
       </Text>
     </View>
   );
@@ -378,7 +385,9 @@ export default function TodayScreen() {
             accessibilityRole="button"
             onPress={() => router.push('/goal-wizard')}
             style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>New goal</Text>
+            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
+              Choose another passage
+            </Text>
           </Pressable>
         </Card>
       )}

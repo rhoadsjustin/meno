@@ -334,11 +334,16 @@ export function PassageStep({
                 { color: error ? colors.error : colors.inkFaint, fontFamily: fonts?.ui },
               ]}>
               {error ??
-                (!selection
-                  ? 'Tap a verse to begin.'
-                  : selection.open
-                    ? 'Tap another verse to end the range, or continue with this one.'
-                    : 'Tap a verse to choose again.')}
+                // No verses on screen yet: "tap a verse" would point at nothing.
+                (failed
+                  ? 'This chapter didn’t load.'
+                  : !verses
+                    ? 'Loading…'
+                    : !selection
+                      ? 'Tap a verse to begin.'
+                      : selection.open
+                        ? 'Tap another verse to end the range, or continue with this one.'
+                        : 'Tap a verse to choose again.')}
             </Text>
           </View>
           {selection && (

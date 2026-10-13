@@ -29,7 +29,9 @@ export function TierLadder({
   ).join(', ');
 
   return (
-    <View accessibilityLabel={`Ladder: ${summary}`} style={styles.ladder}>
+    // One element: read rung by rung, VoiceOver would say the names and
+    // drop which are cleared — the dots carry that, and they are silent.
+    <View accessible accessibilityLabel={`Ladder: ${summary}`} style={styles.ladder}>
       {TIERS.map((t) => {
         const cleared = t.tier <= highestCleared;
         const active = !cleared && t.tier === current;

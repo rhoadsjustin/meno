@@ -5,16 +5,8 @@
  */
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
@@ -99,6 +91,8 @@ type Phase =
       /** The chunk's highest cleared tier as the session ends. */
       standing: number;
       sealsTomorrow: boolean;
+      /** Stopped after an almost at Speak: a clean recitation is still owed. */
+      needsCleanPass: boolean;
       memorized: boolean;
       streak: number;
     };
@@ -131,6 +125,7 @@ export function PracticeScreen({
   // Every round finished since the screen opened, across tiers — the
   // session state itself only remembers the tier in progress.
   const [log, setLog] = useState<{ accuracy: number | null; passed: boolean }[]>([]);
+  const finishing = useRef(false);
 
   const load = useCallback(async () => {
     const g = await getGoal(goalId);
@@ -146,7 +141,7 @@ export function PracticeScreen({
     const step = requested ?? plan.next;
     const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
     if (!step || !c) {
-      setPhase({ kind: 'error', message: 'Every chunk in this goal is memorized. Well done.' });
+      setPhase({ kind: 'error', message: 'Every chunk in this passage is memorized. Well done.' });
       setGoal(g);
       return;
     }
@@ -155,7 +150,7 @@ export function PracticeScreen({
       end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
     });
     const chunkText = verses.map((v) => v.text).join(' ');
-    setSealing(step.kind === 'seal');
+    setSealing(step.kind === 'seal' || (step.kind === 'continue' && !!step.seals));
 
     // Topped the ladder and already banked today: serving Speak again would
     // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
@@ -202,9 +197,12 @@ export function PracticeScreen({
       missedWords?: string[];
       result?: GradeResult;
     }) => {
-      if (!session || !chunk) return;
+      // One result per round: the round stays on screen while the attempt is
+      // written (swapping the session in first left a blank frame before the
+      // feedback), so a second tap on Check must not record it twice.
+      if (!session || !chunk || finishing.current) return;
+      finishing.current = true;
       const outcome = recordRound(session, input);
-      setSession(outcome.state);
       setLog((prev) => [...prev, { accuracy: input.accuracy ?? null, passed: outcome.passed }]);
       await saveActiveSession(outcome.state);
 
@@ -267,6 +265,8 @@ export function PracticeScreen({
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
 
+      setSession(outcome.state);
+      finishing.current = false;
       setPhase({
         kind: 'feedback',
         accuracy: input.accuracy ?? (input.selfPass ? 1 : 0),
@@ -295,6 +295,7 @@ export function PracticeScreen({
       kind: 'summary',
       standing: phase.memorized ? 6 : Math.max(chunk.tier, phase.tierCleared ? session.tier : -1),
       sealsTomorrow: phase.sealsTomorrow,
+      needsCleanPass: phase.needsCleanPass,
       memorized: phase.memorized,
       streak: streak.current,
     });
@@ -370,6 +371,11 @@ export function PracticeScreen({
       key={phase.kind}
       style={styles.flex}
       contentContainerStyle={[styles.content, contentColumn]}
+      // The scroll view makes room for the keyboard itself. A
+      // KeyboardAvoidingView here came up short by the native bar's height,
+      // which at large text sizes left Check under the keyboard with no way
+      // to scroll it into view.
+      automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled">
       {phase.kind === 'error' && (
         <>
@@ -429,7 +435,10 @@ export function PracticeScreen({
 
       {phase.kind === 'feedback' && session && (
         <>
-          <LadderProgress progress={ladderProgress(session)} current={false} />
+          <LadderProgress
+            progress={ladderProgress(session, { lastRoundOwed: phase.needsCleanPass })}
+            current={false}
+          />
           <Text
             accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
             style={[
@@ -580,6 +589,7 @@ export function PracticeScreen({
           log={log}
           standing={phase.standing}
           sealsTomorrow={phase.sealsTomorrow}
+          needsCleanPass={phase.needsCleanPass}
           memorized={phase.memorized}
           streak={phase.streak}
         />
@@ -602,9 +612,7 @@ export function PracticeScreen({
         </Stack.Toolbar>
       </ScreenHeader>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}>
+      <View style={styles.flex}>
         {/* The summary carries its own ladder, so the rail steps aside. */}
         {showRail && session && chunk && goal && phase.kind !== 'summary' ? (
           <FoldAwareRow fill>
@@ -638,7 +646,7 @@ export function PracticeScreen({
         ) : (
           round
         )}
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
@@ -709,6 +717,7 @@ function SessionSummary({
   log,
   standing,
   sealsTomorrow,
+  needsCleanPass,
   memorized,
   streak,
 }: {
@@ -716,6 +725,7 @@ function SessionSummary({
   log: { accuracy: number | null; passed: boolean }[];
   standing: number;
   sealsTomorrow: boolean;
+  needsCleanPass: boolean;
   memorized: boolean;
   streak: number;
 }) {
@@ -761,7 +771,11 @@ function SessionSummary({
         <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {sealsTomorrow
             ? 'Next: one clean recitation tomorrow seals it as memorized.'
-            : `Next time you pick up at ${tierDef(nextTier(standing)).name}.`}
+            : needsCleanPass
+              ? // Every rung reads cleared, so say what is still missing: the
+                // almost moved the verse up, it did not count toward Memorized.
+                `Every step is done, but ${reference} is not sealed yet: the last recitation was close, not clean. Next time you pick up at ${tierDef(nextTier(standing)).name} — only a clean recitation counts toward Memorized.`
+              : `Next time you pick up at ${tierDef(nextTier(standing)).name}.`}
         </Text>
       )}
       <Pressable
