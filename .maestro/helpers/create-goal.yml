@@ -4,10 +4,8 @@ appId: com.rhoadsdev.meno
 ---
 - tapOn: "Start a goal"
 - extendedWaitUntil:
-    visible: "Choose a translation"
+    visible: "Choose a passage"
     timeout: 10000
-- tapOn: "Continue"
-- assertVisible: "Choose a passage"
 - tapOn: "Continue"
 - assertVisible: "Your plan"
 - tapOn: "Start memorizing"

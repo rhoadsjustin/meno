@@ -6,7 +6,24 @@ tags:
 - launchApp:
     clearState: true
 - runFlow: ../helpers/complete-onboarding.yml
-- runFlow: ../helpers/create-goal.yml
+- tapOn: "Start a goal"
+- extendedWaitUntil:
+    visible: "Choose a passage"
+    timeout: 10000
+- assertVisible: "Step 1 of 2"
+# The passage step lists the chapter's verses (each row is labelled
+# "Verse <n>. <text>") and opens with John 1:1 already selected.
+- extendedWaitUntil:
+    visible: "Verse 1\\. In the beginning.*"
+    timeout: 10000
+- assertVisible: "John 1:1"
+- tapOn: "Continue"
+- assertVisible: "Your plan"
+- assertVisible: "Step 2 of 2"
+- tapOn: "Start memorizing"
+- extendedWaitUntil:
+    visible: "Practice"
+    timeout: 10000
 # Attribution line reads "<range> · <ABBREV>", e.g. "John 1:1 · WEB".
 - assertVisible: "John 1:1.*"
 - assertVisible: "Practice"
