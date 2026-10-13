@@ -9,4 +9,5 @@ tags:
 - runFlow: ../helpers/create-goal.yml
 # Attribution line reads "<range> · <ABBREV>", e.g. "John 1:1 · WEB".
 - assertVisible: "John 1:1.*"
-- assertVisible: "Practice"
+# The practice button says what it will do: a fresh verse starts.
+- assertVisible: "Start John 1:1.*"

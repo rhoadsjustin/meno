@@ -11,6 +11,7 @@ import { chunkPassage, type ChunkPlan } from '@/services/chunking';
 import { meetsThreshold, tokenize } from '@/services/grading';
 import { db, tables } from '@/services/db';
 import { resolveFocusGoal } from '@/services/focus';
+import { daysAgo, planPractice, type ChunkStanding, type PracticePlan } from '@/services/practice/plan';
 import { nextTier, tierDef, TIERS } from '@/services/practice/tiers';
 
 export type Goal = typeof tables.goals.$inferSelect;
@@ -166,43 +167,55 @@ async function chunkUnitCount(chunk: Chunk, translationId: string): Promise<numb
 }
 
 /**
- * The chunk the user practices next: the lowest-order unfinished chunk
- * (active or learning) that still has something to do today.
+ * What tapping Practice does next for a goal, with the chunks it was decided
+ * over. The decision itself is `planPractice` (services/practice/plan): new
+ * work first, a verse waiting on its second-day seal offered beside it.
+ */
+export async function practicePlan(
+  goalId: string,
+  now: Date = new Date()
+): Promise<{ plan: PracticePlan; chunks: Chunk[] }> {
+  const chunks = await chunksForGoal(goalId);
+  let translationId: string | undefined;
+  const standings: ChunkStanding[] = [];
+  for (const chunk of chunks) {
+    let masteryDaysAgo: number[] = [];
+    // Cheap check first: anything still climbing the ladder is plain work,
+    // so only a chunk sitting at the ceiling costs a passage read.
+    const unfinished = chunk.status === 'active' || chunk.status === 'learning';
+    if (unfinished && nextTier(chunk.tier) === chunk.tier) {
+      translationId ??= (await getGoal(goalId))?.translationId ?? 'web';
+      const dates = await masteryDates(chunk.id, await chunkUnitCount(chunk, translationId));
+      masteryDaysAgo = daysAgo(dates, now);
+    }
+    standings.push({
+      id: chunk.id,
+      orderIndex: chunk.orderIndex,
+      tier: chunk.tier,
+      status: chunk.status,
+      masteryDaysAgo,
+    });
+  }
+  return { plan: planPractice(standings), chunks };
+}
+
+/**
+ * The goal's current verse: the chunk the main Practice button opens, which
+ * is also what the widgets and recite-to-unlock show (docs/05 §1).
  *
  * A chunk that has topped the ladder and banked today's mastery day stays
- * `learning` until a second day seals it, so taking the lowest order blindly
- * would park the whole goal on it — the next chunk unlocked back at Tier 3
- * and would sit unreachable. Skip past it to that chunk instead.
+ * `learning` until a second day seals it, so the plan passes over it for the
+ * next chunk with work to do rather than parking the whole goal on it.
  *
  * When every unfinished chunk is waiting on tomorrow there is nothing to
- * skip to, so the lowest-order one is still returned: callers (the Today
- * card, recite-to-unlock) need the goal's current verse either way, and the
- * practice screen turns it into its "one day from sealed" state.
+ * pass on to, so the lowest-order one is still returned: callers need the
+ * goal's current verse either way, and the practice screen turns it into its
+ * "one day from sealed" state.
  */
 export async function currentChunk(goalId: string): Promise<Chunk | undefined> {
-  const rows = await db
-    .select()
-    .from(tables.chunks)
-    .where(
-      and(
-        eq(tables.chunks.goalId, goalId),
-        inArray(tables.chunks.status, ['active', 'learning'])
-      )
-    )
-    .orderBy(asc(tables.chunks.orderIndex));
-  if (rows.length === 0) return undefined;
-
-  let translationId: string | undefined;
-  for (const chunk of rows) {
-    // Cheap check first: anything still climbing the ladder is practiceable,
-    // so only a chunk sitting at the ceiling costs a passage read.
-    if (nextTier(chunk.tier) !== chunk.tier) return chunk;
-    translationId ??= (await getGoal(goalId))?.translationId ?? 'web';
-    if (!(await awaitingSecondDay(chunk, await chunkUnitCount(chunk, translationId)))) {
-      return chunk;
-    }
-  }
-  return rows[0];
+  const { plan, chunks } = await practicePlan(goalId);
+  const next = plan.next;
+  return next ? chunks.find((c) => c.id === next.chunkId) : undefined;
 }
 
 /** The Memorized bar (docs/03 §1): a Tier 5/6 pass on two separate days. */
@@ -254,14 +267,15 @@ function localDay(d: Date): string {
 }
 
 /**
- * Local days on which a Type/Speak attempt cleared the mastery bar (03 §1).
+ * When a Type/Speak attempt cleared the mastery bar (03 §1); the distinct
+ * local days among them are the chunk's mastery days.
  *
  * Stitch attempts are excluded. A stitch is filed against its last chunk but
  * graded over every chunk from the first through that one, so its accuracy
  * says nothing about the last chunk on its own — counting it could seal a
  * chunk the user never recited alone.
  */
-async function masteryDays(chunkId: string, unitCount: number): Promise<Set<string>> {
+async function masteryDates(chunkId: string, unitCount: number): Promise<Date[]> {
   const rows = await db
     .select({ createdAt: tables.attempts.createdAt, accuracy: tables.attempts.accuracy })
     .from(tables.attempts)
@@ -272,11 +286,13 @@ async function masteryDays(chunkId: string, unitCount: number): Promise<Set<stri
         ne(tables.attempts.source, 'stitch')
       )
     );
-  return new Set(
-    rows
-      .filter((r) => meetsThreshold(MASTERY_THRESHOLD, r.accuracy, unitCount))
-      .map((r) => localDay(r.createdAt))
-  );
+  return rows
+    .filter((r) => meetsThreshold(MASTERY_THRESHOLD, r.accuracy, unitCount))
+    .map((r) => r.createdAt);
+}
+
+async function masteryDays(chunkId: string, unitCount: number): Promise<Set<string>> {
+  return new Set((await masteryDates(chunkId, unitCount)).map(localDay));
 }
 
 /**

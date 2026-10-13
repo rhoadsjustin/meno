@@ -71,7 +71,16 @@ Verse-number markers are never part of graded text.
 - Prefer breaking at sentence-final punctuation and paragraph markers when the translation data has them.
 - Deterministic: same passage + translation → same chunks (stable ids across reinstalls).
 
-**Practice order:** the next chunk practiced is the lowest-order unfinished one that still has something to do today. A chunk that topped the ladder and banked its first mastery day stays `learning` until a second day seals it, so it is skipped in favour of the next unlocked chunk rather than parking the whole goal. When every unfinished chunk is waiting on tomorrow, the lowest-order one is still what the Today card and recite-to-unlock show.
+**Practice order** (`planPractice` in `services/practice/plan`, pure; `practicePlan` in the goals repo feeds it). Each unfinished chunk has one step today:
+
+- **start** — untouched; the ladder from Read.
+- **continue** — part-way up; picks up at the next tier.
+- **seal** — topped the ladder on an earlier day; one clean Type/Speak pass makes it Memorized.
+- **rest** — topped the ladder today; nothing to do until a second day can seal it.
+
+The main Practice button takes, in order: (1) a seal whose last mastery day is more than one day old (`SEAL_GRACE_DAYS`); (2) new work — the lowest-order start or continue; (3) any other seal; (4) the lowest-order resting chunk, shown as "seals tomorrow" with no button. When new work is first and a seal is waiting from yesterday, Today offers the seal beside it as an optional check ("Still have John 3:16? One recitation seals it") that opens practice on that chunk (`/practice/[goalId]?chunk=<chunkId>`). So on day two the new verse comes first and yesterday's is optional; left alone, the seal takes the main button on day three, and it also takes it as soon as the day's new work runs out — tapping only the main button still seals every verse. A single-chunk goal has no new work to put ahead, so its seal is simply next and is labelled as a seal.
+
+Today's button and sub-line name the step and its reference (`describeStep`): "Start John 3:17" over "New verse · begins with Read", "Continue John 3:16" over "Next step · Arrange", "Seal John 3:16" over "One recitation makes it memorized". The chunk the main button opens is the goal's **current verse** (`currentChunk`), which is also what the widgets and recite-to-unlock show (05 §1).
 
 **Sequential unlock with overlap stitching:** chunk N+1 unlocks when chunk N reaches Tier 3. Every 5 chunks (and at each chapter completion), a **Stitch session** runs: recite from chunk 1 (or chapter start) through the current chunk at Type/Speak tier, graded as one long text. A goal is Memorized when all chunks are Memorized **and** a full-passage stitch passes ≥90%.
 
