@@ -24,10 +24,12 @@ export function TypeRound({
   }) => void;
 }) {
   const colors = useThemeColors();
-  // On a short window (iPhone Duo opened in landscape, or its cover panel) the
-  // keyboard leaves little room: a smaller empty editor keeps Check in view.
-  // It still grows with the text.
-  const short = useWindowDimensions().height < layout.shortHeight;
+  // On a short window (iPhone SE, iPhone Duo opened in landscape or closed)
+  // the keyboard leaves little room: the editor starts smaller and stops
+  // growing at about a fifth of the window, scrolling inside itself, so a
+  // whole verse typed out never pushes Check under the keyboard.
+  const { height } = useWindowDimensions();
+  const short = height < layout.shortHeight;
   const [input, setInput] = useState('');
   const firstWord = useMemo(() => displayWords(text)[0] ?? '', [text]);
 
@@ -59,7 +61,7 @@ export function TypeRound({
         accessibilityLabel="Type the passage from memory"
         style={[
           styles.editor,
-          short && styles.editorShort,
+          short && [styles.editorShort, { maxHeight: Math.round(height * 0.22) }],
           { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.scripture },
         ]}
       />

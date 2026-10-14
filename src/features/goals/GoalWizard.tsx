@@ -30,6 +30,11 @@ type Step = 'passage' | 'plan';
 
 const DEFAULT_BOOK_ID = 'John';
 
+/** The pinned Cancel/Continue bar is chrome, like the selection bar above it
+ * (PassageStep's BAR_MAX_SCALE): it grows with Dynamic Type, but not so far
+ * that a short window (iPhone Duo opened in landscape) loses the verse list. */
+const FOOTER_MAX_SCALE = 1.6;
+
 /** The translation chosen last time, if it can still be used; else the default. */
 async function initialTranslationId(): Promise<string> {
   try {
@@ -55,7 +60,7 @@ export function GoalWizard() {
   const [chapter, setChapter] = useState(1);
   // Starts on a real verse so the sheet can be continued without choosing.
   const [selection, setSelection] = useState<PassageSelection | null>(() =>
-    defaultSelection(DEFAULT_BOOK_ID)
+    defaultSelection(DEFAULT_BOOK_ID),
   );
 
   const [preview, setPreview] = useState<GoalPreview | null>(null);
@@ -191,7 +196,9 @@ export function GoalWizard() {
             else setStep('passage');
           }}
           style={styles.footerSecondary}>
-          <Text style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+          <Text
+            maxFontSizeMultiplier={FOOTER_MAX_SCALE}
+            style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
             {step === 'passage' ? 'Cancel' : 'Back'}
           </Text>
         </Pressable>
@@ -210,7 +217,9 @@ export function GoalWizard() {
           {busy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>
+            <Text
+              maxFontSizeMultiplier={FOOTER_MAX_SCALE}
+              style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>
               {step === 'plan' ? 'Start memorizing' : 'Continue'}
             </Text>
           )}
