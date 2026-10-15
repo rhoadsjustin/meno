@@ -38,7 +38,7 @@ import { getTranslation } from '@/services/bible';
 import { gradeSpoken, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
-import { useThemeColors, fonts, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
 export type SpeakOutcome = {
   accuracy: number;
@@ -222,7 +222,12 @@ export function SpeakRound({
     FadeInDown.duration(200).delay(delay).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
 
   return (
-    <View style={[styles.screen, { minHeight: height * 0.64 }]}>
+    // The surface claims most of the window so the mic sits low; on a short
+    // window (iPhone Duo's cover panel, or opened in landscape) that share
+    // pushed "Type instead" onto the bottom edge once the sealing note was
+    // above it, so it takes less there.
+    <View
+      style={[styles.screen, { minHeight: height * (height < layout.shortHeight ? 0.52 : 0.64) }]}>
       {/* A long reference at an accessibility text size shrinks to fit rather
           than breaking mid-word ("Thessalonian" / "s"). */}
       <Text

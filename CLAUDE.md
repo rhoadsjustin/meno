@@ -24,6 +24,8 @@ Full specs live in `docs/`. Read the relevant spec before implementing any featu
 - Prebuild is CNG-managed: never hand-edit `ios/` or `android/` — all native config goes through app.config.ts and config plugins.
 - Screen Time features only work on a **physical device**, never the simulator. Guard them behind capability checks so the simulator still runs everything else.
 - **Pre-PR gate**: `npm run e2e` (local Maestro suite, see `.maestro/README.md`) must pass before opening any PR. CI runs only fast checks — the Maestro suite is not in CI because GitHub's shared macOS runners proved too flaky to gate on.
+- **Duo gate (any PR that touches visible UI)**: before opening the PR, run the changed screens on the iPhone Duo simulator (project skill `duo-sim`; drive poses with argent's `fold` and `rotate` tools) and check each in these poses: closed (cover panel, 466pt wide, status strip on the right), open (landscape UI, 951×669 — short), open + rotated (portrait UI, 669×951), and half-open (nothing interactive on the crease). Fold and unfold with the changed screen up: state must survive. The PR description gets a **Duo** section listing each pose as checked, fixed, or not checked (with the reason — Split View needs Device Hub by hand). A UI PR without that section is not ready.
+- **Duo patterns to reach for**: size from `useContentLayout()`, not idiom; two panes only when the window is wider than tall, as even halves via `FoldAwareRow`; on short windows (`layout.shortHeight`, 720pt) keep the primary and secondary actions on screen without scrolling; modal routes wrap in `ModalSafeArea` (`src/components/modal-safe-area.tsx`) so a centred form sheet doesn't take the window's side insets and a full-screen modal keeps tracking rotation and folds; a full-screen modal that needs the fold mounts its own `ReservedRegionsProvider`; on Fabric never toggle a view between an explicit width and flex — change flex weights.
 
 ## Conventions
 
@@ -45,6 +47,6 @@ Full specs live in `docs/`. Read the relevant spec before implementing any featu
 ## Definition of done (every milestone)
 
 1. Acceptance criteria in `docs/08-roadmap.md` pass on a physical iPhone.
-2. Dark mode + Dynamic Type verified on the new screens.
+2. Dark mode + Dynamic Type verified on the new screens, on a regular iPhone and on the iPhone Duo in every pose (Duo gate above).
 3. `npm run typecheck && npm run lint && npm run test` clean.
 4. No regressions in prior milestones' criteria.

@@ -16,7 +16,7 @@ import { useRevealAboveKeyboard } from '@/components/keyboard-scroll';
 
 import { gradeTyped, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
-import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
 
 export function TypeRound({
   text,
@@ -39,7 +39,10 @@ export function TypeRound({
   // (most of all at accessibility sizes). At a fixed height the screen can
   // lift the whole editor — and Check beneath it — above the keyboard once,
   // when the keyboard appears, and the editor keeps the caret in view itself.
-  const { fontScale } = useWindowDimensions();
+  // On a short window (iPhone SE, iPhone Duo opened in landscape or closed)
+  // the keyboard leaves little room, so the box is about a fifth of the window.
+  const { height, fontScale } = useWindowDimensions();
+  const short = height < layout.shortHeight;
   const editorHeight = EDITOR_HEIGHT * Math.min(fontScale, 1.3);
   const editor = useRef<TextInput>(null);
   const reveal = useRevealAboveKeyboard();
@@ -80,7 +83,11 @@ export function TypeRound({
         accessibilityLabel="Type the passage from memory"
         style={[
           styles.editor,
-          { height: editorHeight },
+          {
+            height: short
+              ? Math.min(editorHeight, Math.max(EDITOR_SHORT_MIN, height * 0.22))
+              : editorHeight,
+          },
           { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.scripture },
         ]}
       />
@@ -100,6 +107,8 @@ export function TypeRound({
 }
 
 const EDITOR_HEIGHT = 180;
+/** The smallest the editor gets on a short window. */
+const EDITOR_SHORT_MIN = 96;
 /** The Check button and the gap above it, kept in view under the editor. */
 const CHECK_ROOM = 84;
 

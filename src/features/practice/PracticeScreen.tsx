@@ -112,7 +112,11 @@ export function PracticeScreen({
   // round keeps its reading column and a context rail sits beside it —
   // reference, chunk progress, ladder. Narrower windows keep one column so
   // Blanks and Arrange have room to work.
-  const { sides, isExtraWide: showRail } = useContentLayout();
+  const { sides, height, isExtraWide: showRail } = useContentLayout();
+  // A short window (iPhone Duo opened in its landscape pose is 669pt high):
+  // the feedback screen spends less on air so both its actions fit without
+  // scrolling — the stopping point's "Keep going" sat on the bottom edge.
+  const short = height < layout.shortHeight;
 
   const [goal, setGoal] = useState<Goal | null>(null);
   const [chunk, setChunk] = useState<Chunk | null>(null);
@@ -127,6 +131,7 @@ export function PracticeScreen({
   // session state itself only remembers the tier in progress.
   const [log, setLog] = useState<{ accuracy: number | null; passed: boolean }[]>([]);
   const finishing = useRef(false);
+  const railShown = showRail && !!session && !!chunk && !!goal;
 
   const load = useCallback(async () => {
     const g = await getGoal(goalId);
@@ -450,6 +455,7 @@ export function PracticeScreen({
             accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
             style={[
               styles.accuracy,
+              short && styles.accuracyShort,
               {
                 // Amber for an almost: it moved on, but it was not a pass.
                 // Gold only when the verse was just memorized.
@@ -467,7 +473,12 @@ export function PracticeScreen({
           </Text>
           {/* The dissolve marks a clean clear; an almost shows its slips. */}
           {phase.tierCleared && !almost && (
-            <Dissolution text={text} reference={reference} memorized={phase.memorized} />
+            <Dissolution
+              text={text}
+              reference={reference}
+              memorized={phase.memorized}
+              compact={short}
+            />
           )}
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {phase.memorized
@@ -484,7 +495,9 @@ export function PracticeScreen({
                     ? forgiven
                       ? `Passed, ${forgiven}`
                       : 'Round passed'
-                    : 'Not quite — the slipped words are marked below'}
+                    : phase.result
+                      ? 'Not quite — the slipped words are marked below'
+                      : 'Not quite — try this round again'}
           </Text>
           {phase.result && (almost || !phase.tierCleared) && (
             <WordFeedback result={phase.result} tone={almost ? 'almost' : 'error'} />
@@ -527,7 +540,11 @@ export function PracticeScreen({
           <Pressable
             accessibilityRole="button"
             onPress={() => void (phase.restPoint ? finishSession() : continueSession())}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
+            style={[
+              styles.primaryButton,
+              short && styles.primaryButtonShort,
+              { backgroundColor: colors.lapis },
+            ]}>
             <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
               {phase.sealsTomorrow
                 ? 'Finish'
@@ -599,6 +616,8 @@ export function PracticeScreen({
           needsCleanPass={phase.needsCleanPass}
           memorized={phase.memorized}
           streak={phase.streak}
+          // Beside the rail the ladder is already on screen.
+          showLadder={!railShown}
         />
       )}
     </KeyboardScroll>
@@ -620,8 +639,10 @@ export function PracticeScreen({
       </ScreenHeader>
 
       <View style={styles.flex}>
-        {/* The summary carries its own ladder, so the rail steps aside. */}
-        {showRail && session && chunk && goal && phase.kind !== 'summary' ? (
+        {/* The rail stays for the summary and shows where the verse ended up,
+            so the two panes hold still and a half-folded iPhone Duo keeps its
+            crease in the gutter instead of under a centred column. */}
+        {showRail && session && chunk && goal ? (
           <FoldAwareRow fill>
             {round}
             <View style={styles.rail}>
@@ -634,17 +655,22 @@ export function PracticeScreen({
                   {goal.title} · {getTranslation(goal.translationId).abbrev}
                 </Text>
                 <Text style={[styles.railSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  {chunkProgressLabel(chunk, totalChunks)}
+                  {chunkProgressLabel(
+                    phase.kind === 'summary' ? { ...chunk, tier: phase.standing } : chunk,
+                    totalChunks,
+                  )}
                 </Text>
                 <View style={styles.railLadder}>
                   <TierLadder
                     // `chunk` is as loaded; a tier cleared on this screen counts.
                     highestCleared={
-                      phase.kind === 'feedback' && phase.tierCleared
-                        ? Math.max(chunk.tier, session.tier)
-                        : chunk.tier
+                      phase.kind === 'summary'
+                        ? phase.standing
+                        : phase.kind === 'feedback' && phase.tierCleared
+                          ? Math.max(chunk.tier, session.tier)
+                          : chunk.tier
                     }
-                    current={session.tier}
+                    current={phase.kind === 'summary' ? undefined : session.tier}
                   />
                 </View>
               </Card>
@@ -727,6 +753,7 @@ function SessionSummary({
   needsCleanPass,
   memorized,
   streak,
+  showLadder,
 }: {
   reference: string;
   log: { accuracy: number | null; passed: boolean }[];
@@ -735,6 +762,8 @@ function SessionSummary({
   needsCleanPass: boolean;
   memorized: boolean;
   streak: number;
+  /** Off on wide windows, where the rail beside the summary has the ladder. */
+  showLadder: boolean;
 }) {
   const colors = useThemeColors();
   const steps = log.filter((r) => r.passed).length;
@@ -766,14 +795,16 @@ function SessionSummary({
           </View>
         ))}
       </View>
-      <Card>
-        <Text style={[styles.railSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          {reference}
-        </Text>
-        <View style={styles.summaryLadder}>
-          <TierLadder highestCleared={standing} />
-        </View>
-      </Card>
+      {showLadder && (
+        <Card>
+          <Text style={[styles.railSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            {reference}
+          </Text>
+          <View style={styles.summaryLadder}>
+            <TierLadder highestCleared={standing} />
+          </View>
+        </Card>
+      )}
       {!memorized && (
         <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {sealsTomorrow
@@ -825,6 +856,7 @@ const styles = StyleSheet.create({
   sealNote: { fontSize: 15, fontWeight: '600', marginTop: -spacing.md, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
+  accuracyShort: { fontSize: 44, marginTop: 0 },
   suggestion: { fontSize: 15, lineHeight: 20, marginTop: spacing.md },
   primaryButton: {
     marginTop: spacing.xxl,
@@ -832,6 +864,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
+  primaryButtonShort: { marginTop: spacing.lg },
   primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   secondaryButton: { marginTop: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center' },
   secondaryButtonText: { fontSize: 16, fontWeight: '600' },
