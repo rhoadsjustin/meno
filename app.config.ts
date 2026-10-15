@@ -22,7 +22,7 @@ const appGroup = `group.${bundleId}`;
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
-  version: '1.0.0',
+  version: '1.5.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   // 'device-activity' is the hardcoded scheme the ShieldAction extension's
