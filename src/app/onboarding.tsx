@@ -6,7 +6,7 @@
  */
 import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
@@ -14,15 +14,22 @@ import { DEFAULT_STARTER, formatRange } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
 import { startStarterGoal } from '@/services/db/repos/goals';
 import { isLockAvailable } from '@/services/lock';
+import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { setNotificationsEnabled } from '@/services/notifications';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
-type Step = 'welcome' | 'notifications' | 'widget' | 'lock';
+/** `notificationsBlocked`: said yes in Meno, then no to the iOS prompt. */
+type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'lock';
 
 export default function OnboardingRoute() {
   const colors = useThemeColors();
   const { insets, sides } = useContentLayout();
-  const [step, setStep] = useState<Step>('welcome');
+  const [chosenStep, setStep] = useState<Step>('welcome');
+  // Back from iPhone Settings with notifications allowed: nothing left to
+  // say on the blocked step, so carry on.
+  const reminders = useReminderStatus();
+  const step: Step =
+    chosenStep === 'notificationsBlocked' && reminders?.overall === 'on' ? 'widget' : chosenStep;
 
   const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
     await markOnboardingDone();
@@ -50,9 +57,11 @@ export default function OnboardingRoute() {
     }
   }, [finish]);
 
+  // A yes here that iOS then declines must not pass silently: the user
+  // would leave onboarding believing reminders are coming.
   const optIn = useCallback(async () => {
-    await setNotificationsEnabled(true);
-    setStep('widget');
+    const delivered = await setNotificationsEnabled(true);
+    setStep(delivered ? 'widget' : 'notificationsBlocked');
   }, []);
 
   return (
@@ -99,6 +108,39 @@ export default function OnboardingRoute() {
             <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
               <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 Later
+              </Text>
+            </Pressable>
+          </>
+        )}
+
+        {step === 'notificationsBlocked' && (
+          <>
+            <Text
+              accessibilityRole="header"
+              accessibilityLiveRegion="polite"
+              style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              Reminders can’t reach you yet
+            </Text>
+            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              Your iPhone isn’t allowing notifications from Meno, so no reminders or quizzes will
+              arrive. To let them through, open iPhone Settings, tap Notifications, and turn on
+              Allow Notifications.
+            </Text>
+            <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              Not now is fine too. Settings → Reminders in Meno always shows whether they’re
+              getting through.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void Linking.openSettings()}
+              style={[styles.primary, { backgroundColor: colors.lapis }]}>
+              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
+                Open iPhone Settings
+              </Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
+              <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                Not now
               </Text>
             </Pressable>
           </>

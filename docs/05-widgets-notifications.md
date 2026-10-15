@@ -101,5 +101,17 @@ Rules:
 - Quiet hours honored; all categories individually toggleable; sensible defaults chosen in onboarding ("Can we quiz you out of the blue? That's the secret sauce." Yes/Later).
 - Never more than 2 a day, the practice reminder included, and never twice within 3 hours. Never guilt-based copy.
 - Pop quizzes need a memorized verse; the practice reminder only needs a passage in progress, so a new user who opts in hears from Meno on day one. The plan is pure and unit-tested (`services/notifications/plan.ts`).
+- **The app always says whether each reminder will arrive.** `reminderStatus` (`services/notifications/status.ts`, pure and unit-tested like the plan) puts each of the three things a user thinks of — the daily reminder, pop quizzes, and the streak reminder (the next daily reminder carrying the streak count) — in one of four states:
+
+  | State | Meaning | What the user reads |
+  |---|---|---|
+  | `off` | The Reminders switch is off in Meno (never turned on, or "Later" in onboarding) | "Off. Reminders are switched off in Meno." |
+  | `blocked` | On in Meno, but iOS permission is declined, revoked, or (after a restore) never asked | "Can’t arrive. Notifications are turned off for Meno in iPhone Settings." + Open iPhone Settings, or Allow notifications when iOS can still be asked |
+  | `waiting` | On and permitted, nothing to send yet | The reason: no passage in progress; no memorized verse to quiz; no streak yet |
+  | `scheduled` | The next one is pending in iOS | "Next reminder today at 7:00 PM." A quiz gives its day and the 9am–9pm window, never its time |
+
+  The status is judged against what iOS actually holds (`getAllScheduledNotificationsAsync`; each request carries its fire time in `data.at`), not against what the plan should have produced. Saying yes in Meno and no to the iOS prompt leaves the switch **on** and the state `blocked`, so reminders start by themselves once notifications are allowed in iPhone Settings.
+- Where it shows, all from `loadReminderStatus` / `useReminderStatus` so they cannot disagree: **Settings → Reminders** lists the three with their state; the **setup guide** shows the same lines and a one-line summary in its checklist; **onboarding** stops on a plain "Reminders can’t reach you yet" step when the iOS prompt is declined instead of moving on; **Today** shows one dismissible card to someone with a passage under way whose reminders are off or blocked — once answered, closed, or made moot by working reminders it never returns (06 §6).
+- A Focus and Scheduled Summary can hold notifications back and are invisible to apps. Settings and the guide say so rather than guessing.
 - Notification categories with actions: pop quiz gets a "Later today" action (reschedules once) alongside default open.
 - Verse **text** in notification bodies only for license-permitting translations; otherwise reference only.
