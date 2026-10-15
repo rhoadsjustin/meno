@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   useWindowDimensions,
+  View,
 } from 'react-native';
 
 import { useRevealAboveKeyboard } from '@/components/keyboard-scroll';
@@ -45,13 +46,22 @@ export function TypeRound({
   const short = height < layout.shortHeight;
   const editorHeight = EDITOR_HEIGHT * Math.min(fontScale, 1.3);
   const editor = useRef<TextInput>(null);
+  const check = useRef<View>(null);
   const reveal = useRevealAboveKeyboard();
   useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidShow', () => {
-      if (editor.current?.isFocused()) reveal(editor.current, CHECK_ROOM * Math.min(fontScale, 1.6));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const sub = Keyboard.addListener('keyboardDidShow', (e) => {
+      // A beat after the keyboard lands, so the scroll view's keyboard inset
+      // is in place and there is room to scroll Check into view.
+      timer = setTimeout(() => {
+        if (editor.current?.isFocused()) reveal(check.current, e.endCoordinates.screenY);
+      }, 120);
     });
-    return () => sub.remove();
-  }, [reveal, fontScale]);
+    return () => {
+      sub.remove();
+      clearTimeout(timer);
+    };
+  }, [reveal]);
   const firstWord = useMemo(() => displayWords(text)[0] ?? '', [text]);
 
   const submit = () => {
@@ -92,6 +102,7 @@ export function TypeRound({
         ]}
       />
       <Pressable
+        ref={check}
         accessibilityRole="button"
         accessibilityState={{ disabled: input.trim().length === 0 }}
         disabled={input.trim().length === 0}
@@ -109,8 +120,6 @@ export function TypeRound({
 const EDITOR_HEIGHT = 180;
 /** The smallest the editor gets on a short window. */
 const EDITOR_SHORT_MIN = 96;
-/** The Check button and the gap above it, kept in view under the editor. */
-const CHECK_ROOM = 84;
 
 const styles = StyleSheet.create({
   watermark: { fontSize: 14, marginBottom: spacing.md },
