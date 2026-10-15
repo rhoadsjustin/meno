@@ -25,11 +25,14 @@ export function Dissolution({
   text,
   reference,
   memorized,
+  compact = false,
   onFinished,
 }: {
   text: string;
   reference: string;
   memorized: boolean;
+  /** A shorter stage for short windows; long passages still set its height. */
+  compact?: boolean;
   onFinished?: () => void;
 }) {
   const colors = useThemeColors();
@@ -103,7 +106,7 @@ export function Dissolution({
           : 'The verse dissolves as it moves into memory.'
       }
       onPress={skip}
-      style={styles.stage}>
+      style={[styles.stage, compact && styles.stageCompact]}>
       {/* The full text stays in flow so the stage is as tall as the passage; the
           cipher and reference layers sit over it. All-absolute layers left the
           stage at minHeight and long passages spilled over the text around it. */}
@@ -143,6 +146,7 @@ export function Dissolution({
 
 const styles = StyleSheet.create({
   stage: { minHeight: 140, justifyContent: 'center' },
+  stageCompact: { minHeight: 88 },
   layer: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, justifyContent: 'center' },
   scripture: {
     fontSize: scriptureType.minSize,

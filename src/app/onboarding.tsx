@@ -5,11 +5,14 @@
  * a first verse. Skippable at every step, never guilt (06 §6).
  */
 import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { ReservedRegionsProvider } from '@modules/reserved-regions';
+import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
+import { FoldAwareRow } from '@/components/fold-aware-row';
+import { ModalSafeArea } from '@/components/modal-safe-area';
 import { DEFAULT_STARTER, formatRange } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
 import { startStarterGoal } from '@/services/db/repos/goals';
@@ -21,9 +24,37 @@ import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 /** `notificationsBlocked`: said yes in Meno, then no to the iOS prompt. */
 type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'lock';
 
+/**
+ * A full-screen modal takes the root view out of the window, and with it the
+ * app-wide safe-area provider and reserved-regions observer. This route hosts
+ * its own of each: without them the insets froze at the pose onboarding
+ * opened in, and the fold was never reported here.
+ */
 export default function OnboardingRoute() {
+  return (
+    <ModalSafeArea>
+      <ReservedRegionsProvider>
+        <Onboarding />
+      </ReservedRegionsProvider>
+    </ModalSafeArea>
+  );
+}
+
+function Onboarding() {
   const colors = useThemeColors();
-  const { insets, sides } = useContentLayout();
+  const { insets, sides, fold, foldAxis, isWide, width, height } = useContentLayout();
+  // iPhone Duo half-open: a centred column would put its buttons on the
+  // crease, so the column moves into the leading half, clear of the folding
+  // region, and returns to the centre when the phone is flat again.
+  // The column starts a screen margin in from the leading inset, and keeps
+  // a margin's clearance from the crease too.
+  const besideFold =
+    fold && foldAxis === 'vertical' && fold.x > insets.left
+      ? ({
+          maxWidth: fold.x - insets.left - layout.screenMargin * 2,
+          alignSelf: 'flex-start',
+        } as const)
+      : null;
   const [chosenStep, setStep] = useState<Step>('welcome');
   // Back from iPhone Settings with notifications allowed: nothing left to
   // say on the blocked step, so carry on.
@@ -64,171 +95,267 @@ export default function OnboardingRoute() {
     setStep(delivered ? 'widget' : 'notificationsBlocked');
   }, []);
 
+  const welcome = {
+    visual: (
+      <Text style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>M</Text>
+    ),
+    copy: (
+      <>
+        <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+          Let the Word remain in you.
+        </Text>
+        <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Meno helps you hide Scripture in your heart. Pick a passage, climb from reading it to
+          reciting it, and keep it fresh for good — a few minutes a day.
+        </Text>
+        <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          As a verse solidifies in memory, its text dissolves from the screen. That’s the idea: it
+          lives in you, not the app.
+        </Text>
+      </>
+    ),
+    actions: (
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setStep('notifications')}
+        style={[styles.primary, { backgroundColor: colors.lapis }]}>
+        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
+      </Pressable>
+    ),
+  };
+
+  const notifications = {
+    visual: null,
+    copy: (
+      <>
+        <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          Can we quiz you out of the blue?
+        </Text>
+        <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          That’s the secret sauce. A daily nudge to practice, then surprise pop quizzes on the
+          verses you’ve memorized — never more than two a day, and each takes about 30 seconds.
+        </Text>
+      </>
+    ),
+    actions: (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void optIn()}
+          style={[styles.primary, { backgroundColor: colors.lapis }]}>
+          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Yes, quiz me</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
+          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Later
+          </Text>
+        </Pressable>
+      </>
+    ),
+  };
+
+  const notificationsBlocked = {
+    visual: null,
+    copy: (
+      <>
+        <Text
+          accessibilityRole="header"
+          accessibilityLiveRegion="polite"
+          style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          Reminders can’t reach you yet
+        </Text>
+        <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Your iPhone isn’t allowing notifications from Meno, so no reminders or quizzes will
+          arrive. To let them through, open iPhone Settings, tap Notifications, and turn on Allow
+          Notifications.
+        </Text>
+        <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Not now is fine too. Settings → Reminders in Meno always shows whether they’re getting
+          through.
+        </Text>
+      </>
+    ),
+    actions: (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void Linking.openSettings()}
+          style={[styles.primary, { backgroundColor: colors.lapis }]}>
+          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Open iPhone Settings</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
+          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Not now
+          </Text>
+        </Pressable>
+      </>
+    ),
+  };
+
+  const widget = {
+    title: (
+      <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        Keep it in front of you
+      </Text>
+    ),
+    visual: (
+      <View
+        style={styles.shotStack}
+        accessible
+        accessibilityLabel="Preview: Meno’s Home Screen widget showing Philippians 4:4 with half its words blanked out, and its Lock Screen widget under the clock">
+        <HomeWidgetShot />
+        <LockScreenShot />
+      </View>
+    ),
+    copy: (
+      <>
+        <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Meno’s widgets put your current verse on the Home Screen and under the clock on your Lock
+          Screen — it follows you all day, and dissolves as you learn it.
+        </Text>
+        <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Home Screen: long-press → Edit → Add Widget → Meno.{'\n'}
+          Lock Screen: long-press the clock → Customize → add Meno.
+        </Text>
+      </>
+    ),
+    actions: (
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setStep('lock')}
+        style={[styles.primary, { backgroundColor: colors.lapis }]}>
+        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
+      </Pressable>
+    ),
+  };
+
+  const lock = {
+    title: (
+      <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        Open your apps by heart
+      </Text>
+    ),
+    visual: (
+      <View
+        accessible
+        accessibilityLabel="Preview: a shielded app asking you to recite your verse before it opens, with an Override button that always works">
+        <ShieldMock />
+      </View>
+    ),
+    copy: (
+      <>
+        <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Optional, and a little audacious: shield the apps that eat your time. To open one, recite
+          your current verse from memory. Override is always there — you’re never locked out of your
+          own phone.
+        </Text>
+        {!isLockAvailable() && (
+          <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Works on your iPhone (not in the simulator). Find it anytime in Settings → Recite to
+            Unlock.
+          </Text>
+        )}
+      </>
+    ),
+    actions: (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: starting, busy: starting }}
+          disabled={starting}
+          onPress={() => void tryStarter()}
+          style={[
+            styles.primary,
+            { backgroundColor: colors.lapis },
+            starting && styles.primaryBusy,
+          ]}>
+          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
+            Try it with {formatRange(DEFAULT_STARTER.range)}
+          </Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => void finish('goal-wizard')}>
+          <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+            Choose my own passage
+          </Text>
+        </Pressable>
+        {isLockAvailable() && (
+          <Pressable accessibilityRole="button" onPress={() => void finish('lock-setup')}>
+            <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              Set up recite-to-unlock
+            </Text>
+          </Pressable>
+        )}
+        <Pressable accessibilityRole="button" onPress={() => void finish()}>
+          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Explore first
+          </Text>
+        </Pressable>
+      </>
+    ),
+  };
+
+  // Every step as the same four parts; the layout below decides where they go.
+  const steps: Record<
+    Step,
+    { title: ReactNode; visual: ReactNode; copy: ReactNode; actions: ReactNode }
+  > = {
+    welcome: { title: null, ...welcome },
+    notifications: { title: null, ...notifications },
+    notificationsBlocked: { title: null, ...notificationsBlocked },
+    widget,
+    lock,
+  };
+  const current = steps[step];
+
+  let body: ReactNode;
+  if (!isWide) {
+    // Phones and iPhone Duo's cover panel: one column, picture above the words.
+    body = (
+      <>
+        {current.title}
+        {current.visual}
+        {current.copy}
+        {current.actions}
+      </>
+    );
+  } else if (current.visual && current.title && width > height) {
+    // Wide, short windows (iPhone Duo opened in its landscape pose): the
+    // words and buttons on the leading pane, the preview on the trailing one,
+    // so the step fits on one screen instead of scrolling past a full-width
+    // picture. FoldAwareRow keeps the crease in the gutter when half-open.
+    body = (
+      <FoldAwareRow style={styles.wideRow}>
+        <>
+          {current.title}
+          {current.copy}
+          {current.actions}
+        </>
+        <>{current.visual}</>
+      </FoldAwareRow>
+    );
+  } else {
+    // Otherwise on a wide window (text-only steps, or a tall window such as
+    // the opened Duo rotated): a reading-width column, centred, or beside the
+    // fold when half-open.
+    body = (
+      <View style={[styles.narrowColumn, besideFold ?? styles.centred]}>
+        {current.title}
+        {current.visual}
+        {current.copy}
+        {current.actions}
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
-        {step === 'welcome' && (
-          <>
-            <Text style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>M</Text>
-            <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-              Let the Word remain in you.
-            </Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Meno helps you hide Scripture in your heart. Pick a passage, climb from reading it to
-              reciting it, and keep it fresh for good — a few minutes a day.
-            </Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              As a verse solidifies in memory, its text dissolves from the screen. That’s the idea:
-              it lives in you, not the app.
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setStep('notifications')}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
-            </Pressable>
-          </>
-        )}
-
-        {step === 'notifications' && (
-          <>
-            <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Can we quiz you out of the blue?
-            </Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              That’s the secret sauce. A daily nudge to practice, then surprise pop quizzes on the
-              verses you’ve memorized — never more than two a day, and each takes about 30 seconds.
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void optIn()}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Yes, quiz me</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
-              <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Later
-              </Text>
-            </Pressable>
-          </>
-        )}
-
-        {step === 'notificationsBlocked' && (
-          <>
-            <Text
-              accessibilityRole="header"
-              accessibilityLiveRegion="polite"
-              style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Reminders can’t reach you yet
-            </Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Your iPhone isn’t allowing notifications from Meno, so no reminders or quizzes will
-              arrive. To let them through, open iPhone Settings, tap Notifications, and turn on
-              Allow Notifications.
-            </Text>
-            <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Not now is fine too. Settings → Reminders in Meno always shows whether they’re
-              getting through.
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void Linking.openSettings()}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                Open iPhone Settings
-              </Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
-              <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Not now
-              </Text>
-            </Pressable>
-          </>
-        )}
-
-        {step === 'widget' && (
-          <>
-            <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Keep it in front of you
-            </Text>
-            <View
-              style={styles.shotStack}
-              accessible
-              accessibilityLabel="Preview: Meno’s Home Screen widget showing Philippians 4:4 with half its words blanked out, and its Lock Screen widget under the clock">
-              <HomeWidgetShot />
-              <LockScreenShot />
-            </View>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Meno’s widgets put your current verse on the Home Screen and under the clock on your
-              Lock Screen — it follows you all day, and dissolves as you learn it.
-            </Text>
-            <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Home Screen: long-press → Edit → Add Widget → Meno.{'\n'}
-              Lock Screen: long-press the clock → Customize → add Meno.
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setStep('lock')}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
-            </Pressable>
-          </>
-        )}
-
-        {step === 'lock' && (
-          <>
-            <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Open your apps by heart
-            </Text>
-            <View
-              accessible
-              accessibilityLabel="Preview: a shielded app asking you to recite your verse before it opens, with an Override button that always works">
-              <ShieldMock />
-            </View>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Optional, and a little audacious: shield the apps that eat your time. To open one,
-              recite your current verse from memory. Override is always there — you’re never locked
-              out of your own phone.
-            </Text>
-            {!isLockAvailable() && (
-              <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Works on your iPhone (not in the simulator). Find it anytime in Settings → Recite to
-                Unlock.
-              </Text>
-            )}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: starting, busy: starting }}
-              disabled={starting}
-              onPress={() => void tryStarter()}
-              style={[
-                styles.primary,
-                { backgroundColor: colors.lapis },
-                starting && styles.primaryBusy,
-              ]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                Try it with {formatRange(DEFAULT_STARTER.range)}
-              </Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => void finish('goal-wizard')}>
-              <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                Choose my own passage
-              </Text>
-            </Pressable>
-            {isLockAvailable() && (
-              <Pressable accessibilityRole="button" onPress={() => void finish('lock-setup')}>
-                <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                  Set up recite-to-unlock
-                </Text>
-              </Pressable>
-            )}
-            <Pressable accessibilityRole="button" onPress={() => void finish()}>
-              <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Explore first
-              </Text>
-            </Pressable>
-          </>
-        )}
+      <ScrollView
+        contentContainerStyle={
+          isWide
+            ? [styles.content, styles.contentWide, contentColumnWide]
+            : [styles.content, contentColumn, besideFold]
+        }>
+        {body}
       </ScrollView>
     </View>
   );
@@ -265,6 +392,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxxl * 2,
     gap: spacing.lg,
   },
+  // Wide windows are short (669pt on iPhone Duo opened): no tall top margin,
+  // and each step sits in the middle of the window rather than at its top.
+  contentWide: { flexGrow: 1, justifyContent: 'center', paddingTop: layout.screenMargin },
+  wideRow: { alignItems: 'center' },
+  narrowColumn: { width: '100%', maxWidth: 520, gap: spacing.lg },
+  centred: { alignSelf: 'center' },
   mark: { fontSize: 64 },
   title: { fontSize: 28, lineHeight: 36, fontWeight: '600' },
   body: { fontSize: 16, lineHeight: 23 },

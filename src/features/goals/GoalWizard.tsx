@@ -30,6 +30,11 @@ type Step = 'passage' | 'plan';
 
 const DEFAULT_BOOK_ID = 'John';
 
+/** The pinned Cancel/Continue bar is chrome, like the selection bar above it
+ * (PassageStep's BAR_MAX_SCALE): it grows with Dynamic Type, but not so far
+ * that a short window (iPhone Duo opened in landscape) loses the verse list. */
+const FOOTER_MAX_SCALE = 1.6;
+
 /** The translation chosen last time, if it can still be used; else the default. */
 async function initialTranslationId(): Promise<string> {
   try {
@@ -43,9 +48,10 @@ async function initialTranslationId(): Promise<string> {
 
 export function GoalWizard() {
   const colors = useThemeColors();
-  // The side insets matter on iPhone Duo, where the status bar and camera
-  // sit in one corner of the cover panel.
-  const { sides } = useContentLayout();
+  // Insets are the sheet's own (the route wraps this in ModalSafeArea). The
+  // sides matter on iPhone Duo's cover panel, where the status bar and camera
+  // sit in one corner; the bottom keeps the buttons off the home indicator.
+  const { sides, insets } = useContentLayout();
   const [step, setStep] = useState<Step>('passage');
 
   const [initialTranslation] = useState(initialTranslationId);
@@ -54,7 +60,7 @@ export function GoalWizard() {
   const [chapter, setChapter] = useState(1);
   // Starts on a real verse so the sheet can be continued without choosing.
   const [selection, setSelection] = useState<PassageSelection | null>(() =>
-    defaultSelection(DEFAULT_BOOK_ID)
+    defaultSelection(DEFAULT_BOOK_ID),
   );
 
   const [preview, setPreview] = useState<GoalPreview | null>(null);
@@ -174,7 +180,14 @@ export function GoalWizard() {
         </ScrollView>
       )}
 
-      <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: colors.separator,
+            paddingBottom: Math.max(spacing.xl, insets.bottom + spacing.sm),
+          },
+        ]}>
         <Pressable
           accessibilityRole="button"
           onPress={() => {
@@ -183,7 +196,9 @@ export function GoalWizard() {
             else setStep('passage');
           }}
           style={styles.footerSecondary}>
-          <Text style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+          <Text
+            maxFontSizeMultiplier={FOOTER_MAX_SCALE}
+            style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
             {step === 'passage' ? 'Cancel' : 'Back'}
           </Text>
         </Pressable>
@@ -202,7 +217,9 @@ export function GoalWizard() {
           {busy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>
+            <Text
+              maxFontSizeMultiplier={FOOTER_MAX_SCALE}
+              style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>
               {step === 'plan' ? 'Start memorizing' : 'Continue'}
             </Text>
           )}

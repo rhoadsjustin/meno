@@ -9,6 +9,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { contentColumn } from '@/components/content-layout';
+import { ModalSafeArea } from '@/components/modal-safe-area';
 import {
   availableTranslations,
   DEFAULT_TRANSLATION_ID,
@@ -36,7 +37,15 @@ type JoinState =
   | { kind: 'joined'; goal: Goal }
   | { kind: 'ready'; preview: GoalPreview };
 
-export default function ChallengeScreen() {
+export default function ChallengeRoute() {
+  return (
+    <ModalSafeArea>
+      <ChallengeScreen />
+    </ModalSafeArea>
+  );
+}
+
+function ChallengeScreen() {
   const colors = useThemeColors();
   // Key the parse on the raw values: a second challenge link opened while
   // this modal is already up must replace its content, not show the first.
@@ -122,11 +131,13 @@ export default function ChallengeScreen() {
   };
 
   // A link that cold-starts the app makes this the stack's root, which iOS
-  // shows full-screen rather than as a sheet. SafeAreaView measures the real
-  // overlap, so it pads under the status bar there and adds nothing in a sheet.
+  // shows full-screen rather than as a sheet. The insets are this modal's own
+  // (ModalSafeArea), so it pads under the status bar there and adds nothing
+  // in a sheet — and on iPhone Duo's cover panel, where the sheet is
+  // full-width, the sides keep Join clear of the status strip.
   return (
     <SafeAreaView
-      edges={['top', 'bottom']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
       <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
