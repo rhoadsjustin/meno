@@ -6,7 +6,7 @@
  */
 import { router } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
 import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
@@ -17,10 +17,12 @@ import { DEFAULT_STARTER, formatRange } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
 import { startStarterGoal } from '@/services/db/repos/goals';
 import { isLockAvailable } from '@/services/lock';
+import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { setNotificationsEnabled } from '@/services/notifications';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
-type Step = 'welcome' | 'notifications' | 'widget' | 'lock';
+/** `notificationsBlocked`: said yes in Meno, then no to the iOS prompt. */
+type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'lock';
 
 /**
  * A full-screen modal takes the root view out of the window, and with it the
@@ -53,7 +55,12 @@ function Onboarding() {
           alignSelf: 'flex-start',
         } as const)
       : null;
-  const [step, setStep] = useState<Step>('welcome');
+  const [chosenStep, setStep] = useState<Step>('welcome');
+  // Back from iPhone Settings with notifications allowed: nothing left to
+  // say on the blocked step, so carry on.
+  const reminders = useReminderStatus();
+  const step: Step =
+    chosenStep === 'notificationsBlocked' && reminders?.overall === 'on' ? 'widget' : chosenStep;
 
   const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
     await markOnboardingDone();
@@ -81,9 +88,11 @@ function Onboarding() {
     }
   }, [finish]);
 
+  // A yes here that iOS then declines must not pass silently: the user
+  // would leave onboarding believing reminders are coming.
   const optIn = useCallback(async () => {
-    await setNotificationsEnabled(true);
-    setStep('widget');
+    const delivered = await setNotificationsEnabled(true);
+    setStep(delivered ? 'widget' : 'notificationsBlocked');
   }, []);
 
   const welcome = {
@@ -139,6 +148,44 @@ function Onboarding() {
         <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             Later
+          </Text>
+        </Pressable>
+      </>
+    ),
+  };
+
+  const notificationsBlocked = {
+    visual: null,
+    copy: (
+      <>
+        <Text
+          accessibilityRole="header"
+          accessibilityLiveRegion="polite"
+          style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          Reminders can’t reach you yet
+        </Text>
+        <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Your iPhone isn’t allowing notifications from Meno, so no reminders or quizzes will
+          arrive. To let them through, open iPhone Settings, tap Notifications, and turn on Allow
+          Notifications.
+        </Text>
+        <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          Not now is fine too. Settings → Reminders in Meno always shows whether they’re getting
+          through.
+        </Text>
+      </>
+    ),
+    actions: (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void Linking.openSettings()}
+          style={[styles.primary, { backgroundColor: colors.lapis }]}>
+          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Open iPhone Settings</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
+          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            Not now
           </Text>
         </Pressable>
       </>
@@ -247,68 +294,55 @@ function Onboarding() {
     ),
   };
 
+  // Every step as the same four parts; the layout below decides where they go.
+  const steps: Record<
+    Step,
+    { title: ReactNode; visual: ReactNode; copy: ReactNode; actions: ReactNode }
+  > = {
+    welcome: { title: null, ...welcome },
+    notifications: { title: null, ...notifications },
+    notificationsBlocked: { title: null, ...notificationsBlocked },
+    widget,
+    lock,
+  };
+  const current = steps[step];
+
   let body: ReactNode;
   if (!isWide) {
     // Phones and iPhone Duo's cover panel: one column, picture above the words.
-    body =
-      step === 'welcome' ? (
-        <>
-          {welcome.visual}
-          {welcome.copy}
-          {welcome.actions}
-        </>
-      ) : step === 'notifications' ? (
-        <>
-          {notifications.copy}
-          {notifications.actions}
-        </>
-      ) : (
-        (() => {
-          const s = step === 'widget' ? widget : lock;
-          return (
-            <>
-              {s.title}
-              {s.visual}
-              {s.copy}
-              {s.actions}
-            </>
-          );
-        })()
-      );
-  } else if ((step === 'widget' || step === 'lock') && width > height) {
+    body = (
+      <>
+        {current.title}
+        {current.visual}
+        {current.copy}
+        {current.actions}
+      </>
+    );
+  } else if (current.visual && current.title && width > height) {
     // Wide, short windows (iPhone Duo opened in its landscape pose): the
     // words and buttons on the leading pane, the preview on the trailing one,
     // so the step fits on one screen instead of scrolling past a full-width
     // picture. FoldAwareRow keeps the crease in the gutter when half-open.
-    const s = step === 'widget' ? widget : lock;
     body = (
       <FoldAwareRow style={styles.wideRow}>
         <>
-          {s.title}
-          {s.copy}
-          {s.actions}
+          {current.title}
+          {current.copy}
+          {current.actions}
         </>
-        <>{s.visual}</>
+        <>{current.visual}</>
       </FoldAwareRow>
     );
   } else {
     // Otherwise on a wide window (text-only steps, or a tall window such as
     // the opened Duo rotated): a reading-width column, centred, or beside the
     // fold when half-open.
-    const s =
-      step === 'welcome'
-        ? { title: null, ...welcome }
-        : step === 'notifications'
-          ? { title: null, ...notifications }
-          : step === 'widget'
-            ? widget
-            : lock;
     body = (
       <View style={[styles.narrowColumn, besideFold ?? styles.centred]}>
-        {s.title}
-        {s.visual}
-        {s.copy}
-        {s.actions}
+        {current.title}
+        {current.visual}
+        {current.copy}
+        {current.actions}
       </View>
     );
   }

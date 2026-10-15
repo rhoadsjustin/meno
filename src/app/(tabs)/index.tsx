@@ -9,6 +9,7 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
+import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
 import {
   formatRange,
   getPassage,
@@ -532,6 +533,14 @@ export default function TodayScreen() {
     </>
   );
 
+  // Reminders off or blocked: said once, to someone who has a passage under
+  // way and has practiced it, so it never greets a first launch.
+  const reminderPrompt = (
+    <ReminderPrompt
+      eligible={!!data?.chunk && ((streak?.current ?? 0) > 0 || data.chunk.tier > 0)}
+    />
+  );
+
   // Where the focus chunk stands on the ladder — context that only fits
   // once there is a second column.
   const ladder = data?.chunk && (
@@ -565,6 +574,7 @@ export default function TodayScreen() {
             {emptyDeck}
             {ladder}
             {secondary}
+            {reminderPrompt}
           </>
         </FoldAwareRow>
       ) : (
@@ -574,6 +584,7 @@ export default function TodayScreen() {
           {emptyActions}
           {hero}
           {secondary}
+          {reminderPrompt}
           {links}
         </>
       )}
