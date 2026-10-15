@@ -5,7 +5,7 @@
  * whether a verse waiting on its second-day seal is the next thing or an
  * optional check beside new work.
  */
-import { nextTier, tierDef } from '@/services/practice/tiers';
+import { MASTERY_TIER, nextTier, tierDef } from '@/services/practice/tiers';
 
 /** A chunk as the plan sees it. */
 export type ChunkStanding = {
@@ -16,8 +16,9 @@ export type ChunkStanding = {
   status: 'locked' | 'active' | 'learning' | 'memorized';
   /**
    * Distinct local days with a mastery pass (03 §1), as days before today:
-   * 0 = today, 1 = yesterday. Only read for a chunk that has topped the
-   * ladder, so the repo may leave it empty for one still climbing.
+   * 0 = today, 1 = yesterday. Only read for a chunk that has cleared Type
+   * (`MASTERY_TIER`), the first tier whose passes count, so the repo may
+   * leave it empty for one lower down.
    */
   masteryDaysAgo: readonly number[];
 };
@@ -25,8 +26,10 @@ export type ChunkStanding = {
 export type PracticeStep =
   /** A verse not yet practiced: the ladder from Read. */
   | { kind: 'start'; chunkId: string; tier: number }
-  /** A verse part-way up the ladder, picking up at `tier`. */
-  | { kind: 'continue'; chunkId: string; tier: number }
+  /** A verse part-way up the ladder, picking up at `tier`. `seals` marks the
+   * one case where that next rung also finishes the verse: Type banked a
+   * mastery day on an earlier day, so a clean Speak today is the second. */
+  | { kind: 'continue'; chunkId: string; tier: number; seals?: true }
   /** Topped the ladder on an earlier day: one clean pass makes it Memorized. */
   | { kind: 'seal'; chunkId: string; tier: number }
   /** Topped the ladder today: nothing to do until a second day can seal it. */
@@ -72,12 +75,18 @@ export function stepFor(chunk: ChunkStanding): PracticeStep | null {
   if (chunk.status === 'locked' || chunk.status === 'memorized') return null;
   const tier = nextTier(chunk.tier);
   if (chunk.tier < 0) return { kind: 'start', chunkId: chunk.id, tier };
-  // Still climbing: the next tier is new ground.
-  if (tier !== chunk.tier) return { kind: 'continue', chunkId: chunk.id, tier };
+  const days = chunk.masteryDaysAgo;
+  // Still climbing: the next tier is new ground, so it stays ordinary work
+  // in the plan's order — but say so when clearing it would also seal.
+  if (tier !== chunk.tier) {
+    const seals = tier >= MASTERY_TIER && days.some((d) => d > 0);
+    return seals
+      ? { kind: 'continue', chunkId: chunk.id, tier, seals }
+      : { kind: 'continue', chunkId: chunk.id, tier };
+  }
 
   // At the top of the ladder, where only mastery days move it on. Memorized
   // takes two of them, and a pass today adds today's.
-  const days = chunk.masteryDaysAgo;
   if (days.length === 0) return { kind: 'continue', chunkId: chunk.id, tier };
   if (days.length === 1 && days[0] === 0) return { kind: 'rest', chunkId: chunk.id };
   return { kind: 'seal', chunkId: chunk.id, tier };
@@ -157,8 +166,12 @@ export function describeStep(
       return {
         verb: 'Continue',
         button: `Continue ${reference}`,
-        subline: `Next step · ${name}`,
-        spoken: `Continue ${reference}. The next step is ${name}.`,
+        subline: step.seals
+          ? `Next step · ${name} · a clean pass makes it memorized`
+          : `Next step · ${name}`,
+        spoken: step.seals
+          ? `Continue ${reference}. The next step is ${name}, and a clean pass makes it memorized.`
+          : `Continue ${reference}. The next step is ${name}.`,
       };
     }
     case 'seal':

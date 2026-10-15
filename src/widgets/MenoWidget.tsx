@@ -44,7 +44,7 @@ const MenoWidgetComponent = (
 ) => {
   'widget';
   const lapis = '#2244AA';
-  const gold = '#A8802E';
+  const gold = '#8F6C1F';
   const inkFaint = '#6E7280';
   const family = environment.widgetFamily;
   // iOS 17+ requires the containerBackground API for home screen widgets.

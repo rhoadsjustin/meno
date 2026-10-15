@@ -228,7 +228,12 @@ export function SpeakRound({
     // above it, so it takes less there.
     <View
       style={[styles.screen, { minHeight: height * (height < layout.shortHeight ? 0.52 : 0.64) }]}>
-      <Text style={[styles.prompt, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+      {/* A long reference at an accessibility text size shrinks to fit rather
+          than breaking mid-word ("Thessalonian" / "s"). */}
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        style={[styles.prompt, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {reference}
       </Text>
 

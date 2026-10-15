@@ -167,30 +167,6 @@ export async function getChapter(translationId: string, bookId: string, chapter:
   });
 }
 
-/** Number of verses in a chapter (reader, chunking). */
-export async function getChapterVerseCount(translationId: string, bookId: string, chapter: number): Promise<number> {
-  const translation = getTranslation(translationId);
-  const book = getBook(bookId);
-  if (chapter < 1 || chapter > book.chapters) {
-    throw new Error(`${book.name} has no chapter ${chapter}`);
-  }
-  if (translation.source === 'bundled') {
-    const db = await openBundledDb();
-    const row = await db.getFirstAsync<{ n: number }>(
-      'SELECT COUNT(*) AS n FROM verses WHERE translationId = ? AND bookId = ? AND chapter = ?',
-      translation.id,
-      bookId,
-      chapter
-    );
-    return row?.n ?? 0;
-  }
-  if (translation.source === 'esv_api') {
-    const verses = await esvChapterCached(bookId, chapter);
-    return verses.length;
-  }
-  throw new Error(`Translation ${translation.abbrev} is not available yet`);
-}
-
 /**
  * ESV, cache-first (02 §5): verses persist to the app database only under
  * `api_cached` license, are fetched chapter-at-a-time on miss, and are

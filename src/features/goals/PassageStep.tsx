@@ -80,6 +80,8 @@ type Props = {
   setSelection: Dispatch<SetStateAction<PassageSelection | null>>;
   /** A failure from the wizard's Continue, shown in the pinned bar. */
   error: string | null;
+  /** Reports whether the chapter on screen has its verses; the wizard holds Continue until it does. */
+  onReadyChange?: (ready: boolean) => void;
 };
 
 /** Plain words for a passage that would not load; bundled text never needs the network. */
@@ -101,6 +103,7 @@ export function PassageStep({
   selection,
   setSelection,
   error,
+  onReadyChange,
 }: Props) {
   const colors = useThemeColors();
   const book = getBook(bookId);
@@ -139,6 +142,11 @@ export function PassageStep({
       cancelled = true;
     };
   }, [translationId, bookId, chapter, loadKey, setSelection]);
+
+  const ready = verses !== null;
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
 
   // A new chapter starts at its first verse.
   useEffect(() => {
@@ -334,11 +342,16 @@ export function PassageStep({
                 { color: error ? colors.error : colors.inkFaint, fontFamily: fonts?.ui },
               ]}>
               {error ??
-                (!selection
-                  ? 'Tap a verse to begin.'
-                  : selection.open
-                    ? 'Tap another verse to end the range, or continue with this one.'
-                    : 'Tap a verse to choose again.')}
+                // No verses on screen yet: "tap a verse" would point at nothing.
+                (failed
+                  ? 'This chapter didn’t load.'
+                  : !verses
+                    ? 'Loading…'
+                    : !selection
+                      ? 'Tap a verse to begin.'
+                      : selection.open
+                        ? 'Tap another verse to end the range, or continue with this one.'
+                        : 'Tap a verse to choose again.')}
             </Text>
           </View>
           {selection && (

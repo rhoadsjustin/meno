@@ -110,7 +110,7 @@ async function readStatuses(): Promise<Statuses> {
 const FAQ: { q: string; a: string }[] = [
   {
     q: 'Can I learn more than one passage at a time?',
-    a: 'Yes. Tap “+ Practice another passage” on Today (or New goal in Library). Each passage keeps its own progress, and Today lists them all — the one on your widgets at the top.',
+    a: 'Yes. Tap “+ Practice another passage” on Today (or in Library). Each passage keeps its own progress, and Today lists them all — the one on your widgets at the top.',
   },
   {
     q: 'How do I choose which verse my widgets show?',

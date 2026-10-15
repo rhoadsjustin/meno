@@ -2,8 +2,18 @@
  * Type (tier 5): reference + first word only; type the whole chunk
  * (docs/03 §1, 07 §6 — New York, no autocorrect, reference watermark).
  */
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+
+import { useRevealAboveKeyboard } from '@/components/keyboard-scroll';
 
 import { gradeTyped, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
@@ -24,13 +34,34 @@ export function TypeRound({
   }) => void;
 }) {
   const colors = useThemeColors();
-  // On a short window (iPhone SE, iPhone Duo opened in landscape or closed)
-  // the keyboard leaves little room: the editor starts smaller and stops
-  // growing at about a fifth of the window, scrolling inside itself, so a
-  // whole verse typed out never pushes Check under the keyboard.
-  const { height } = useWindowDimensions();
-  const short = height < layout.shortHeight;
   const [input, setInput] = useState('');
+  // A fixed box that scrolls inside, a little taller at large text sizes.
+  // Left to grow with the text, the line being typed slid under the keyboard
+  // (most of all at accessibility sizes). At a fixed height the screen can
+  // lift the whole editor — and Check beneath it — above the keyboard once,
+  // when the keyboard appears, and the editor keeps the caret in view itself.
+  // On a short window (iPhone SE, iPhone Duo opened in landscape or closed)
+  // the keyboard leaves little room, so the box is about a fifth of the window.
+  const { height, fontScale } = useWindowDimensions();
+  const short = height < layout.shortHeight;
+  const editorHeight = EDITOR_HEIGHT * Math.min(fontScale, 1.3);
+  const editor = useRef<TextInput>(null);
+  const check = useRef<View>(null);
+  const reveal = useRevealAboveKeyboard();
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const sub = Keyboard.addListener('keyboardDidShow', (e) => {
+      // A beat after the keyboard lands, so the scroll view's keyboard inset
+      // is in place and there is room to scroll Check into view.
+      timer = setTimeout(() => {
+        if (editor.current?.isFocused()) reveal(check.current, e.endCoordinates.screenY);
+      }, 120);
+    });
+    return () => {
+      sub.remove();
+      clearTimeout(timer);
+    };
+  }, [reveal]);
   const firstWord = useMemo(() => displayWords(text)[0] ?? '', [text]);
 
   const submit = () => {
@@ -49,6 +80,7 @@ export function TypeRound({
         {reference} · begins “{firstWord}…”
       </Text>
       <TextInput
+        ref={editor}
         multiline
         autoFocus
         autoCorrect={false}
@@ -61,11 +93,16 @@ export function TypeRound({
         accessibilityLabel="Type the passage from memory"
         style={[
           styles.editor,
-          short && [styles.editorShort, { maxHeight: Math.round(height * 0.22) }],
+          {
+            height: short
+              ? Math.min(editorHeight, Math.max(EDITOR_SHORT_MIN, height * 0.22))
+              : editorHeight,
+          },
           { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.scripture },
         ]}
       />
       <Pressable
+        ref={check}
         accessibilityRole="button"
         accessibilityState={{ disabled: input.trim().length === 0 }}
         disabled={input.trim().length === 0}
@@ -80,10 +117,13 @@ export function TypeRound({
   );
 }
 
+const EDITOR_HEIGHT = 180;
+/** The smallest the editor gets on a short window. */
+const EDITOR_SHORT_MIN = 96;
+
 const styles = StyleSheet.create({
   watermark: { fontSize: 14, marginBottom: spacing.md },
   editor: {
-    minHeight: 180,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.card,
     borderCurve: 'continuous',
@@ -92,7 +132,6 @@ const styles = StyleSheet.create({
     lineHeight: scriptureType.defaultLineHeight,
     textAlignVertical: 'top',
   },
-  editorShort: { minHeight: 96 },
   button: {
     marginTop: spacing.xl,
     borderRadius: radius.capsule,

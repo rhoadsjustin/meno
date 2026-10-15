@@ -1,13 +1,20 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
-import { StarterDeck } from '@/features/goals/StarterDeck';
+import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
 import {
@@ -21,6 +28,7 @@ import {
   activeGoal,
   chunkProgressLabel,
   listActiveGoals,
+  listGoals,
   practicePlan,
   startStarterGoal,
   type Chunk,
@@ -78,8 +86,14 @@ function stepCopy(p: GoalProgress & { chunk: Chunk; step: PracticeStep }) {
   );
   // Where the verse sits in a longer passage (07 §6); a one-chunk goal has
   // nothing to place.
-  const position = p.totalChunks > 1 ? `Chunk ${p.chunk.orderIndex + 1} of ${p.totalChunks} · ` : '';
-  return { ...copy, subline: `${position}${copy.subline}` };
+  const place = p.totalChunks > 1 ? `Chunk ${p.chunk.orderIndex + 1} of ${p.totalChunks}` : '';
+  return {
+    ...copy,
+    subline: place ? `${place} · ${copy.subline}` : copy.subline,
+    // The sub-line is not read on its own (the button says it all), so the
+    // spoken sentence carries the position too.
+    spoken: place ? `${copy.spoken} ${place}.` : copy.spoken,
+  };
 }
 
 function practiceHref(goalId: string, chunk?: Chunk): Href {
@@ -101,6 +115,10 @@ export default function TodayScreen() {
   // Wide windows (iPhone Duo opened, Split View): hero on the left, the
   // ladder and secondary cards on the right instead of one long stack.
   const { isWide } = useContentLayout();
+  // At accessibility text sizes the starter cards stack (StarterDeck), so
+  // there is nothing to swipe and the stack is long: the way into the picker
+  // goes above it instead of several screens below.
+  const stackedStarters = useWindowDimensions().fontScale >= STARTER_STACK_TEXT_SCALE;
   const [data, setData] = useState<TodayData | null>(null);
   const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
@@ -111,6 +129,9 @@ export default function TodayScreen() {
   const [starters, setStarters] = useState<StarterPassage[] | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startFailed, setStartFailed] = useState(false);
+  // Nothing in progress, but passages finished earlier: the empty state
+  // must not tell someone with memorized verses that they have none.
+  const [hasFinished, setHasFinished] = useState(false);
   const startBusy = useRef(false);
 
   // Reads everything this screen shows; `isCancelled` guards a blurred screen.
@@ -129,7 +150,9 @@ export default function TodayScreen() {
     const due = await countDueReviews();
     if (!isCancelled()) setDueCount(due);
     if (!goal) {
+      const finished = (await listGoals()).length > 0;
       if (!isCancelled()) {
+        setHasFinished(finished);
         setData(null);
         setOthers([]);
         setStreak(streakNow);
@@ -237,11 +260,12 @@ export default function TodayScreen() {
       <Text
         accessibilityRole="header"
         style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        Nothing memorized yet
+        {hasFinished ? 'Ready for another passage?' : 'Nothing memorized yet'}
       </Text>
       <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        Start with a verse you may already half know. Swipe to choose one and try it now — it takes
-        a couple of minutes.
+        {hasFinished
+          ? `Nothing is in progress. ${stackedStarters ? 'Choose' : 'Swipe to choose'} a verse and start it now, or choose your own passage.`
+          : `Start with a verse you may already half know. ${stackedStarters ? 'Choose' : 'Swipe to choose'} one and try it now — it takes a couple of minutes.`}
       </Text>
     </View>
   );
@@ -286,7 +310,13 @@ export default function TodayScreen() {
             const { display, mono } = dissolve(data.chunkText, data.chunk.tier);
             return display ? (
               <Text
-                accessibilityLabel={`Current passage, ${chunkRangeLabel(data.chunk)}`}
+                // First letters are a prompt for the eye; read aloud they are
+                // noise. The full text is read as it stands.
+                accessibilityLabel={
+                  mono
+                    ? `Current passage, ${chunkRangeLabel(data.chunk)}, shown as first letters`
+                    : `Current passage, ${chunkRangeLabel(data.chunk)}. ${display}`
+                }
                 style={[
                   styles.scripture,
                   mono
@@ -298,7 +328,9 @@ export default function TodayScreen() {
               </Text>
             ) : (
               <Text
-                style={[styles.scripture, { color: colors.gold, fontFamily: fonts?.scripture }]}>
+                // Ink, not gold: the text is hidden because the ladder is
+                // topped, but the verse is not memorized until it is sealed.
+                style={[styles.scripture, { color: colors.ink, fontFamily: fonts?.scripture }]}>
                 {chunkRangeLabel(data.chunk)}
               </Text>
             );
@@ -313,7 +345,7 @@ export default function TodayScreen() {
             if (data.step.kind === 'rest') {
               return (
                 <View accessible accessibilityLabel={copy.spoken} style={styles.restNote}>
-                  <Text style={[styles.restTitle, { color: colors.gold, fontFamily: fonts?.ui }]}>
+                  <Text style={[styles.restTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
                     {copy.button}
                   </Text>
                   <Text style={[styles.subline, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -334,8 +366,10 @@ export default function TodayScreen() {
                   </Text>
                 </Pressable>
                 <Text
-                  accessible={false}
-                  importantForAccessibility="no"
+                  // Hidden from VoiceOver: the button's label already says it.
+                  // (`accessible={false}` alone still leaves text readable.)
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
                   style={[styles.subline, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                   {copy.subline}
                 </Text>
@@ -379,7 +413,9 @@ export default function TodayScreen() {
             accessibilityRole="button"
             onPress={() => router.push('/goal-wizard')}
             style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>New goal</Text>
+            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
+              Choose another passage
+            </Text>
           </Pressable>
         </Card>
       )}
@@ -449,7 +485,10 @@ export default function TodayScreen() {
                 </Text>
                 <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                   {o.chunk && copy
-                    ? `${chunkRangeLabel(o.chunk)} · ${copy.subline}`
+                    ? // A one-verse passage is its own chunk: no need to name it twice.
+                      chunkRangeLabel(o.chunk) === o.goal.title
+                      ? copy.subline
+                      : `${chunkRangeLabel(o.chunk)} · ${copy.subline}`
                     : 'Every chunk memorized'}
                 </Text>
                 <View style={styles.otherActions}>
@@ -580,8 +619,9 @@ export default function TodayScreen() {
       ) : (
         <>
           {emptyIntro}
+          {stackedStarters && emptyActions}
           {emptyDeck}
-          {emptyActions}
+          {!stackedStarters && emptyActions}
           {hero}
           {secondary}
           {reminderPrompt}

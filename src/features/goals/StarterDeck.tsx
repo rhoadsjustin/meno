@@ -4,7 +4,7 @@
  * the user has a passage of their own.
  */
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
@@ -18,6 +18,12 @@ import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@
 
 /** Share of the row one card takes, so the next card peeks in as the cue to swipe. */
 const CARD_SHARE = 0.86;
+/**
+ * Dynamic Type scale from which the cards stack instead of sitting in a
+ * swipeable row (the accessibility sizes). A row is as tall as its longest
+ * verse, which at these sizes is several screens of mostly empty cards.
+ */
+export const STARTER_STACK_TEXT_SCALE = 1.4;
 /** Past this a verse stops reading as a card and becomes a banner. */
 const MAX_CARD_WIDTH = 420;
 
@@ -42,56 +48,68 @@ export function StarterDeck({
   // stay within it, clear of the gutter (and of iPhone Duo's fold).
   const bleed = isWide ? 0 : layout.screenMargin;
   const translation = passages[0] ? getTranslation(passages[0].translationId) : null;
+  // Cards normally sit in a row, stretched to the tallest so the buttons
+  // line up. At accessibility text sizes they stack, each at its own height.
+  const { fontScale } = useWindowDimensions();
+  const stacked = fontScale >= STARTER_STACK_TEXT_SCALE;
+
+  const cards = passages.map((passage) => {
+    const reference = formatRange(passage.starter.range);
+    const starting = startingId === passage.starter.id;
+    return (
+      <Card
+        key={passage.starter.id}
+        style={stacked ? styles.card : { ...styles.card, width: cardWidth }}>
+        <View>
+          <Text
+            accessibilityRole="header"
+            style={[styles.reference, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            {reference}
+          </Text>
+          <Text style={[styles.scripture, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+            {trimUnbalancedQuotes(passage.verses.map((v) => v.text).join(' '))}
+          </Text>
+          <Text
+            accessibilityLabel={getTranslation(passage.translationId).name}
+            style={[styles.abbrev, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            {getTranslation(passage.translationId).abbrev}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Practice ${reference}`}
+          accessibilityState={{ disabled: startingId !== null, busy: starting }}
+          disabled={startingId !== null}
+          onPress={() => onStart(passage)}
+          style={[
+            styles.button,
+            { backgroundColor: colors.lapis },
+            startingId !== null && styles.buttonDisabled,
+          ]}>
+          <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>
+            {starting ? 'Starting…' : 'Practice this verse'}
+          </Text>
+        </Pressable>
+      </Card>
+    );
+  });
 
   return (
     <View onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)} style={styles.root}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={cardWidth + spacing.md}
-        snapToAlignment="start"
-        style={{ marginHorizontal: -bleed }}
-        contentContainerStyle={[styles.row, { paddingHorizontal: bleed }]}>
-        {passages.map((passage) => {
-          const reference = formatRange(passage.starter.range);
-          const starting = startingId === passage.starter.id;
-          return (
-            <Card key={passage.starter.id} style={{ ...styles.card, width: cardWidth }}>
-              <View>
-                <Text
-                  accessibilityRole="header"
-                  style={[styles.reference, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                  {reference}
-                </Text>
-                <Text style={[styles.scripture, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                  {trimUnbalancedQuotes(passage.verses.map((v) => v.text).join(' '))}
-                </Text>
-                <Text
-                  accessibilityLabel={getTranslation(passage.translationId).name}
-                  style={[styles.abbrev, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  {getTranslation(passage.translationId).abbrev}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Practice ${reference}`}
-                accessibilityState={{ disabled: startingId !== null, busy: starting }}
-                disabled={startingId !== null}
-                onPress={() => onStart(passage)}
-                style={[
-                  styles.button,
-                  { backgroundColor: colors.lapis },
-                  startingId !== null && styles.buttonDisabled,
-                ]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>
-                  {starting ? 'Starting…' : 'Practice this verse'}
-                </Text>
-              </Pressable>
-            </Card>
-          );
-        })}
-      </ScrollView>
+      {stacked ? (
+        <View style={styles.stack}>{cards}</View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={cardWidth + spacing.md}
+          snapToAlignment="start"
+          style={{ marginHorizontal: -bleed }}
+          contentContainerStyle={[styles.row, { paddingHorizontal: bleed }]}>
+          {cards}
+        </ScrollView>
+      )}
       {translation && (
         <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {translation.attribution}
@@ -104,6 +122,7 @@ export function StarterDeck({
 const styles = StyleSheet.create({
   root: { gap: spacing.md },
   row: { gap: spacing.md },
+  stack: { gap: spacing.md },
   // Cards stretch to the tallest in the row; the button sits at the bottom
   // of each so the row of buttons lines up.
   card: { justifyContent: 'space-between' },

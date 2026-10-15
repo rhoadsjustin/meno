@@ -111,7 +111,10 @@ export default function LibraryScreen() {
                 {chunks.filter((c) => c.status === 'memorized').length} of {chunks.length} chunks
                 memorized
               </Text>
-              <View style={styles.heatmap} accessibilityLabel={`Chunk progress for ${goal.title}`}>
+              <View
+                style={styles.heatmap}
+                accessible
+                accessibilityLabel={`Chunk progress for ${goal.title}: ${chunks.filter((c) => c.status === 'memorized').length} memorized, ${chunks.filter((c) => c.status === 'learning' || c.status === 'active').length} in progress, ${chunks.filter((c) => c.status === 'locked').length} not started`}>
                 {chunks.map((c) => (
                   <View
                     key={c.id}
@@ -178,7 +181,7 @@ export default function LibraryScreen() {
       {loaded && active.length === 0 && (
         <Card>
           <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            No goals yet
+            No passages yet
           </Text>
           <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             Your passages in progress will live here.
@@ -191,7 +194,7 @@ export default function LibraryScreen() {
           onPress={() => router.push('/goal-wizard')}
           style={[styles.newGoal, { borderColor: colors.lapis }]}>
           <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {active.length > 0 ? '+ New goal' : 'Start a goal'}
+            {active.length > 0 ? '+ Practice another passage' : 'Choose a passage'}
           </Text>
         </Pressable>
       )}

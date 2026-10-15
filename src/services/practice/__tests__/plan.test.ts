@@ -57,8 +57,26 @@ describe('stepFor', () => {
 
   it('continues a climbing chunk at the tier after its highest cleared', () => {
     expect(stepFor(chunk(0, 3))).toEqual({ kind: 'continue', chunkId: 'c0', tier: 4 });
-    // Type banked a mastery day, but Speak is still new ground.
-    expect(stepFor(chunk(0, 5, [1]))).toEqual({ kind: 'continue', chunkId: 'c0', tier: 6 });
+  });
+
+  it('flags the Speak ahead as the seal when Type banked an earlier day', () => {
+    // Still new ground, so it stays `continue` — but a clean pass is the
+    // second mastery day, and the label should say so.
+    expect(stepFor(chunk(0, 5, [1]))).toEqual({
+      kind: 'continue',
+      chunkId: 'c0',
+      tier: 6,
+      seals: true,
+    });
+    expect(stepFor(chunk(0, 5, [3]))).toMatchObject({ kind: 'continue', seals: true });
+  });
+
+  it('does not flag it when the only mastery day is today, or there is none', () => {
+    // Type passed clean this morning: Speak today cannot be a second day.
+    expect(stepFor(chunk(0, 5, [0]))).toEqual({ kind: 'continue', chunkId: 'c0', tier: 6 });
+    // Type cleared on an almost: nothing banked at all.
+    expect(stepFor(chunk(0, 5, []))).toEqual({ kind: 'continue', chunkId: 'c0', tier: 6 });
+    expect(stepFor(chunk(0, 5, [0]))).not.toHaveProperty('seals');
   });
 
   it('rests a chunk that topped the ladder today', () => {
@@ -149,7 +167,28 @@ describe('planPractice', () => {
   });
 });
 
+describe('planPractice with a sealing Speak', () => {
+  it('keeps it as the main work, ahead of later chunks, not as an optional seal', () => {
+    const plan = planPractice([chunk(0, 5, [1]), chunk(1, -1)]);
+    expect(plan.next).toMatchObject({ kind: 'continue', chunkId: 'c0', seals: true });
+    expect(plan.optionalSeal).toBeNull();
+  });
+});
+
 describe('describeStep', () => {
+  it('says when the next step also makes the verse memorized', () => {
+    const copy = describeStep(
+      { kind: 'continue', chunkId: 'c0', tier: 6, seals: true },
+      'John 3:16',
+    );
+    expect(copy.button).toBe('Continue John 3:16');
+    expect(copy.subline).toBe('Next step · Speak · a clean pass makes it memorized');
+    expect(copy.spoken).toContain('a clean pass makes it memorized');
+    expect(describeStep({ kind: 'continue', chunkId: 'c0', tier: 6 }, 'John 3:16').subline).toBe(
+      'Next step · Speak',
+    );
+  });
+
   it('names the action and the reference on the button', () => {
     expect(describeStep({ kind: 'start', chunkId: 'c', tier: 0 }, 'John 3:17')).toMatchObject({
       verb: 'Start',

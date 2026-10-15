@@ -67,6 +67,9 @@ export function GoalWizard() {
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The chapter on screen has loaded. While it has not (still loading, or a
+  // licensed translation with no connection) Continue would only fail.
+  const [chapterReady, setChapterReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,14 +120,17 @@ export function GoalWizard() {
     setError(null);
     try {
       await createGoal({ translationId, range, title: title.trim() || formatRange(range) });
-      router.back();
+      // Opened by a link with nothing beneath it, there is nowhere to go back
+      // to and the sheet would sit on its spinner.
+      if (router.canGoBack()) router.back();
+      else router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
     }
   }, [translationId, selection, title]);
 
-  const canAdvance = !busy && (step === 'plan' || selection !== null);
+  const canAdvance = !busy && (step === 'plan' || (selection !== null && chapterReady));
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surfaceRaised }]}>
@@ -140,6 +146,7 @@ export function GoalWizard() {
           selection={selection}
           setSelection={setSelection}
           error={error}
+          onReadyChange={setChapterReady}
         />
       )}
 
@@ -159,7 +166,7 @@ export function GoalWizard() {
                   styles.titleInput,
                   { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.ui },
                 ]}
-                accessibilityLabel="Goal name"
+                accessibilityLabel="Passage name"
               />
               <View style={styles.statsRow}>
                 <Stat label="Verses" value={String(preview.verseCount)} />
@@ -248,7 +255,7 @@ function StepHeading({ title, step }: { title: string; step: number }) {
 function Stat({ label, value }: { label: string; value: string }) {
   const colors = useThemeColors();
   return (
-    <View style={styles.stat}>
+    <View accessible accessibilityLabel={`${value} ${label}`} style={styles.stat}>
       <Text style={[styles.statValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {value}
       </Text>
