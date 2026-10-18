@@ -8,11 +8,16 @@ import { AppState, Pressable, StyleSheet, useColorScheme, Text, View } from 'rea
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
+import { applyDeviceLocale } from '@/i18n/device';
+import '@/i18n/react';
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
 import { publishWidgetSnapshot } from '@/services/widgets';
 import { palette } from '@/theme/tokens';
+
+// Before any screen renders or any service formats a string.
+applyDeviceLocale();
 
 const menoLightTheme = {
   ...DefaultTheme,
