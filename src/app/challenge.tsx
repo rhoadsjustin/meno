@@ -10,6 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
+import { t as translate } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import {
   availableTranslations,
   DEFAULT_TRANSLATION_ID,
@@ -19,6 +21,8 @@ import {
 import {
   challengeTargetDate,
   ChallengeLinkError,
+  friendlyDate,
+  isPassageTitle,
   parseChallengeParams,
   type Challenge,
 } from '@/services/challenges';
@@ -47,6 +51,7 @@ export default function ChallengeRoute() {
 
 function ChallengeScreen() {
   const colors = useThemeColors();
+  const { t: tr } = useTranslation(['challenge', 'goals', 'common']);
   // Key the parse on the raw values: a second challenge link opened while
   // this modal is already up must replace its content, not show the first.
   const { v, c, t, s, e, n, d } = useLocalSearchParams<Record<string, string>>();
@@ -56,9 +61,7 @@ function ChallengeScreen() {
     } catch (err) {
       return {
         error:
-          err instanceof ChallengeLinkError
-            ? err.message
-            : 'This challenge link is missing or malformed.',
+          err instanceof ChallengeLinkError ? err.message : translate('challenge:errors.malformed'),
       };
     }
   }, [v, c, t, s, e, n, d]);
@@ -94,7 +97,7 @@ function ChallengeScreen() {
       const preview = await previewGoal(translationId, challenge.range);
       put({ kind: 'ready', preview });
     })().catch(() => {
-      put({ kind: 'invalid', message: 'This challenge points at a passage Meno can’t find.' });
+      put({ kind: 'invalid', message: translate('challenge:errors.passageNotFound') });
     });
     return () => {
       cancelled = true;
@@ -125,7 +128,7 @@ function ChallengeScreen() {
       setBusy(false);
       setState({
         code: challenge.code,
-        result: { kind: 'invalid', message: 'Something went wrong joining this challenge. Try the link again.' },
+        result: { kind: 'invalid', message: translate('challenge:joinFailed') },
       });
     }
   };
@@ -141,7 +144,7 @@ function ChallengeScreen() {
       style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
       <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Challenge invitation
+          {tr('invitation')}
         </Text>
 
         {view.kind === 'loading' && <ActivityIndicator style={styles.spinner} />}
@@ -149,7 +152,7 @@ function ChallengeScreen() {
         {view.kind === 'invalid' && (
           <>
             <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              This link didn’t work
+              {tr('invalidHeading')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {view.message}
@@ -160,17 +163,17 @@ function ChallengeScreen() {
         {view.kind === 'joined' && (
           <>
             <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              You’re already in
+              {tr('joinedHeading')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              “{view.goal.title}” is on this device. Keep going — every recitation counts.
+              {tr('joinedBody', { title: view.goal.title })}
             </Text>
           </>
         )}
 
         {view.kind === 'ready' && challenge && (
           <>
-            {challenge.title !== formatRange(challenge.range) && (
+            {!isPassageTitle(challenge.title, challenge.range) && (
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {challenge.title}
               </Text>
@@ -179,23 +182,28 @@ function ChallengeScreen() {
               {formatRange(challenge.range)}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {getTranslation(translationId).abbrev}
-              {challenge.targetDate ? ` · finish by ${friendlyDate(challenge.targetDate)}` : ''}
+              {challenge.targetDate
+                ? tr('translationDue', {
+                    abbrev: getTranslation(translationId).abbrev,
+                    date: friendlyDate(challenge.targetDate),
+                  })
+                : getTranslation(translationId).abbrev}
             </Text>
             <View style={styles.statsRow}>
-              <Stat label="Verses" value={String(view.preview.verseCount)} />
-              <Stat label="Chunks" value={String(view.preview.chunks.length)} />
-              <Stat label="Est. days" value={`~${view.preview.projectedDays}`} />
+              <Stat label={tr('goals:stats.verses')} value={String(view.preview.verseCount)} />
+              <Stat label={tr('goals:stats.chunks')} value={String(view.preview.chunks.length)} />
+              <Stat label={tr('goals:stats.estDays')} value={`~${view.preview.projectedDays}`} />
             </View>
             {translationSwapped && (
               <Text style={[styles.note, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Shared in {getTranslation(challenge.translationId).abbrev}, which isn’t set up on this
-                device — you’ll memorize in {getTranslation(translationId).abbrev} instead.
+                {tr('swapped', {
+                  shared: getTranslation(challenge.translationId).abbrev,
+                  local: getTranslation(translationId).abbrev,
+                })}
               </Text>
             )}
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Joining creates this goal on your device. Your progress stays private; only you see it
-              for now.
+              {tr('joinNote')}
             </Text>
           </>
         )}
@@ -207,7 +215,7 @@ function ChallengeScreen() {
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           style={styles.footerSecondary}>
           <Text style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {view.kind === 'ready' ? 'Not now' : 'Close'}
+            {view.kind === 'ready' ? tr('common:notNow') : tr('common:close')}
           </Text>
         </Pressable>
         {view.kind === 'ready' && (
@@ -219,7 +227,7 @@ function ChallengeScreen() {
             {busy ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>Join challenge</Text>
+              <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>{tr('join')}</Text>
             )}
           </Pressable>
         )}
@@ -228,7 +236,7 @@ function ChallengeScreen() {
             accessibilityRole="button"
             onPress={() => router.replace(`/practice/${view.goal.id}`)}
             style={[styles.footerPrimary, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>Practice</Text>
+            <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>{tr('practice')}</Text>
           </Pressable>
         )}
       </View>
@@ -248,15 +256,6 @@ function Stat({ label, value }: { label: string; value: string }) {
       </Text>
     </View>
   );
-}
-
-function friendlyDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 const styles = StyleSheet.create({

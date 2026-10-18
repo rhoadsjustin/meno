@@ -7,7 +7,8 @@
  * The `c` code is the shared identifier both participants' goals store in
  * `goals.challengeId`, so M8's server sync can join them later.
  */
-import { compareRefs, formatRange, parseOsisRef, refToOsis } from '@/services/bible/refs';
+import { i18n, locale, SUPPORTED_LANGUAGES, t, type Language } from '@/i18n';
+import { bookName, compareRefs, formatRange, parseOsisRef, refToOsis } from '@/services/bible/refs';
 import { getTranslation } from '@/services/bible/registry';
 import type { RefRange } from '@/services/bible/types';
 
@@ -16,6 +17,11 @@ export type Challenge = {
   code: string;
   translationId: string;
   range: RefRange;
+  /**
+   * The goal's name. When it is just the passage reference (see
+   * `isPassageTitle`) the link leaves it out, so the receiver sees the
+   * reference in their own language.
+   */
   title: string;
   /** Local ISO date (YYYY-MM-DD); absent when the goal has no target. */
   targetDate?: string;
@@ -38,8 +44,9 @@ export function encodeChallengeUrl(challenge: Challenge): string {
     ['t', challenge.translationId],
     ['s', refToOsis(challenge.range.start)],
     ['e', refToOsis(challenge.range.end)],
-    ['n', challenge.title],
   ];
+  // Language-neutral: a title that is only the reference stays off the link.
+  if (!isPassageTitle(challenge.title, challenge.range)) params.push(['n', challenge.title]);
   if (challenge.targetDate) params.push(['d', challenge.targetDate]);
   const query = params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
   return `${CHALLENGE_URL_ROOT}?${query}`;
@@ -55,40 +62,40 @@ type RawParams = Record<string, string | string[] | undefined>;
 export function parseChallengeParams(params: RawParams): Challenge {
   const version = Number(first(params.v));
   if (!Number.isInteger(version) || version < 1) {
-    throw new ChallengeLinkError('This challenge link is missing or malformed.');
+    throw new ChallengeLinkError(t('challenge:errors.malformed'));
   }
   if (version > CHALLENGE_VERSION) {
-    throw new ChallengeLinkError('This challenge needs a newer version of Meno. Update the app and try the link again.');
+    throw new ChallengeLinkError(t('challenge:errors.newerVersion'));
   }
 
   const code = (first(params.c) ?? '').toUpperCase();
   if (!CODE_RE.test(code)) {
-    throw new ChallengeLinkError('This challenge link is missing or malformed.');
+    throw new ChallengeLinkError(t('challenge:errors.malformed'));
   }
 
   const translationId = first(params.t) ?? '';
   try {
     getTranslation(translationId);
   } catch {
-    throw new ChallengeLinkError('This challenge uses a translation this version of Meno doesn’t know.');
+    throw new ChallengeLinkError(t('challenge:errors.unknownTranslation'));
   }
 
   const startOsis = first(params.s);
   const endOsis = first(params.e);
   if (!startOsis || !endOsis) {
-    throw new ChallengeLinkError('This challenge link is missing or malformed.');
+    throw new ChallengeLinkError(t('challenge:errors.malformed'));
   }
   let range: RefRange;
   try {
     range = { start: parseOsisRef(startOsis), end: parseOsisRef(endOsis) };
   } catch {
-    throw new ChallengeLinkError('This challenge points at a passage Meno can’t find.');
+    throw new ChallengeLinkError(t('challenge:errors.passageNotFound'));
   }
   if (range.start.bookId !== range.end.bookId) {
-    throw new ChallengeLinkError('This challenge spans multiple books, which Meno doesn’t support yet.');
+    throw new ChallengeLinkError(t('challenge:errors.multipleBooks'));
   }
   if (compareRefs(range.start, range.end) > 0) {
-    throw new ChallengeLinkError('This challenge points at a passage Meno can’t find.');
+    throw new ChallengeLinkError(t('challenge:errors.passageNotFound'));
   }
 
   const title = (first(params.n) ?? '').trim().slice(0, TITLE_MAX) || formatRange(range);
@@ -111,7 +118,7 @@ export function parseChallengeUrl(url: string): Challenge {
     try {
       params[key] = decodeURIComponent(value.replace(/\+/g, ' '));
     } catch {
-      throw new ChallengeLinkError('This challenge link is missing or malformed.');
+      throw new ChallengeLinkError(t('challenge:errors.malformed'));
     }
   }
   return parseChallengeParams(params);
@@ -122,11 +129,45 @@ export function parseChallengeUrl(url: string): Challenge {
  * never leaves the app this way (02 §5, CLAUDE.md licensing guardrail).
  */
 export function challengeShareMessage(challenge: Challenge): string {
-  const passage = formatRange(challenge.range);
-  const abbrev = getTranslation(challenge.translationId).abbrev;
-  const named = challenge.title !== passage ? `“${challenge.title}” — ` : '';
-  const due = challenge.targetDate ? ` by ${friendlyDate(challenge.targetDate)}` : '';
-  return `${named}Memorize ${passage} (${abbrev}) with me${due} in Meno. Join my challenge: ${encodeChallengeUrl(challenge)}`;
+  const values = {
+    passage: formatRange(challenge.range),
+    abbrev: getTranslation(challenge.translationId).abbrev,
+    url: encodeChallengeUrl(challenge),
+  };
+  const message = challenge.targetDate
+    ? t('challenge:share.messageDue', { ...values, date: friendlyDate(challenge.targetDate) })
+    : t('challenge:share.message', values);
+  return isPassageTitle(challenge.title, challenge.range)
+    ? message
+    : t('challenge:share.named', { title: challenge.title, message });
+}
+
+/** The share sheet's subject line (mail and the like). */
+export function challengeShareSubject(challenge: Challenge): string {
+  return t('challenge:share.subject', { title: challenge.title });
+}
+
+/**
+ * A range's reference in a given UI language. The book name is the only
+ * language-dependent part of `formatRange`, so the rest is reused as is.
+ */
+export function formatRangeIn(range: RefRange, lng: Language): string {
+  const here = formatRange(range);
+  const local = bookName(range.start.bookId);
+  if (range.start.bookId !== range.end.bookId || !here.startsWith(local)) return here;
+  const name = i18n.t(`books:${range.start.bookId}` as 'books:Gen', { lng });
+  return `${name}${here.slice(local.length)}`;
+}
+
+/**
+ * True when a goal title is just its passage's reference, in any UI
+ * language (or blank). Such titles are generated, not chosen, so they are
+ * shown in the current language rather than the one they were made in.
+ */
+export function isPassageTitle(title: string, range: RefRange): boolean {
+  const trimmed = title.trim();
+  if (!trimmed || trimmed === formatRange(range)) return true;
+  return SUPPORTED_LANGUAGES.some((lng) => trimmed === formatRangeIn(range, lng));
 }
 
 /** Local-time Date for goals.targetDate (avoids the UTC-midnight off-by-one). */
@@ -153,9 +194,10 @@ function isRealIsoDate(s: string): boolean {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
-function friendlyDate(iso: string): string {
+/** A local ISO date as the UI shows it, e.g. "December 25, 2026". */
+export function friendlyDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+  return new Date(y, m - 1, d).toLocaleDateString(locale(), {
     month: 'long',
     day: 'numeric',
     year: 'numeric',

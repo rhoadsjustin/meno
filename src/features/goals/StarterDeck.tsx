@@ -8,6 +8,7 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
+import { useTranslation } from '@/i18n/react';
 import {
   formatRange,
   getTranslation,
@@ -38,6 +39,7 @@ export function StarterDeck({
   onStart: (passage: StarterPassage) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('goals');
   const { width: windowWidth, isWide } = useContentLayout();
   // The row's real width once laid out (it is half the window in the wide
   // two-pane layout); until then, the single-column width is a fair guess.
@@ -77,7 +79,7 @@ export function StarterDeck({
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Practice ${reference}`}
+          accessibilityLabel={t('starter.practiceReference', { reference })}
           accessibilityState={{ disabled: startingId !== null, busy: starting }}
           disabled={startingId !== null}
           onPress={() => onStart(passage)}
@@ -87,7 +89,7 @@ export function StarterDeck({
             startingId !== null && styles.buttonDisabled,
           ]}>
           <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>
-            {starting ? 'Starting…' : 'Practice this verse'}
+            {starting ? t('starter.starting') : t('starter.practiceThisVerse')}
           </Text>
         </Pressable>
       </Card>

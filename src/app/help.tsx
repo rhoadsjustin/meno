@@ -10,10 +10,12 @@ import { useReducedMotion } from 'react-native-reanimated';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { HelpGuide } from '@/features/help/HelpGuide';
+import { useTranslation } from '@/i18n/react';
 import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 export default function HelpRoute() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['help', 'common']);
   // The side insets matter on iPhone Duo's cover panel, where the status bar
   // is a strip down one side: without them Done sits underneath it.
   const { insets, sides } = useContentLayout();
@@ -33,7 +35,9 @@ export default function HelpRoute() {
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       <View style={styles.topBar}>
         <Pressable accessibilityRole="button" hitSlop={12} onPress={() => router.back()}>
-          <Text style={[styles.done, { color: colors.lapis, fontFamily: fonts?.ui }]}>Done</Text>
+          <Text style={[styles.done, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+            {t('common:done')}
+          </Text>
         </Pressable>
       </View>
       <ScrollView
@@ -44,12 +48,9 @@ export default function HelpRoute() {
           { paddingBottom: insets.bottom + spacing.xxxl },
         ]}>
         <Text accessibilityRole="header" style={[styles.title, text]}>
-          How to set up Meno
+          {t('title')}
         </Text>
-        <Text style={[styles.body, faint]}>
-          Meno works best with a few things turned on. Each one takes about a minute. Tap any item
-          to jump to its steps.
-        </Text>
+        <Text style={[styles.body, faint]}>{t('intro')}</Text>
         <HelpGuide scrollTo={scrollTo} onBeforeNavigate={closeFirst} />
       </ScrollView>
     </View>

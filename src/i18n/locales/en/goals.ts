@@ -1,1 +1,51 @@
-export default {} as const;
+/** Goal wizard (passage + plan steps), the extend menu, and the starter deck. */
+export default {
+  wizard: {
+    choosePassage: 'Choose a passage',
+    yourPlan: 'Your plan',
+    stepOf: 'Step {{step}} of {{total}}',
+    passageName: 'Passage name',
+    planNote: 'About one new chunk a day, with reviews to keep what you’ve hidden.',
+    startMemorizing: 'Start memorizing',
+  },
+  stats: {
+    verses: 'Verses',
+    words: 'Words',
+    chunks: 'Chunks',
+    estDays: 'Est. days',
+    /** VoiceOver reading of one stat, e.g. "12 Verses". */
+    a11y: '{{value}} {{label}}',
+  },
+  passage: {
+    translation: 'Translation',
+    chapter: 'Chapter {{chapter}}',
+    /** A book and chapter, e.g. "John 3". */
+    bookChapter: '{{book}} {{chapter}}',
+    selectWholeChapter: 'Select all of {{chapter}}',
+    wholeChapter: 'Whole chapter',
+    extendThrough: 'Extend through',
+    useInstead: 'Use the {{abbrev}} instead',
+    loadingChapter: 'Loading {{chapter}}',
+    noSelection: 'No verses selected',
+    selected: '{{passage}} selected',
+    selectionCleared: 'Selection cleared',
+    clear: 'Clear',
+    clearSelection: 'Clear selection',
+    chapterFailed: 'This chapter didn’t load.',
+    tapToBegin: 'Tap a verse to begin.',
+    tapToEnd: 'Tap another verse to end the range, or continue with this one.',
+    tapToChooseAgain: 'Tap a verse to choose again.',
+    verse: 'Verse {{verse}}. {{text}}',
+    verseHintStart: 'Starts the passage here. Then choose the last verse.',
+    verseHintEnd: 'Ends the passage here.',
+    startHere: 'Start passage here',
+    endHere: 'End passage here',
+    loadFailed: 'Couldn’t load {{what}}.',
+    loadFailedRemote: 'Couldn’t load {{what}} in the {{abbrev}}. It needs a connection the first time.',
+  },
+  starter: {
+    practiceReference: 'Practice {{reference}}',
+    practiceThisVerse: 'Practice this verse',
+    starting: 'Starting…',
+  },
+} as const;

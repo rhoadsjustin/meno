@@ -5,7 +5,8 @@
  * whether a verse waiting on its second-day seal is the next thing or an
  * optional check beside new work.
  */
-import { MASTERY_TIER, nextTier, tierDef } from '@/services/practice/tiers';
+import { t } from '@/i18n';
+import { MASTERY_TIER, nextTier, tierName } from '@/services/practice/tiers';
 
 /** A chunk as the plan sees it. */
 export type ChunkStanding = {
@@ -153,44 +154,44 @@ export function describeStep(
 ): PracticeStepCopy {
   switch (step.kind) {
     case 'start': {
-      const first = tierDef(step.tier).name;
+      const tier = tierName(step.tier);
       return {
-        verb: 'Start',
-        button: `Start ${reference}`,
-        subline: `New verse · begins with ${first}`,
-        spoken: `Start ${reference}, a new verse. Begins with ${first}.`,
+        verb: t('practice:plan.start'),
+        button: t('practice:plan.startButton', { reference }),
+        subline: t('practice:plan.startSubline', { tier }),
+        spoken: t('practice:plan.startSpoken', { reference, tier }),
       };
     }
     case 'continue': {
-      const name = tierDef(step.tier).name;
+      const tier = tierName(step.tier);
       return {
-        verb: 'Continue',
-        button: `Continue ${reference}`,
+        verb: t('common:continue'),
+        button: t('practice:plan.continueButton', { reference }),
         subline: step.seals
-          ? `Next step · ${name} · a clean pass makes it memorized`
-          : `Next step · ${name}`,
+          ? t('practice:plan.continueSublineSeals', { tier })
+          : t('practice:plan.continueSubline', { tier }),
         spoken: step.seals
-          ? `Continue ${reference}. The next step is ${name}, and a clean pass makes it memorized.`
-          : `Continue ${reference}. The next step is ${name}.`,
+          ? t('practice:plan.continueSpokenSeals', { reference, tier })
+          : t('practice:plan.continueSpoken', { reference, tier }),
       };
     }
     case 'seal':
       return {
-        verb: 'Seal',
-        button: `Seal ${reference}`,
+        verb: t('practice:plan.seal'),
+        button: t('practice:plan.sealButton', { reference }),
         subline: thenReference
-          ? `One recitation · then on to ${thenReference}`
-          : 'One recitation makes it memorized',
+          ? t('practice:plan.sealSublineThen', { then: thenReference })
+          : t('practice:plan.sealSubline'),
         spoken: thenReference
-          ? `Seal ${reference}. One clean recitation makes it memorized, then on to ${thenReference}.`
-          : `Seal ${reference}. One clean recitation makes it memorized.`,
+          ? t('practice:plan.sealSpokenThen', { reference, then: thenReference })
+          : t('practice:plan.sealSpoken', { reference }),
       };
     case 'rest':
       return {
-        verb: 'Seals tomorrow',
-        button: `${reference} seals tomorrow`,
-        subline: 'Nothing left today · one recitation tomorrow makes it memorized',
-        spoken: `${reference} is done for today. One clean recitation tomorrow makes it memorized.`,
+        verb: t('practice:plan.rest'),
+        button: t('practice:plan.restButton', { reference }),
+        subline: t('practice:plan.restSubline'),
+        spoken: t('practice:plan.restSpoken', { reference }),
       };
   }
 }

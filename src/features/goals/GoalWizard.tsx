@@ -16,6 +16,7 @@ import {
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { loadFailureMessage, PassageStep } from '@/features/goals/PassageStep';
+import { useTranslation } from '@/i18n/react';
 import { DEFAULT_TRANSLATION_ID, availableTranslations, formatRange } from '@/services/bible';
 import {
   defaultSelection,
@@ -48,6 +49,7 @@ async function initialTranslationId(): Promise<string> {
 
 export function GoalWizard() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['goals', 'common']);
   // Insets are the sheet's own (the route wraps this in ModalSafeArea). The
   // sides matter on iPhone Duo's cover panel, where the status bar and camera
   // sit in one corner; the bottom keeps the buttons off the home indicator.
@@ -124,8 +126,8 @@ export function GoalWizard() {
       // to and the sheet would sit on its spinner.
       if (router.canGoBack()) router.back();
       else router.replace('/');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(loadFailureMessage(translationId, formatRange(range)));
       setBusy(false);
     }
   }, [translationId, selection, title]);
@@ -136,7 +138,7 @@ export function GoalWizard() {
     <View style={[styles.root, sides, { backgroundColor: colors.surfaceRaised }]}>
       {step === 'passage' && (
         <PassageStep
-          heading={<StepHeading title="Choose a passage" step={1} />}
+          heading={<StepHeading title={t('wizard.choosePassage')} step={1} />}
           translationId={translationId}
           onTranslationChange={selectTranslation}
           bookId={bookId}
@@ -154,7 +156,7 @@ export function GoalWizard() {
         <ScrollView
           contentContainerStyle={[styles.content, contentColumn]}
           keyboardShouldPersistTaps="handled">
-          <StepHeading title="Your plan" step={2} />
+          <StepHeading title={t('wizard.yourPlan')} step={2} />
           {preview && selection && (
             <View style={styles.section}>
               <TextInput
@@ -166,16 +168,16 @@ export function GoalWizard() {
                   styles.titleInput,
                   { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.ui },
                 ]}
-                accessibilityLabel="Passage name"
+                accessibilityLabel={t('wizard.passageName')}
               />
               <View style={styles.statsRow}>
-                <Stat label="Verses" value={String(preview.verseCount)} />
-                <Stat label="Words" value={String(preview.wordCount)} />
-                <Stat label="Chunks" value={String(preview.chunks.length)} />
-                <Stat label="Est. days" value={`~${preview.projectedDays}`} />
+                <Stat label={t('stats.verses')} value={String(preview.verseCount)} />
+                <Stat label={t('stats.words')} value={String(preview.wordCount)} />
+                <Stat label={t('stats.chunks')} value={String(preview.chunks.length)} />
+                <Stat label={t('stats.estDays')} value={`~${preview.projectedDays}`} />
               </View>
               <Text style={[styles.planNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                About one new chunk a day, with reviews to keep what you’ve hidden.
+                {t('wizard.planNote')}
               </Text>
             </View>
           )}
@@ -206,7 +208,7 @@ export function GoalWizard() {
           <Text
             maxFontSizeMultiplier={FOOTER_MAX_SCALE}
             style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {step === 'passage' ? 'Cancel' : 'Back'}
+            {step === 'passage' ? t('common:cancel') : t('common:back')}
           </Text>
         </Pressable>
         <Pressable
@@ -227,7 +229,7 @@ export function GoalWizard() {
             <Text
               maxFontSizeMultiplier={FOOTER_MAX_SCALE}
               style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>
-              {step === 'plan' ? 'Start memorizing' : 'Continue'}
+              {step === 'plan' ? t('wizard.startMemorizing') : t('common:continue')}
             </Text>
           )}
         </Pressable>
@@ -238,6 +240,7 @@ export function GoalWizard() {
 
 function StepHeading({ title, step }: { title: string; step: number }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('goals');
   return (
     <View>
       <Text
@@ -246,7 +249,7 @@ function StepHeading({ title, step }: { title: string; step: number }) {
         {title}
       </Text>
       <Text style={[styles.stepLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        Step {step} of 2
+        {t('wizard.stepOf', { step, total: 2 })}
       </Text>
     </View>
   );
@@ -254,8 +257,9 @@ function StepHeading({ title, step }: { title: string; step: number }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('goals');
   return (
-    <View accessible accessibilityLabel={`${value} ${label}`} style={styles.stat}>
+    <View accessible accessibilityLabel={t('stats.a11y', { value, label })} style={styles.stat}>
       <Text style={[styles.statValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {value}
       </Text>

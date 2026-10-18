@@ -12,6 +12,7 @@ import * as Device from 'expo-device';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
+import { t } from '@/i18n';
 import { firstLetters } from '@/services/practice/text';
 
 export const LOCK_SELECTION_ID = 'meno_lock_selection';
@@ -92,6 +93,10 @@ function normalizeStatus(status: unknown): LockAuthStatus {
  * Shield appearance (04 §3): verse reference as the title, first-letters
  * hint as subtitle, primary "Recite to unlock" opens the app, secondary
  * "Override" clears the shields — always available (04 §6).
+ *
+ * The labels are stored natively in the UI language of the moment;
+ * `refreshShieldForCurrentVerse` re-publishes them on every launch and
+ * foreground, so a language change reaches the shield too.
  */
 export function configureShield(reference: string, verseText: string | null): void {
   const mod = getLockModule();
@@ -101,9 +106,9 @@ export function configureShield(reference: string, verseText: string | null): vo
       title: reference || 'Meno',
       subtitle: verseText
         ? `${firstLetters(verseText).slice(0, 120)}`
-        : 'Recite your verse to continue.',
-      primaryButtonLabel: 'Recite to unlock',
-      secondaryButtonLabel: 'Override',
+        : t('lock:shield.subtitleFallback'),
+      primaryButtonLabel: t('lock:shield.primaryButton'),
+      secondaryButtonLabel: t('lock:shield.secondaryButton'),
       iconSystemName: 'book.closed.fill',
       // Untinted, the symbol renders black and vanishes on the dark shield. Dark-mode
       // lapis (palette.dark.lapis) reads on both the light and dark shield.
@@ -121,8 +126,8 @@ export function configureShield(reference: string, verseText: string | null): vo
             type: 'sendNotification',
             payload: {
               identifier: 'meno-unlock',
-              title: reference || 'Recite to unlock',
-              body: 'Tap here to recite and continue.',
+              title: reference || t('lock:shield.notificationTitle'),
+              body: t('lock:shield.notificationBody'),
               sound: 'default',
               // The package's Swift supports 'timeSensitive' but its TS
               // union hasn't caught up.
