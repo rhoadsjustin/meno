@@ -142,6 +142,9 @@ const config: ExpoConfig = {
         copyToTargetFolder: false,
       },
     ],
+    // Spanish for the widget gallery + Edit Widget sheet strings below
+    // (locales/widget/es.json). Must stay above expo-widgets.
+    ['./plugins/withWidgetLocalizations', { languages: ['es'] }],
     [
       'expo-widgets',
       {
@@ -166,7 +169,8 @@ const config: ExpoConfig = {
               // gets an iOS "Edit Widget" sheet (docs/05 §1). Values must stay
               // in sync with WidgetPracticeMode in services/widgets/modes —
               // they become Swift enum cases and reach the layout as
-              // environment.configuration.mode.
+              // environment.configuration.mode. Every user-facing string here
+              // is also a key in locales/widget/es.json — change both together.
               configuration: {
                 title: 'Practice',
                 description: 'Choose how much of the verse this widget reveals.',
