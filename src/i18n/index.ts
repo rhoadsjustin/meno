@@ -8,7 +8,7 @@
  * iOS relaunches the app when the user changes its language, so there is no
  * live-switch path to handle.
  */
-import i18next from 'i18next';
+import { createInstance } from 'i18next';
 
 import en from '@/i18n/locales/en';
 import es from '@/i18n/locales/es';
@@ -18,7 +18,7 @@ export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
 export const resources = { en, es } as const;
 
-export const i18n = i18next.createInstance();
+export const i18n = createInstance();
 
 void i18n.init({
   resources,
