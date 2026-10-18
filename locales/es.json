@@ -1,0 +1,6 @@
+{
+  "NSMicrophoneUsageDescription": "Meno usa el micrófono para que recites los versículos en voz alta. El audio se procesa en este dispositivo y nunca sale de tu teléfono.",
+  "NSSpeechRecognitionUsageDescription": "Meno transcribe tu recitación en este dispositivo para compararla con el versículo. No se envía nada a ningún servidor.",
+  "NSPhotoLibraryUsageDescription": "Meno no accede a tu fototeca. Este aviso lo exige un framework de imágenes incluido en la app.",
+  "NSPhotoLibraryAddUsageDescription": "Meno no guarda nada en tu fototeca. Este aviso lo exige un framework de imágenes incluido en la app."
+}

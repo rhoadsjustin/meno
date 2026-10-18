@@ -30,6 +30,12 @@ const config: ExpoConfig = {
   // it must resolve to this app for "Recite to unlock" to work.
   scheme: variant ? [`meno-${variant}`] : ['meno', 'device-activity'],
   userInterfaceStyle: 'automatic',
+  // Native strings (permission prompts, home-screen name) per language;
+  // UI copy lives in src/i18n. A language listed here also shows up in
+  // iOS Settings → Meno → Language. Keep in sync with SUPPORTED_LANGUAGES.
+  locales: {
+    es: './locales/es.json',
+  },
   ios: {
     bundleIdentifier: bundleId,
     appleTeamId: 'Z8825H46UN',
@@ -41,6 +47,9 @@ const config: ExpoConfig = {
       // Standard HTTPS only — export-compliance exempt (skips the ASC
       // encryption questionnaire on every build).
       ITSAppUsesNonExemptEncryption: false,
+      // English is the source language; Spanish ships from locales/.
+      CFBundleDevelopmentRegion: 'en',
+      CFBundleLocalizations: ['en', 'es'],
       // ITMS-90683: a bundled image framework references the Photos APIs,
       // so Apple requires these strings even though Meno never reads or
       // saves photos. Keep them honest.
