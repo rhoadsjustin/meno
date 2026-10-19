@@ -18,6 +18,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useTranslation } from '@/i18n/react';
 import { firstLetters } from '@/services/practice';
 import { useThemeColors, fonts, spacing, scriptureType } from '@/theme';
 
@@ -36,6 +37,7 @@ export function Dissolution({
   onFinished?: () => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const [done, setDone] = useState(false);
 
@@ -102,8 +104,8 @@ export function Dissolution({
     <Pressable
       accessibilityLabel={
         memorized
-          ? `${reference} is memorized — the text now lives in you.`
-          : 'The verse dissolves as it moves into memory.'
+          ? t('dissolution.memorizedLabel', { reference })
+          : t('dissolution.dissolvingLabel')
       }
       onPress={skip}
       style={[styles.stage, compact && styles.stageCompact]}>
@@ -135,7 +137,7 @@ export function Dissolution({
           </Text>
           {memorized && (
             <Text style={[styles.sealNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Hidden in your heart.
+              {t('dissolution.sealNote')}
             </Text>
           )}
         </View>

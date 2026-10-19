@@ -8,11 +8,16 @@ import { AppState, Pressable, StyleSheet, useColorScheme, Text, View } from 'rea
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
+import { applyDeviceLocale } from '@/i18n/device';
+import { useTranslation } from '@/i18n/react';
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
 import { publishWidgetSnapshot } from '@/services/widgets';
 import { palette } from '@/theme/tokens';
+
+// Before any screen renders or any service formats a string.
+applyDeviceLocale();
 
 const menoLightTheme = {
   ...DefaultTheme,
@@ -96,6 +101,7 @@ class AppErrorBoundary extends React.Component<BoundaryProps, BoundaryState> {
 
 function RootLayout() {
   const scheme = useColorScheme();
+  const { t } = useTranslation('app');
   const { success, error } = useMigrations();
   const { markInteractive } = useObserve();
 
@@ -127,6 +133,9 @@ function RootLayout() {
     void rescheduleAll();
     void maybePresentUnlock();
     void refreshShieldForCurrentVerse();
+    // Launch is also when a language change lands (iOS relaunches the app),
+    // so re-render the widget's copy now rather than at the next close.
+    void publishWidgetSnapshot();
     return () => {
       responseSub.remove();
       appStateSub.remove();
@@ -138,9 +147,7 @@ function RootLayout() {
     // than rendering screens against a broken schema.
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <Text accessibilityRole="alert">
-          Something went wrong preparing your data: {error.message}
-        </Text>
+        <Text accessibilityRole="alert">{t('migrationError', { message: error.message })}</Text>
       </View>
     );
   }
@@ -198,19 +205,18 @@ function RootLayout() {
 function RecoveryScreen({ onRetry }: { onRetry: () => void }) {
   const scheme = useColorScheme();
   const colors = scheme === 'dark' ? palette.dark : palette.light;
+  const { t } = useTranslation(['app', 'common']);
   return (
     <View style={[styles.recovery, { backgroundColor: colors.surface }]}>
       <Text accessibilityRole="alert" style={[styles.recoveryTitle, { color: colors.ink }]}>
-        Something went wrong.
+        {t('recovery.title')}
       </Text>
-      <Text style={[styles.recoveryBody, { color: colors.inkFaint }]}>
-        Your verses and progress are safe on this device.
-      </Text>
+      <Text style={[styles.recoveryBody, { color: colors.inkFaint }]}>{t('recovery.body')}</Text>
       <Pressable
         accessibilityRole="button"
         onPress={onRetry}
         style={[styles.recoveryButton, { backgroundColor: colors.lapis }]}>
-        <Text style={styles.recoveryButtonText}>Try again</Text>
+        <Text style={styles.recoveryButtonText}>{t('common:retry')}</Text>
       </Pressable>
     </View>
   );

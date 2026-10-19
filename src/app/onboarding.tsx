@@ -13,7 +13,8 @@ import { contentColumn, contentColumnWide, useContentLayout } from '@/components
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ModalSafeArea } from '@/components/modal-safe-area';
-import { DEFAULT_STARTER, formatRange } from '@/services/bible';
+import { useTranslation } from '@/i18n/react';
+import { DEFAULT_STARTER, formatRange, formatRef } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
 import { startStarterGoal } from '@/services/db/repos/goals';
 import { isLockAvailable } from '@/services/lock';
@@ -40,8 +41,12 @@ export default function OnboardingRoute() {
   );
 }
 
+/** The verse the widget captures and the shield preview show. */
+const PREVIEW_REF = { bookId: 'Phil', chapter: 4, verse: 4 };
+
 function Onboarding() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['onboarding', 'common']);
   const { insets, sides, fold, foldAxis, isWide, width, height } = useContentLayout();
   // iPhone Duo half-open: a centred column would put its buttons on the
   // crease, so the column moves into the leading half, clear of the folding
@@ -103,15 +108,13 @@ function Onboarding() {
     copy: (
       <>
         <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-          Let the Word remain in you.
+          {t('welcome.title')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Meno helps you hide Scripture in your heart. Pick a passage, climb from reading it to
-          reciting it, and keep it fresh for good — a few minutes a day.
+          {t('welcome.body')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          As a verse solidifies in memory, its text dissolves from the screen. That’s the idea: it
-          lives in you, not the app.
+          {t('welcome.dissolve')}
         </Text>
       </>
     ),
@@ -120,7 +123,7 @@ function Onboarding() {
         accessibilityRole="button"
         onPress={() => setStep('notifications')}
         style={[styles.primary, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
+        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
       </Pressable>
     ),
   };
@@ -130,11 +133,10 @@ function Onboarding() {
     copy: (
       <>
         <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-          Can we quiz you out of the blue?
+          {t('notifications.title')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          That’s the secret sauce. A daily nudge to practice, then surprise pop quizzes on the
-          verses you’ve memorized — never more than two a day, and each takes about 30 seconds.
+          {t('notifications.body')}
         </Text>
       </>
     ),
@@ -144,11 +146,13 @@ function Onboarding() {
           accessibilityRole="button"
           onPress={() => void optIn()}
           style={[styles.primary, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Yes, quiz me</Text>
+          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
+            {t('notifications.optIn')}
+          </Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Later
+            {t('notifications.later')}
           </Text>
         </Pressable>
       </>
@@ -163,16 +167,13 @@ function Onboarding() {
           accessibilityRole="header"
           accessibilityLiveRegion="polite"
           style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-          Reminders can’t reach you yet
+          {t('notificationsBlocked.title')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Your iPhone isn’t allowing notifications from Meno, so no reminders or quizzes will
-          arrive. To let them through, open iPhone Settings, tap Notifications, and turn on Allow
-          Notifications.
+          {t('notificationsBlocked.body')}
         </Text>
         <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Not now is fine too. Settings → Reminders in Meno always shows whether they’re getting
-          through.
+          {t('notificationsBlocked.hint')}
         </Text>
       </>
     ),
@@ -182,11 +183,13 @@ function Onboarding() {
           accessibilityRole="button"
           onPress={() => void Linking.openSettings()}
           style={[styles.primary, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Open iPhone Settings</Text>
+          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
+            {t('notificationsBlocked.openSettings')}
+          </Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Not now
+            {t('common:notNow')}
           </Text>
         </Pressable>
       </>
@@ -196,14 +199,14 @@ function Onboarding() {
   const widget = {
     title: (
       <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        Keep it in front of you
+        {t('widget.title')}
       </Text>
     ),
     visual: (
       <View
         style={styles.shotStack}
         accessible
-        accessibilityLabel="Preview: Meno’s Home Screen widget showing Philippians 4:4 with half its words blanked out, and its Lock Screen widget under the clock">
+        accessibilityLabel={t('widget.previewLabel', { ref: formatRef(PREVIEW_REF) })}>
         <HomeWidgetShot />
         <LockScreenShot />
       </View>
@@ -211,12 +214,10 @@ function Onboarding() {
     copy: (
       <>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Meno’s widgets put your current verse on the Home Screen and under the clock on your Lock
-          Screen — it follows you all day, and dissolves as you learn it.
+          {t('widget.body')}
         </Text>
         <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Home Screen: long-press → Edit → Add Widget → Meno.{'\n'}
-          Lock Screen: long-press the clock → Customize → add Meno.
+          {t('widget.howTo')}
         </Text>
       </>
     ),
@@ -225,7 +226,7 @@ function Onboarding() {
         accessibilityRole="button"
         onPress={() => setStep('lock')}
         style={[styles.primary, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
+        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
       </Pressable>
     ),
   };
@@ -233,27 +234,22 @@ function Onboarding() {
   const lock = {
     title: (
       <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        Open your apps by heart
+        {t('lock.title')}
       </Text>
     ),
     visual: (
-      <View
-        accessible
-        accessibilityLabel="Preview: a shielded app asking you to recite your verse before it opens, with an Override button that always works">
+      <View accessible accessibilityLabel={t('lock.previewLabel')}>
         <ShieldMock />
       </View>
     ),
     copy: (
       <>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Optional, and a little audacious: shield the apps that eat your time. To open one, recite
-          your current verse from memory. Override is always there — you’re never locked out of your
-          own phone.
+          {t('lock.body')}
         </Text>
         {!isLockAvailable() && (
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Works on your iPhone (not in the simulator). Find it anytime in Settings → Recite to
-            Unlock.
+            {t('lock.simulatorHint')}
           </Text>
         )}
       </>
@@ -271,24 +267,24 @@ function Onboarding() {
             starting && styles.primaryBusy,
           ]}>
           <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-            Try it with {formatRange(DEFAULT_STARTER.range)}
+            {t('lock.tryStarter', { passage: formatRange(DEFAULT_STARTER.range) })}
           </Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => void finish('goal-wizard')}>
           <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Choose my own passage
+            {t('lock.chooseOwn')}
           </Text>
         </Pressable>
         {isLockAvailable() && (
           <Pressable accessibilityRole="button" onPress={() => void finish('lock-setup')}>
             <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Set up recite-to-unlock
+              {t('lock.setUpLock')}
             </Text>
           </Pressable>
         )}
         <Pressable accessibilityRole="button" onPress={() => void finish()}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Explore first
+            {t('lock.exploreFirst')}
           </Text>
         </Pressable>
       </>
@@ -368,19 +364,22 @@ function Onboarding() {
  */
 function ShieldMock() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['onboarding', 'common']);
   return (
     <View style={[styles.shieldMock, { borderColor: colors.separator }]}>
-      <Text style={[styles.shieldMockApp, { fontFamily: fonts?.ui }]}>This app is shielded</Text>
+      <Text style={[styles.shieldMockApp, { fontFamily: fonts?.ui }]}>{t('shieldMock.app')}</Text>
       <Text style={[styles.shieldMockVerse, { fontFamily: fonts?.scripture }]}>
-        Philippians 4:4 — from memory
+        {t('shieldMock.verse', { ref: formatRef(PREVIEW_REF) })}
       </Text>
       <View style={styles.shieldMockButtons}>
         <View style={[styles.shieldMockPill, { backgroundColor: colors.lapis }]}>
           <Text style={[styles.shieldMockPillText, { fontFamily: fonts?.ui }]}>
-            Recite to unlock
+            {t('shieldMock.recite')}
           </Text>
         </View>
-        <Text style={[styles.shieldMockOverride, { fontFamily: fonts?.ui }]}>Override</Text>
+        <Text style={[styles.shieldMockOverride, { fontFamily: fonts?.ui }]}>
+          {t('shieldMock.override')}
+        </Text>
       </View>
     </View>
   );

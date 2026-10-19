@@ -6,13 +6,15 @@ import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
-import { BADGE_DEFS, earnedBadges } from '@/services/db/repos/badges';
+import { useTranslation } from '@/i18n/react';
+import { BADGE_CODES, badgeHint, badgeName, earnedBadges } from '@/services/db/repos/badges';
 import { loadStats, type Stats } from '@/services/db/repos/stats';
 import { loadStreak } from '@/services/db/repos/streaks';
 import { useThemeColors, fonts, spacing, type ThemeColors } from '@/theme';
 
 export default function StatsScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['stats', 'common', 'app']);
   // Wide windows: numerals and the practice grid beside the badge case.
   const { isWide } = useContentLayout();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -39,15 +41,23 @@ export default function StatsScreen() {
   // Three large New York numerals (07 §6).
   const numerals = (
     <View style={styles.heroRow}>
-      <Numeral value={String(streak.current)} label="day streak" colors={colors} />
       <Numeral
-        value={stats?.accuracy30 != null ? `${Math.round(stats.accuracy30 * 100)}%` : '—'}
-        label="30-day accuracy"
+        value={String(streak.current)}
+        label={t('numeral.streak', { count: streak.current })}
+        colors={colors}
+      />
+      <Numeral
+        value={
+          stats?.accuracy30 != null
+            ? t('common:percent', { value: Math.round(stats.accuracy30 * 100) })
+            : '—'
+        }
+        label={t('numeral.accuracy')}
         colors={colors}
       />
       <Numeral
         value={String(stats?.versesMemorized ?? 0)}
-        label="verses memorized"
+        label={t('numeral.memorized', { count: stats?.versesMemorized ?? 0 })}
         colors={colors}
       />
     </View>
@@ -56,15 +66,18 @@ export default function StatsScreen() {
   const practice = (
     <Card>
       <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        Practice
+        {t('practice')}
       </Text>
       <View
         style={styles.grid}
         accessible
         accessibilityLabel={
           stats
-            ? `Practiced on ${stats.practiceDays.filter((d) => d.practiced).length} of the last ${stats.practiceDays.length} days`
-            : 'Practice days'
+            ? t('practicedOn', {
+                practiced: stats.practiceDays.filter((d) => d.practiced).length,
+                total: stats.practiceDays.length,
+              })
+            : t('practiceDays')
         }>
         {stats?.practiceDays.map((d) => (
           <View
@@ -78,9 +91,10 @@ export default function StatsScreen() {
       </View>
       {stats && (stats.recitations > 0 || stats.overrides > 0) && (
         <Text style={[styles.neutral, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Recite to Unlock: {stats.recitations}{' '}
-          {stats.recitations === 1 ? 'recitation' : 'recitations'}, {stats.overrides}{' '}
-          {stats.overrides === 1 ? 'override' : 'overrides'}.
+          {t('lockSummary', {
+            recitations: t('recitationCount', { count: stats.recitations }),
+            overrides: t('overrideCount', { count: stats.overrides }),
+          })}
         </Text>
       )}
     </Card>
@@ -89,16 +103,20 @@ export default function StatsScreen() {
   const badges = (
     <Card>
       <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        Badges
+        {t('badgesTitle')}
       </Text>
       <View style={styles.badges}>
-        {BADGE_DEFS.map((b) => {
-          const isEarned = earned.has(b.code);
+        {BADGE_CODES.map((code) => {
+          const isEarned = earned.has(code);
+          const name = badgeName(code);
           return (
             <View
-              key={b.code}
+              key={code}
               accessible
-              accessibilityLabel={`${b.name}: ${isEarned ? 'earned' : b.hint}`}
+              accessibilityLabel={t('badgeSpoken', {
+                name,
+                status: isEarned ? t('earned') : badgeHint(code),
+              })}
               style={styles.badge}>
               <View
                 style={[
@@ -116,7 +134,7 @@ export default function StatsScreen() {
                       fontFamily: fonts?.scripture,
                     },
                   ]}>
-                  {b.name[0]}
+                  {name[0]}
                 </Text>
               </View>
               <Text
@@ -125,7 +143,7 @@ export default function StatsScreen() {
                   styles.badgeName,
                   { color: isEarned ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
                 ]}>
-                {b.name}
+                {name}
               </Text>
             </View>
           );
@@ -135,7 +153,7 @@ export default function StatsScreen() {
   );
 
   return (
-    <Screen title="Stats" wide>
+    <Screen title={t('app:tabs.stats')} wide>
       {isWide ? (
         <FoldAwareRow>
           <>
@@ -156,8 +174,12 @@ export default function StatsScreen() {
 }
 
 function Numeral({ value, label, colors }: { value: string; label: string; colors: ThemeColors }) {
+  const { t } = useTranslation('stats');
   return (
-    <View accessible accessibilityLabel={`${value} ${label}`} style={styles.numeral}>
+    <View
+      accessible
+      accessibilityLabel={t('numeral.spoken', { value, label })}
+      style={styles.numeral}>
       <Text style={[styles.numeralValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {value}
       </Text>

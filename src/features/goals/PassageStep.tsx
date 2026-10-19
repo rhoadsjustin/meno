@@ -9,6 +9,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -29,10 +30,13 @@ import {
 
 import { contentColumn } from '@/components/content-layout';
 import { ExtendMenu } from '@/features/goals/ExtendMenu';
+import { t as translate } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import {
   BOOKS,
   DEFAULT_TRANSLATION_ID,
   availableTranslations,
+  bookName,
   formatRange,
   getBook,
   getChapter,
@@ -56,11 +60,6 @@ import { useThemeColors, fonts, spacing } from '@/theme';
 /** The pinned bar is chrome: it grows with Dynamic Type, but not so far that
  * it crowds the verses out of a short sheet. */
 const BAR_MAX_SCALE = 1.6;
-
-const VERSE_ACTIONS = [
-  { name: 'start', label: 'Start passage here' },
-  { name: 'end', label: 'End passage here' },
-];
 
 type Loaded =
   | { key: string; verses: Verse[] }
@@ -86,10 +85,10 @@ type Props = {
 
 /** Plain words for a passage that would not load; bundled text never needs the network. */
 export function loadFailureMessage(translationId: string, what: string): string {
-  const t = getTranslation(translationId);
-  return t.source === 'bundled'
-    ? `Couldn’t load ${what}.`
-    : `Couldn’t load ${what} in the ${t.abbrev}. It needs a connection the first time.`;
+  const translation = getTranslation(translationId);
+  return translation.source === 'bundled'
+    ? translate('goals:passage.loadFailed', { what })
+    : translate('goals:passage.loadFailedRemote', { what, abbrev: translation.abbrev });
 }
 
 export function PassageStep({
@@ -106,7 +105,17 @@ export function PassageStep({
   onReadyChange,
 }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation(['goals', 'common']);
   const book = getBook(bookId);
+  /** This book and a chapter of it, e.g. "John 3". */
+  const bookChapter = (n: number) => t('passage.bookChapter', { book: bookName(bookId), chapter: n });
+  const verseActions = useMemo(
+    () => [
+      { name: 'start', label: t('passage.startHere') },
+      { name: 'end', label: t('passage.endHere') },
+    ],
+    [t]
+  );
   const listRef = useRef<FlatList<Verse>>(null);
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -159,10 +168,12 @@ export function PassageStep({
       setSelection(next);
       void Haptics.selectionAsync();
       AccessibilityInfo.announceForAccessibility(
-        next ? `${formatRange(selectionToRange(next))} selected` : 'Selection cleared'
+        next
+          ? t('passage.selected', { passage: formatRange(selectionToRange(next)) })
+          : t('passage.selectionCleared')
       );
     },
-    [setSelection]
+    [setSelection, t]
   );
 
   const onVersePress = useCallback(
@@ -186,13 +197,11 @@ export function PassageStep({
       if (rows.length === 0) throw new Error('empty chapter');
       commit(extendThroughChapter(selection, bookId, chapter, through, rows[rows.length - 1].verse));
     } catch {
-      setExtendError(loadFailureMessage(translationId, `${book.name} ${through}`));
+      setExtendError(loadFailureMessage(translationId, bookChapter(through)));
     }
   };
 
-  const verseHint = selection?.open
-    ? 'Ends the passage here.'
-    : 'Starts the passage here. Then choose the last verse.';
+  const verseHint = selection?.open ? t('passage.verseHintEnd') : t('passage.verseHintStart');
 
   const renderVerse: ListRenderItem<Verse> = ({ item }) => (
     <VerseRow
@@ -200,6 +209,7 @@ export function PassageStep({
       text={item.text}
       selected={isVerseSelected(selection, bookId, { chapter, verse: item.verse })}
       hint={verseHint}
+      actions={verseActions}
       onPress={onVersePress}
       onAction={onVerseAction}
     />
@@ -212,13 +222,13 @@ export function PassageStep({
       {heading}
       <View style={styles.controlRow}>
         <Text style={[styles.controlLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Translation
+          {t('passage.translation')}
         </Text>
         {translationId && (
           <Host matchContents seedColor={colors.lapis}>
             <Picker selectedValue={translationId} onValueChange={(v) => onTranslationChange(String(v))}>
-              {availableTranslations().map((t) => (
-                <Picker.Item key={t.id} label={t.name} value={t.id} />
+              {availableTranslations().map((tr) => (
+                <Picker.Item key={tr.id} label={tr.name} value={tr.id} />
               ))}
             </Picker>
           </Host>
@@ -228,7 +238,7 @@ export function PassageStep({
         <Host matchContents seedColor={colors.lapis}>
           <Picker selectedValue={bookId} onValueChange={(v) => onBookChange(String(v))}>
             {BOOKS.map((b) => (
-              <Picker.Item key={b.id} label={b.name} value={b.id} />
+              <Picker.Item key={b.id} label={bookName(b.id)} value={b.id} />
             ))}
           </Picker>
         </Host>
@@ -236,7 +246,7 @@ export function PassageStep({
           <Host matchContents seedColor={colors.lapis}>
             <Picker selectedValue={chapter} onValueChange={(v) => onChapterChange(Number(v))}>
               {Array.from({ length: book.chapters }, (_, i) => (
-                <Picker.Item key={i + 1} label={`Chapter ${i + 1}`} value={i + 1} />
+                <Picker.Item key={i + 1} label={t('passage.chapter', { chapter: i + 1 })} value={i + 1} />
               ))}
             </Picker>
           </Host>
@@ -245,7 +255,7 @@ export function PassageStep({
       <View style={styles.controlRow}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Select all of ${book.name} ${chapter}`}
+          accessibilityLabel={t('passage.selectWholeChapter', { chapter: bookChapter(chapter) })}
           accessibilityState={{ disabled: lastVerse === null }}
           disabled={lastVerse === null}
           onPress={() => {
@@ -253,7 +263,7 @@ export function PassageStep({
           }}
           style={[styles.textButton, { opacity: lastVerse === null ? 0.4 : 1 }]}>
           <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Whole chapter
+            {t('passage.wholeChapter')}
           </Text>
         </Pressable>
         {extendable.length > 0 && (
@@ -275,7 +285,7 @@ export function PassageStep({
       <Text
         accessibilityRole="alert"
         style={[styles.emptyText, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        {translationId && loadFailureMessage(translationId, `${book.name} ${chapter}`)}
+        {translationId && loadFailureMessage(translationId, bookChapter(chapter))}
       </Text>
       <View style={styles.controlRow}>
         <Pressable
@@ -283,7 +293,7 @@ export function PassageStep({
           onPress={() => setAttempt((n) => n + 1)}
           style={styles.textButton}>
           <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Try again
+            {t('common:retry')}
           </Text>
         </Pressable>
         {translationId !== DEFAULT_TRANSLATION_ID && (
@@ -292,14 +302,14 @@ export function PassageStep({
             onPress={() => onTranslationChange(DEFAULT_TRANSLATION_ID)}
             style={styles.textButton}>
             <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Use the {getTranslation(DEFAULT_TRANSLATION_ID).abbrev} instead
+              {t('passage.useInstead', { abbrev: getTranslation(DEFAULT_TRANSLATION_ID).abbrev })}
             </Text>
           </Pressable>
         )}
       </View>
     </View>
   ) : (
-    <View style={styles.empty} accessible accessibilityLabel={`Loading ${book.name} ${chapter}`}>
+    <View style={styles.empty} accessible accessibilityLabel={t('passage.loadingChapter', { chapter: bookChapter(chapter) })}>
       <ActivityIndicator color={colors.inkFaint} />
     </View>
   );
@@ -333,7 +343,7 @@ export function PassageStep({
             <Text
               maxFontSizeMultiplier={BAR_MAX_SCALE}
               style={[styles.barRef, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {selection ? formatRange(selectionToRange(selection)) : 'No verses selected'}
+              {selection ? formatRange(selectionToRange(selection)) : t('passage.noSelection')}
             </Text>
             <Text
               maxFontSizeMultiplier={BAR_MAX_SCALE}
@@ -344,26 +354,26 @@ export function PassageStep({
               {error ??
                 // No verses on screen yet: "tap a verse" would point at nothing.
                 (failed
-                  ? 'This chapter didn’t load.'
+                  ? t('passage.chapterFailed')
                   : !verses
-                    ? 'Loading…'
+                    ? t('common:loading')
                     : !selection
-                      ? 'Tap a verse to begin.'
+                      ? t('passage.tapToBegin')
                       : selection.open
-                        ? 'Tap another verse to end the range, or continue with this one.'
-                        : 'Tap a verse to choose again.')}
+                        ? t('passage.tapToEnd')
+                        : t('passage.tapToChooseAgain'))}
             </Text>
           </View>
           {selection && (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Clear selection"
+              accessibilityLabel={t('passage.clearSelection')}
               onPress={() => commit(null)}
               style={styles.textButton}>
               <Text
                 maxFontSizeMultiplier={BAR_MAX_SCALE}
                 style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                Clear
+                {t('passage.clear')}
               </Text>
             </Pressable>
           )}
@@ -378,6 +388,7 @@ type VerseRowProps = {
   text: string;
   selected: boolean;
   hint: string;
+  actions: { name: string; label: string }[];
   onPress: (verse: number) => void;
   onAction: (verse: number, action: string) => void;
 };
@@ -389,17 +400,19 @@ const VerseRow = memo(function VerseRow({
   text,
   selected,
   hint,
+  actions,
   onPress,
   onAction,
 }: VerseRowProps) {
   const colors = useThemeColors();
+  const { t } = useTranslation('goals');
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Verse ${verse}. ${text}`}
+      accessibilityLabel={t('passage.verse', { verse, text })}
       accessibilityState={{ selected }}
       accessibilityHint={hint}
-      accessibilityActions={VERSE_ACTIONS}
+      accessibilityActions={actions}
       onAccessibilityAction={(e: AccessibilityActionEvent) => onAction(verse, e.nativeEvent.actionName)}
       onPress={() => onPress(verse)}
       style={[styles.verseRow, selected && { backgroundColor: colors.lapisWash }]}>

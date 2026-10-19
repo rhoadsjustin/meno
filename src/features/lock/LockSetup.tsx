@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { useTranslation } from '@/i18n/react';
 import { loadLockConfig, saveLockConfig } from '@/services/db/repos/lock';
 import {
   configureShield,
@@ -33,6 +34,7 @@ type Mode = 'firstPickup' | 'everyPickup' | 'schedule';
 
 export function LockSetup() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['lock', 'common']);
   const { insets, sides } = useContentLayout();
   const [step, setStep] = useState<Step>('explainer');
   const [authStatus, setAuthStatus] = useState<LockAuthStatus>('notDetermined');
@@ -117,14 +119,13 @@ export function LockSetup() {
       <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
         <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            Recite to Unlock needs your iPhone
+            {t('setup.unavailableTitle')}
           </Text>
           <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Apple’s Screen Time features only work on a physical device — the simulator can’t
-            shield apps. Everything else in Meno works here as usual.
+            {t('setup.unavailableBody')}
           </Text>
           <Pressable accessibilityRole="button" onPress={() => router.back()} style={[styles.primary, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Back</Text>
+            <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:back')}</Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -139,21 +140,19 @@ export function LockSetup() {
         {step === 'explainer' && (
           <>
             <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Recite to unlock
+              {t('setup.explainerTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Choose apps that tend to pull you away. When you open one, Meno asks you to recite
-              your current verse first — then gets out of the way.
+              {t('setup.explainerBody')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Next, iOS will ask for Screen Time permission. Apple never tells Meno which apps you
-              pick, and you can override or switch this off at any time.
+              {t('setup.explainerPrivacy')}
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => setStep(authStatus === 'approved' ? 'pick' : 'authorize')}
               style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Continue</Text>
+              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
             </Pressable>
           </>
         )}
@@ -161,12 +160,12 @@ export function LockSetup() {
         {step === 'authorize' && (
           <>
             <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Screen Time permission
+              {t('setup.authTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {authStatus === 'denied'
-                ? 'Permission was declined. You can grant it in Settings → Screen Time, or try again.'
-                : 'Meno uses Apple’s Screen Time to shield the apps you choose.'}
+                ? t('setup.authDenied')
+                : t('setup.authBody')}
             </Text>
             <Pressable
               accessibilityRole="button"
@@ -174,7 +173,7 @@ export function LockSetup() {
               onPress={() => void authorize()}
               style={[styles.primary, { backgroundColor: colors.lapis, opacity: busy ? 0.6 : 1 }]}>
               <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                {authStatus === 'denied' ? 'Try again' : 'Grant permission'}
+                {authStatus === 'denied' ? t('common:retry') : t('setup.grantPermission')}
               </Text>
             </Pressable>
           </>
@@ -183,17 +182,17 @@ export function LockSetup() {
         {step === 'pick' && (
           <>
             <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Choose apps to shield
+              {t('setup.pickTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Pick the apps or categories that should ask for a verse first.
+              {t('setup.pickBody')}
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => setPickerVisible(true)}
               style={[styles.primary, { backgroundColor: colors.lapis }]}>
               <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                {hasSelection ? 'Change apps' : 'Pick apps'}
+                {hasSelection ? t('setup.changeApps') : t('setup.pickApps')}
               </Text>
             </Pressable>
             {hasSelection && (
@@ -202,7 +201,7 @@ export function LockSetup() {
                 onPress={() => setStep('configure')}
                 style={[styles.secondary, { borderColor: colors.lapis }]}>
                 <Text style={[styles.secondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                  Continue
+                  {t('common:continue')}
                 </Text>
               </Pressable>
             )}
@@ -230,13 +229,17 @@ export function LockSetup() {
         {step === 'configure' && (
           <>
             <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              When should Meno ask?
+              {t('setup.configureTitle')}
             </Text>
             {(
               [
-                ['firstPickup', 'First pickup of the day', 'One recitation clears the shields until tomorrow.'],
-                ['everyPickup', 'Every pickup', `Shields return ${relockMinutes} minutes after each unlock.`],
-                ['schedule', 'Evenings (9–11pm)', 'Shields are up during the evening window.'],
+                ['firstPickup', t('setup.modeFirstPickup'), t('setup.modeFirstPickupDetail')],
+                [
+                  'everyPickup',
+                  t('setup.modeEveryPickup'),
+                  t('setup.modeEveryPickupDetail', { count: relockMinutes }),
+                ],
+                ['schedule', t('setup.modeSchedule'), t('setup.modeScheduleDetail')],
               ] as const
             ).map(([value, label, sub]) => {
               const selected = mode === value;
@@ -267,7 +270,7 @@ export function LockSetup() {
               disabled={busy}
               onPress={() => void finish()}
               style={[styles.primary, { backgroundColor: colors.lapis, opacity: busy ? 0.6 : 1 }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Turn on</Text>
+              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('setup.turnOn')}</Text>
             </Pressable>
           </>
         )}
@@ -275,17 +278,16 @@ export function LockSetup() {
         {step === 'done' && (
           <>
             <Text style={[styles.heading, { color: colors.gold, fontFamily: fonts?.ui }]}>
-              You’re set
+              {t('setup.doneTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              The next time you open a shielded app, Meno will ask for your verse. Override is
-              always one tap away, and the kill switch in Settings clears everything instantly.
+              {t('setup.doneBody')}
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.back()}
               style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Done</Text>
+              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
             </Pressable>
           </>
         )}
@@ -299,7 +301,7 @@ export function LockSetup() {
               router.back();
             }}>
             <Text style={[styles.cancel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Cancel setup
+              {t('setup.cancelSetup')}
             </Text>
           </Pressable>
         )}

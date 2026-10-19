@@ -9,7 +9,12 @@ import * as Crypto from 'expo-crypto';
 import { Share } from 'react-native';
 
 import { getGoal, setGoalChallengeId, type Goal } from '@/services/db/repos/goals';
-import { challengeShareMessage, toIsoDate, type Challenge } from '@/services/challenges/codec';
+import {
+  challengeShareMessage,
+  challengeShareSubject,
+  toIsoDate,
+  type Challenge,
+} from '@/services/challenges/codec';
 
 export * from '@/services/challenges/codec';
 
@@ -51,6 +56,6 @@ export async function shareGoalChallenge(goal: Goal): Promise<void> {
   const challenge = await challengeForGoal(goal);
   await Share.share(
     { message: challengeShareMessage(challenge) },
-    { subject: `Meno challenge: ${challenge.title}` }
+    { subject: challengeShareSubject(challenge) }
   );
 }

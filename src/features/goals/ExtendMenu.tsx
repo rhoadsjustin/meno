@@ -1,6 +1,8 @@
 import { Host, Picker } from '@expo/ui';
 import type { ColorValue } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
+
 export type ExtendMenuProps = {
   /** Later chapters of the book the passage can run through. */
   chapters: number[];
@@ -14,6 +16,7 @@ export type ExtendMenuProps = {
  * actions (`ExtendMenu.ios.tsx`); elsewhere the platform dropdown stands in.
  */
 export function ExtendMenu({ chapters, onExtend, tint }: ExtendMenuProps) {
+  const { t } = useTranslation('goals');
   return (
     <Host matchContents seedColor={tint}>
       <Picker
@@ -21,9 +24,9 @@ export function ExtendMenu({ chapters, onExtend, tint }: ExtendMenuProps) {
         onValueChange={(c) => {
           if (c > 0) onExtend(c);
         }}>
-        <Picker.Item label="Extend through" value={0} />
+        <Picker.Item label={t('passage.extendThrough')} value={0} />
         {chapters.map((c) => (
-          <Picker.Item key={c} label={`Chapter ${c}`} value={c} />
+          <Picker.Item key={c} label={t('passage.chapter', { chapter: c })} value={c} />
         ))}
       </Picker>
     </Host>

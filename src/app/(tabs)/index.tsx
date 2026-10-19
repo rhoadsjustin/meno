@@ -14,6 +14,8 @@ import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
+import { t } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
@@ -86,13 +88,16 @@ function stepCopy(p: GoalProgress & { chunk: Chunk; step: PracticeStep }) {
   );
   // Where the verse sits in a longer passage (07 §6); a one-chunk goal has
   // nothing to place.
-  const place = p.totalChunks > 1 ? `Chunk ${p.chunk.orderIndex + 1} of ${p.totalChunks}` : '';
+  const place =
+    p.totalChunks > 1
+      ? t('today:hero.chunkPlace', { index: p.chunk.orderIndex + 1, total: p.totalChunks })
+      : '';
   return {
     ...copy,
-    subline: place ? `${place} · ${copy.subline}` : copy.subline,
+    subline: place ? t('today:hero.placeAndDetail', { place, detail: copy.subline }) : copy.subline,
     // The sub-line is not read on its own (the button says it all), so the
     // spoken sentence carries the position too.
-    spoken: place ? `${copy.spoken} ${place}.` : copy.spoken,
+    spoken: place ? t('today:hero.spokenWithPlace', { spoken: copy.spoken, place }) : copy.spoken,
   };
 }
 
@@ -112,6 +117,7 @@ function dissolve(text: string, tier: number): { display: string; mono: boolean 
 
 export default function TodayScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['today', 'app']);
   // Wide windows (iPhone Duo opened, Split View): hero on the left, the
   // ladder and secondary cards on the right instead of one long stack.
   const { isWide } = useContentLayout();
@@ -203,12 +209,12 @@ export default function TodayScreen() {
       void Haptics.selectionAsync();
       try {
         await showGoalOnWidgets(goal.id);
-        AccessibilityInfo.announceForAccessibility(`${goal.title} is now on your widgets.`);
+        AccessibilityInfo.announceForAccessibility(t('nowOnWidgets', { title: goal.title }));
       } finally {
         await load(() => false);
       }
     },
-    [load],
+    [load, t],
   );
 
   // One tap, one passage: the ref blocks a second tap before React has
@@ -235,7 +241,9 @@ export default function TodayScreen() {
 
   const ember = streak && streak.current > 0 && (
     <Text
-      accessibilityLabel={`${streak.current} day streak${streak.activeToday ? ', secured today' : ''}`}
+      accessibilityLabel={t(streak.activeToday ? 'streakSecured' : 'streak', {
+        count: streak.current,
+      })}
       style={[
         styles.ember,
         { color: streak.activeToday ? colors.lapis : colors.inkFaint, fontFamily: fonts?.ui },
@@ -247,7 +255,7 @@ export default function TodayScreen() {
   // Only worth saying which passage is on the widgets once there's a choice.
   const focusLabel = others.length > 0 && (
     <Text style={[styles.focusLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-      On your widgets
+      {t('focusLabel')}
     </Text>
   );
 
@@ -260,12 +268,16 @@ export default function TodayScreen() {
       <Text
         accessibilityRole="header"
         style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        {hasFinished ? 'Ready for another passage?' : 'Nothing memorized yet'}
+        {hasFinished ? t('empty.titleAgain') : t('empty.titleFirst')}
       </Text>
       <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {hasFinished
-          ? `Nothing is in progress. ${stackedStarters ? 'Choose' : 'Swipe to choose'} a verse and start it now, or choose your own passage.`
-          : `Start with a verse you may already half know. ${stackedStarters ? 'Choose' : 'Swipe to choose'} one and try it now — it takes a couple of minutes.`}
+          ? stackedStarters
+            ? t('empty.bodyAgainChoose')
+            : t('empty.bodyAgainSwipe')
+          : stackedStarters
+            ? t('empty.bodyFirstChoose')
+            : t('empty.bodyFirstSwipe')}
       </Text>
     </View>
   );
@@ -286,7 +298,7 @@ export default function TodayScreen() {
             styles.emptyIntro,
             { color: colors.error, fontFamily: fonts?.ui },
           ]}>
-          That verse couldn’t be started. Try again, or choose your own passage.
+          {t('empty.startFailed')}
         </Text>
       )}
       <Pressable
@@ -295,7 +307,7 @@ export default function TodayScreen() {
         onPress={() => router.push('/goal-wizard')}
         style={styles.quietAction}>
         <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-          Choose my own passage
+          {t('empty.chooseOwn')}
         </Text>
       </Pressable>
     </>
@@ -314,8 +326,8 @@ export default function TodayScreen() {
                 // noise. The full text is read as it stands.
                 accessibilityLabel={
                   mono
-                    ? `Current passage, ${chunkRangeLabel(data.chunk)}, shown as first letters`
-                    : `Current passage, ${chunkRangeLabel(data.chunk)}. ${display}`
+                    ? t('hero.passageFirstLetters', { ref: chunkRangeLabel(data.chunk) })
+                    : t('hero.passageFull', { ref: chunkRangeLabel(data.chunk), text: display })
                 }
                 style={[
                   styles.scripture,
@@ -336,7 +348,10 @@ export default function TodayScreen() {
             );
           })()}
           <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {chunkRangeLabel(data.chunk)} · {getTranslation(data.goal.translationId).abbrev}
+            {t('hero.attribution', {
+              ref: chunkRangeLabel(data.chunk),
+              translation: getTranslation(data.goal.translationId).abbrev,
+            })}
           </Text>
           {(() => {
             const copy = stepCopy({ ...data, chunk: data.chunk, step: data.step });
@@ -385,14 +400,14 @@ export default function TodayScreen() {
               return (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Optional. Still have ${sealRef}? One clean recitation makes it memorized.`}
+                  accessibilityLabel={t('hero.sealSpoken', { ref: sealRef })}
                   onPress={() => router.push(practiceHref(data.goal.id, sealChunk))}
                   style={[styles.sealOffer, { borderTopColor: colors.inkFaint }]}>
                   <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                    Still have {sealRef}? One recitation seals it — optional today.
+                    {t('hero.sealOffer', { ref: sealRef })}
                   </Text>
                   <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                    Recite {sealRef}
+                    {t('hero.recite', { ref: sealRef })}
                   </Text>
                 </Pressable>
               );
@@ -404,17 +419,17 @@ export default function TodayScreen() {
         <Card>
           {focusLabel}
           <Text style={[styles.emptyTitle, { color: colors.gold, fontFamily: fonts?.ui }]}>
-            {data.goal.title} — memorized
+            {t('hero.memorizedTitle', { title: data.goal.title })}
           </Text>
           <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Every chunk is hidden in your heart. Start another passage?
+            {t('hero.memorizedBody')}
           </Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push('/goal-wizard')}
             style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
             <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-              Choose another passage
+              {t('hero.chooseAnother')}
             </Text>
           </Pressable>
         </Card>
@@ -430,13 +445,13 @@ export default function TodayScreen() {
             accessibilityRole="button"
             onPress={() => router.push(`/stitch/${data.goal.id}`)}>
             <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Stitch it together
+              {t('stitch.title')}
             </Text>
             <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Recite everything you’ve learned so far as one passage.
+              {t('stitch.body')}
             </Text>
             <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Begin stitch
+              {t('stitch.begin')}
             </Text>
           </Pressable>
         </Card>
@@ -446,13 +461,13 @@ export default function TodayScreen() {
         <Card>
           <Pressable accessibilityRole="button" onPress={() => router.push('/review')}>
             <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Due for review
+              {t('due.title')}
             </Text>
             <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {dueCount} {dueCount === 1 ? 'verse is' : 'verses are'} ready to be kept fresh.
+              {t('due.body', { count: dueCount })}
             </Text>
             <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Review {dueCount}
+              {t('due.action', { count: dueCount })}
             </Text>
           </Pressable>
         </Card>
@@ -463,17 +478,21 @@ export default function TodayScreen() {
           <Text
             accessibilityRole="header"
             style={[styles.sectionHeader, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Also practicing
+            {t('others.header')}
           </Text>
           {others.map((o) => {
             const copy = o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
             // A stitch outranks the next chunk; a resting verse has no action.
             const action = o.stitchDue
-              ? { label: 'Stitch', spoken: `Stitch ${o.goal.title}`, href: `/stitch/${o.goal.id}` as Href }
+              ? {
+                  label: t('others.stitch'),
+                  spoken: t('others.stitchSpoken', { title: o.goal.title }),
+                  href: `/stitch/${o.goal.id}` as Href,
+                }
               : copy && o.step?.kind !== 'rest'
                 ? {
                     label: copy.verb,
-                    spoken: `${o.goal.title}. ${copy.spoken}`,
+                    spoken: t('others.stepSpoken', { title: o.goal.title, spoken: copy.spoken }),
                     href: practiceHref(o.goal.id),
                   }
                 : null;
@@ -488,8 +507,11 @@ export default function TodayScreen() {
                     ? // A one-verse passage is its own chunk: no need to name it twice.
                       chunkRangeLabel(o.chunk) === o.goal.title
                       ? copy.subline
-                      : `${chunkRangeLabel(o.chunk)} · ${copy.subline}`
-                    : 'Every chunk memorized'}
+                      : t('others.chunkAndDetail', {
+                          ref: chunkRangeLabel(o.chunk),
+                          detail: copy.subline,
+                        })
+                    : t('others.allMemorized')}
                 </Text>
                 <View style={styles.otherActions}>
                   {action && (
@@ -506,23 +528,23 @@ export default function TodayScreen() {
                   {sealChunk && (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`Optional. Seal ${chunkRangeLabel(sealChunk)} with one clean recitation.`}
+                      accessibilityLabel={t('others.sealSpoken', { ref: chunkRangeLabel(sealChunk) })}
                       hitSlop={8}
                       onPress={() => router.push(practiceHref(o.goal.id, sealChunk))}>
                       <Text
                         style={[styles.textAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                        Seal {chunkRangeLabel(sealChunk)}
+                        {t('others.seal', { ref: chunkRangeLabel(sealChunk) })}
                       </Text>
                     </Pressable>
                   )}
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Show ${o.goal.title} on your widgets`}
+                    accessibilityLabel={t('others.showOnWidgetsSpoken', { title: o.goal.title })}
                     hitSlop={8}
                     onPress={() => void showOnWidgets(o.goal)}>
                     <Text
                       style={[styles.textAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                      Show on widgets
+                      {t('others.showOnWidgets')}
                     </Text>
                   </Pressable>
                 </View>
@@ -545,18 +567,19 @@ export default function TodayScreen() {
             )
           }>
           <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Continue reading{' '}
-            {formatRange({
-              start: {
-                bookId: data.goal.startBookId,
-                chapter: data.goal.startChapter,
-                verse: data.goal.startVerse,
-              },
-              end: {
-                bookId: data.goal.endBookId,
-                chapter: data.goal.endChapter,
-                verse: data.goal.endVerse,
-              },
+            {t('continueReading', {
+              range: formatRange({
+                start: {
+                  bookId: data.goal.startBookId,
+                  chapter: data.goal.startChapter,
+                  verse: data.goal.startVerse,
+                },
+                end: {
+                  bookId: data.goal.endBookId,
+                  chapter: data.goal.endChapter,
+                  verse: data.goal.endVerse,
+                },
+              }),
             })}
           </Text>
         </Pressable>
@@ -565,7 +588,7 @@ export default function TodayScreen() {
       {data && (
         <Pressable accessibilityRole="button" onPress={() => router.push('/goal-wizard')}>
           <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            + Practice another passage
+            {t('practiceAnother')}
           </Text>
         </Pressable>
       )}
@@ -587,20 +610,22 @@ export default function TodayScreen() {
       <Text
         accessibilityRole="header"
         style={[styles.asideTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        Where it stands
+        {t('ladder.title')}
       </Text>
       <TierLadder highestCleared={data.chunk.tier} />
       <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {chunkProgressLabel(data.chunk, data.totalChunks)}
         {streak && streak.current > 0
-          ? ` · ${streak.current}-day streak${streak.activeToday ? ', secured today' : ''}`
-          : ''}
+          ? t(streak.activeToday ? 'ladder.withStreakSecured' : 'ladder.withStreak', {
+              progress: chunkProgressLabel(data.chunk, data.totalChunks),
+              count: streak.current,
+            })
+          : chunkProgressLabel(data.chunk, data.totalChunks)}
       </Text>
     </Card>
   );
 
   return (
-    <Screen title="Today" accessory={ember || undefined} wide>
+    <Screen title={t('app:tabs.today')} accessory={ember || undefined} wide>
       {isWide ? (
         <FoldAwareRow>
           <>
