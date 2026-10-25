@@ -29,3 +29,11 @@ Unit tests cover the pure services (`src/services/*`) and validate the built Scr
 - `src/services/db/` — expo-sqlite + Drizzle schema and migrations (`drizzle/`)
 - `src/theme/` — "Lapis & vellum" design tokens (docs/07)
 - `scripts/build-bible-db.ts` — compiles the WEB translation into the bundled SQLite asset
+
+## Website
+
+`site/` is the marketing site served by GitHub Pages at https://rhoadsjustin.github.io/meno/
+(the privacy policy page is a symlink to `docs/ship/privacy-policy.html`). Preview it with
+`python3 -m http.server 8787 --directory site`, rebuild the images from the store and promo
+captures with `python3 scripts/site-images.py`, and publish with `scripts/deploy-site.sh`.
+Domain notes: `docs/ship/domain-options.md`.
