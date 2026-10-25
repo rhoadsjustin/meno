@@ -17,7 +17,7 @@ for follow-up questions.
 
 3. SETUP: No credentials or sample files. Launch > onboarding (notifications optional) > Today > swipe to a starter verse and tap "Practice this verse", or "Choose my own passage" to pick a translation, book, chapter and verses (WEB, KJV, ASV are built in and offline; ESV downloads once per chapter) > the practice session opens. Speak mode asks for mic/speech permission (processed on-device); a Type toggle is always available instead. Recite to Unlock (physical iPhone only): Settings > Recite to Unlock > Grant permission > Pick apps > choose "Every pickup" > Turn on > Done. Open that app: the shield offers "Override" (clears instantly) and "Recite to unlock" (a notification opens Meno; recite or type at 85%+ to clear). Settings > "Turn off and clear all shields now" disables everything; deleting the app removes all restrictions. Widgets: long-press the Home or Lock Screen and add Meno.
 
-4. EXTERNAL SERVICES: Crossway ESV API (api.esv.org) for ESV text only; requests contain just the passage reference and our API key. Expo EAS Observe for anonymous crash and performance diagnostics (not linked to identity). Apple on-device frameworks: Speech with on-device recognition required (audio never leaves the phone), FamilyControls/ManagedSettings/DeviceActivity, WidgetKit, and local UserNotifications (no push service). No authentication service, payment processor, ad or analytics SDK, AI service, or backend of our own.
+4. EXTERNAL SERVICES: Crossway ESV API (api.esv.org) for ESV text only; requests contain just the passage reference and our API key. Expo EAS Observe for anonymous crash and performance diagnostics (not linked to identity). Expo EAS Update for JavaScript bug fixes between releases (requests carry the app version, current update ID and a random per-install ID; no user data). Apple on-device frameworks: Speech with on-device recognition required (audio never leaves the phone), FamilyControls/ManagedSettings/DeviceActivity, WidgetKit, and local UserNotifications (no push service). No authentication service, payment processor, ad or analytics SDK, AI service, or backend of our own.
 
 5. REGIONS: Meno functions identically in all regions. English interface and translations, free everywhere, no region-gated content or features. Built-in translations work offline anywhere; ESV download needs internet but is not region-restricted. Where on-device English speech recognition is unavailable, the Type alternative is offered.
 
@@ -126,6 +126,12 @@ available immediately after install.
   device model, OS version). Not linked to identity, not used for tracking,
   and declared in the App Privacy section as Diagnostics, not linked to the
   user.
+- Expo EAS Update (Expo / 650 Industries): delivers JavaScript bug fixes
+  between App Store releases, within the same native binary (fixes and
+  refinements only; the app's purpose never changes). Each check carries the app
+  version, the running update's ID and a random per-install identifier used
+  for staged rollouts; after a crash at launch it also carries the error
+  message. No user content or identity.
 - Apple frameworks, all on-device: Speech (with on-device recognition required,
   so recitation audio never leaves the phone), FamilyControls / ManagedSettings /
   DeviceActivity (Recite to Unlock), WidgetKit (widgets), and UserNotifications
