@@ -31,6 +31,12 @@ const appGroup = `group.${bundleId}`;
 // (src/services/updates). Builds are always 'normal'.
 const updatePriority = process.env.MENO_UPDATE_PRIORITY === 'critical' ? 'critical' : 'normal';
 
+// EAS Build sets each build's channel from eas.json. A local build has none,
+// so it never receives updates, unless MENO_UPDATES_CHANNEL names one at
+// prebuild time. That is how an update is rehearsed on the simulator against
+// the ota-qa channel, which no shipped build listens to (docs/ship/ota-updates.md).
+const updatesChannel = process.env.MENO_UPDATES_CHANNEL;
+
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
@@ -38,6 +44,7 @@ const config: ExpoConfig = {
   runtimeVersion: { policy: 'appVersion' },
   updates: {
     url: 'https://u.expo.dev/6473c486-4b56-4c2c-9365-2ca7eeef6729',
+    ...(updatesChannel ? { requestHeaders: { 'expo-channel-name': updatesChannel } } : {}),
   },
   orientation: 'portrait',
   icon: './assets/images/icon.png',

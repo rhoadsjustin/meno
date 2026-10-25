@@ -122,8 +122,11 @@ same download path.
   as critical and offer the restart.
 
 ```bash
-npx eas-cli@latest update:roll-back-to-embedded --channel production --platform ios --message "Roll back <what>"
+npx eas-cli@latest update:roll-back-to-embedded --channel production --platform ios --runtime-version <version> --message "Roll back <what>"
 ```
+
+`--runtime-version` is the app `version` the live build was made at; the
+command refuses to run non-interactively without it.
 
 `npx eas-cli@latest update:rollback` walks through either of the last two
 interactively.
@@ -148,7 +151,42 @@ updates at the same moment. Use `--rollout` when that matters. A TestFlight
 build at a newer version is a different runtime, so it is unaffected.
 
 Local Release builds (`npm run e2e`, the device recipe) have no channel. They
-check at launch, get no update, and run their own bundle.
+check at launch, get no update, and run their own bundle. The exception is a
+rehearsal build (below), which listens to `ota-qa`. No shipped build does.
+
+## Rehearsing on the simulator
+
+Try an update end to end before a real one. This is how this setup was
+validated on iPhone 17 and every iPhone Duo pose.
+
+1. **Build a Release app that listens to `ota-qa`.** `MENO_UPDATES_CHANNEL`
+   adds the channel header at prebuild time:
+
+   ```bash
+   MENO_UPDATES_CHANNEL=ota-qa LANG=en_US.UTF-8 CI=1 npx expo prebuild -p ios --clean
+   ```
+
+   Then run the Release simulator `xcodebuild` from `scripts/e2e-local.sh` and
+   install the app. Open it once so it runs its own bundle.
+
+2. **Publish a test update** (prefix `MENO_UPDATE_PRIORITY=critical` to
+   rehearse a critical one):
+
+   ```bash
+   npx eas-cli@latest update --channel ota-qa --environment production --platform ios --message "Rehearsal"
+   ```
+
+3. **Fully close and reopen Meno.** Settings shows **Update ready**, or a
+   critical update offers the restart on a tab. Restart, and the footer shows
+   the date. To rehearse a rollback, use the rollback command above with
+   `--channel ota-qa`.
+
+4. **Prebuild again without the variable** when done. Otherwise the next
+   local build, `npm run e2e` included, would take rehearsal updates.
+
+A check in the first seconds after a publish can still see the previous state,
+because the update server caches for about ten seconds. If nothing arrives,
+close and reopen once more.
 
 ## Before the first update-capable build ships
 
