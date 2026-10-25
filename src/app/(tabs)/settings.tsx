@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Switch, Text, useColorScheme, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
@@ -21,6 +21,7 @@ import {
   setReminderTime,
   type ReminderTime,
 } from '@/services/notifications';
+import { restartIntoUpdate, useUpdateStatus } from '@/services/updates';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
 /** Which row's detail the right pane shows on wide windows. */
@@ -28,6 +29,9 @@ type Detail = 'guide' | 'reminders' | 'lock';
 
 export default function SettingsScreen() {
   const colors = useThemeColors();
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  // An over-the-air update waiting for a restart, and whether one is running.
+  const update = useUpdateStatus();
   // Wide windows (iPhone Duo opened, Split View): a split view. The rows
   // become a selectable list on the left and the right pane shows what the
   // row leads to — the whole setup guide, or just the section that explains
@@ -243,10 +247,34 @@ export default function SettingsScreen() {
         )}
       </Card>
 
+      {update.pending && (
+        <Card>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Restarts Meno into the new version"
+            onPress={() => void restartIntoUpdate(scheme)}
+            style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              Update ready
+            </Text>
+            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              It installs the next time Meno opens. Your verses and progress stay right where they
+              are.
+            </Text>
+            <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              Restart Meno now
+            </Text>
+          </Pressable>
+        </Card>
+      )}
+
       <Card>
         <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Meno {Constants.expoConfig?.version ?? ''} · Scripture: {publicDomain} — public domain.
-          Recitation audio never leaves this device.
+          Meno {Constants.expoConfig?.version ?? ''}
+          {update.runningUpdateDate
+            ? `, updated ${update.runningUpdateDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+            : ''}{' '}
+          · Scripture: {publicDomain} — public domain. Recitation audio never leaves this device.
         </Text>
         {licensed.map((t) => (
           <Text
