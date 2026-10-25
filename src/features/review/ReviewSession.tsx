@@ -235,6 +235,7 @@ export function ReviewSession() {
                   key={phase.index}
                   text={queue[phase.index].text}
                   reference={queue[phase.index].reference}
+                  translationId={queue[phase.index].translationId}
                   onDone={(o) => void finishRound(phase.index, o)}
                 />
               )}

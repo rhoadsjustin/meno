@@ -65,6 +65,28 @@ describe('gradeTyped', () => {
 });
 
 describe('gradeSpoken', () => {
+  it('applies homophone leniency to English only', () => {
+    expect(gradeSpoken('their hearts', 'there hearts', { language: 'en-US' }).accuracy).toBe(1);
+    const spanish = gradeSpoken('their hearts', 'there hearts', { language: 'es' });
+    expect(spanish.accuracy).toBeLessThan(1);
+    expect(spanish.words[0].tag).not.toBe('correct');
+  });
+
+  it('grades Spanish, Hindi and Arabic recitations word for word', () => {
+    expect(
+      gradeTyped('Él vino por testimonio', 'el vino por testimonio', { language: 'es' }).accuracy,
+    ).toBe(1);
+    const hindi = gradeTyped('परमेश्वर ने जगत से प्रेम रखा', 'परमेश्वर ने जगत से रखा', {
+      language: 'hi',
+    });
+    expect(hindi.unitCount).toBe(6);
+    expect(hindi.words.filter((w) => w.tag === 'missed').map((w) => w.word)).toEqual(['प्रेम']);
+    const arabic = gradeSpoken('لأَنَّهُ هكَذَا أَحَبَّ اللهُ', 'لأنه هكذا أحب الله', {
+      language: 'ar',
+    });
+    expect(arabic.accuracy).toBe(1);
+  });
+
   it('accepts homophones via metaphone', () => {
     expect(metaphone('their')).toBe(metaphone('there'));
     expect(metaphone('Saul')).toBe(metaphone('soul'));
@@ -82,7 +104,7 @@ describe('gradeSpoken', () => {
   it('grades Psalm 23:1 with sensible leniency', () => {
     const r = gradeSpoken(
       'Yahweh is my shepherd: I shall lack nothing.',
-      'yahweh is my shepherd i shall lack nothing'
+      'yahweh is my shepherd i shall lack nothing',
     );
     expect(r.accuracy).toBe(1);
   });
@@ -130,7 +152,9 @@ describe('errorBudget / meetsThreshold', () => {
   });
 
   it('reports the reference length it graded against', () => {
-    expect(gradeTyped('For God so loved the world', 'For God so loved the world').unitCount).toBe(6);
+    expect(gradeTyped('For God so loved the world', 'For God so loved the world').unitCount).toBe(
+      6,
+    );
   });
 });
 
@@ -200,7 +224,7 @@ describe('gradeBand (pass / almost / miss)', () => {
         const accuracy = 1 - errors / units;
         for (const threshold of [0.9, 0.95]) {
           expect(gradeBand(threshold, accuracy, units) === 'pass').toBe(
-            meetsThreshold(threshold, accuracy, units)
+            meetsThreshold(threshold, accuracy, units),
           );
         }
       }
@@ -247,6 +271,8 @@ describe('slipCount', () => {
   it('counts wrong, missed, typo and extra words once each', () => {
     expect(slipCount(gradeTyped(verse, verse))).toBe(0);
     expect(slipCount(gradeTyped('receive the word', 'recieve the word'))).toBe(1);
-    expect(slipCount(gradeTyped('For God so loved the world', 'For God loved the whole world'))).toBe(2);
+    expect(
+      slipCount(gradeTyped('For God so loved the world', 'For God loved the whole world')),
+    ).toBe(2);
   });
 });

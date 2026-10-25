@@ -28,14 +28,19 @@ Each **chunk** (2–4 verses, see §5) climbs seven tiers. `chunks.tier` stores 
 ## 2. Normalization (before any comparison)
 
 ```
-normalize(text):
-  lowercase → Unicode NFKD → strip diacritics
-  strip punctuation (keep intra-word apostrophes: "God's")
-  collapse whitespace
-  number words ↔ digits canonicalization ("forty" == "40")
+normalize(text, language):
+  lowercase → Unicode NFKD → drop accent-type marks
+    (Latin/Greek/Cyrillic accents, Hebrew points, Arabic harakat; Indic vowel
+    signs are letters and stay)
+  strip punctuation in any script (keep intra-word apostrophes: "God's")
+  collapse whitespace; split the words of unspaced scripts (Chinese, Thai …)
+    with the runtime's word segmenter, else one unit per letter
+  English only: number words ↔ digits canonicalization ("forty" == "40")
   archaic normalization map (KJV mode): "thee/thou/thy/thine" preserved as-is
     (do NOT normalize away — user must actually say them)
 ```
+
+A word is letters, marks and digits in any script (`services/grading/script.ts`); the practice modes split display tokens the same way, so blanks, tiles and graded words line up. First Letters shows the first grapheme of each word ("é", a Hindi conjunct). Homophone leniency (§4) is English-only — Metaphone knows no other language.
 
 Verse-number markers are never part of graded text.
 

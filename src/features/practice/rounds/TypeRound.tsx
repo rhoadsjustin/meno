@@ -5,6 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
 
+import { getTranslation } from '@/services/bible';
 import { gradeTyped, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
@@ -12,10 +13,13 @@ import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
 export function TypeRound({
   text,
   reference,
+  translationId,
   onDone,
 }: {
   text: string;
   reference: string;
+  /** Whose text this is: the graders' English-only leniencies key off its language. */
+  translationId: string;
   onDone: (outcome: {
     accuracy: number;
     unitCount: number;
@@ -28,7 +32,9 @@ export function TypeRound({
   const firstWord = useMemo(() => displayWords(text)[0] ?? '', [text]);
 
   const submit = () => {
-    const result = gradeTyped(text, input);
+    const result = gradeTyped(text, input, {
+      language: getTranslation(translationId).languageCode,
+    });
     onDone({
       accuracy: result.accuracy,
       unitCount: result.unitCount,
