@@ -10,7 +10,8 @@
       "ios": {
         "resourceClass": "m-medium",
         "image": "macos-tahoe-26.6-xcode-27.1"
-      }
+      },
+      "channel": "development"
     },
     "e2e-test": {
       "distribution": "internal",
@@ -18,7 +19,8 @@
         "simulator": true,
         "resourceClass": "m-medium",
         "image": "macos-tahoe-26.6-xcode-27.1"
-      }
+      },
+      "channel": "e2e-test"
     },
     "production": {
       "autoIncrement": true,
@@ -26,7 +28,8 @@
       "ios": {
         "resourceClass": "m-medium",
         "image": "macos-tahoe-26.6-xcode-27.1"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
