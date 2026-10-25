@@ -74,6 +74,7 @@ function baseEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   delete env.MENO_UPDATE_PRIORITY;
   delete env.APP_VARIANT;
+  delete env.MENO_UPDATES_CHANNEL;
   return env;
 }
 
