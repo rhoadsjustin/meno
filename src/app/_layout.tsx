@@ -12,6 +12,7 @@ import { fillPlaceholders, loadCatalog } from '@/services/bible';
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
+import { useUpdateLifecycle } from '@/services/updates';
 import { publishWidgetSnapshot } from '@/services/widgets';
 import { palette } from '@/theme/tokens';
 
@@ -104,6 +105,9 @@ function RootLayout() {
   const scheme = useColorScheme();
   const { success, error } = useMigrations();
   const { markInteractive } = useObserve();
+  // Over-the-air updates: download on return to the app, offer a restart for
+  // critical fixes (docs/ship/ota-updates.md). No-op in Debug builds.
+  useUpdateLifecycle(scheme === 'dark' ? 'dark' : 'light');
   // The translation catalog cache names the versions goals use (02 §5), so
   // screens wait for it as they wait for migrations. An unreadable cache
   // still lets the app open — those goals show a placeholder name.
