@@ -2,7 +2,6 @@
  * Goal wizard (docs/07 §6): Passage → Plan, presented as a native form
  * sheet. Translation rides along as a menu on the passage step.
  */
-import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { loadFailureMessage, PassageStep } from '@/features/goals/PassageStep';
 import {
@@ -136,10 +136,7 @@ export function GoalWizard() {
     setError(null);
     try {
       await createGoal({ translationId, range, title: title.trim() || formatRange(range) });
-      // Opened by a link with nothing beneath it, there is nowhere to go back
-      // to and the sheet would sit on its spinner.
-      if (router.canGoBack()) router.back();
-      else router.replace('/');
+      closeModal();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
@@ -215,7 +212,7 @@ export function GoalWizard() {
           accessibilityRole="button"
           onPress={() => {
             setError(null);
-            if (step === 'passage') router.back();
+            if (step === 'passage') closeModal();
             else setStep('passage');
           }}
           style={styles.footerSecondary}>
