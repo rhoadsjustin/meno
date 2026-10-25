@@ -5,6 +5,8 @@
  * showed last time. Verse text is never stored — Platform versions are
  * ephemeral until a license says otherwise.
  */
+import { Platform, Settings } from 'react-native';
+
 import { languageKey, type LanguageInfo } from '@/services/bible/catalog';
 import {
   getTranslation,
@@ -137,8 +139,22 @@ function cachedTranslationsFor(languageId: string): Translation[] {
   return registeredTranslations().filter((t) => languageKey(t.languageCode) === languageId);
 }
 
-/** The device's locale, without a native module (Hermes ships Intl). */
+/**
+ * The device's preferred language, without a native module. On iOS the
+ * system keeps it in user defaults under AppleLanguages ('es-MX' first for
+ * a Spanish phone); Hermes's Intl only reports the region ('en-MX'), so it
+ * is the fallback, and Android's answer.
+ */
 export function deviceLocale(): string {
+  if (Platform.OS === 'ios') {
+    try {
+      const languages = Settings.get('AppleLanguages') as unknown;
+      const first = Array.isArray(languages) ? languages[0] : null;
+      if (typeof first === 'string' && first.length > 0) return first;
+    } catch {
+      // Fall through to Intl.
+    }
+  }
   try {
     return Intl.DateTimeFormat().resolvedOptions().locale || 'en-US';
   } catch {
