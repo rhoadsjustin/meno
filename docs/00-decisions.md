@@ -10,4 +10,4 @@ Answers to the open questions in `08-roadmap.md` §"Open questions for the human
 4. **Licensed-translation priority: ESV first** (M6). NIV/API.Bible follows later after terms review.
 
 ### Still open
-- Universal-link / challenge domain (currently `applinks:meno.app` as scaffold in app.config.ts — confirm or replace before M8).
+- Universal-link / challenge domain (currently `applinks:meno.app` as scaffold in app.config.ts — confirm or replace before M8). 2026-10-25: meno.app and meno.com are both taken by operating businesses; meno.bible is available. Findings and the custom-domain steps are in `docs/ship/domain-options.md`.
