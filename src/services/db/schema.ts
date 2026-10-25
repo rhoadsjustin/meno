@@ -6,16 +6,41 @@
  */
 import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+/**
+ * The YouVersion catalog cache (02 §5): metadata of the Platform versions
+ * this device has browsed or has goals in, so the registry can name them
+ * offline. Bundled and ESV entries are static in services/bible/registry
+ * and are not stored here. No verse text, ever.
+ */
 export const translations = sqliteTable('translations', {
   id: text('id').primaryKey(),
   abbrev: text('abbrev').notNull(),
   name: text('name').notNull(),
+  /** BCP 47. */
   languageCode: text('languageCode').notNull(),
   licenseType: text('licenseType', {
     enum: ['public_domain', 'api_cached', 'api_ephemeral'],
   }).notNull(),
-  source: text('source', { enum: ['bundled', 'api_bible', 'esv_api'] }).notNull(),
+  source: text('source', { enum: ['bundled', 'youversion', 'esv_api'] }).notNull(),
   isDownloaded: integer('isDownloaded', { mode: 'boolean' }).notNull().default(false),
+  attribution: text('attribution').notNull().default(''),
+  /** JSON array of OSIS ids; null means the whole 66-book canon. */
+  booksJson: text('booksJson'),
+  textDirection: text('textDirection', { enum: ['ltr', 'rtl'] }),
+  fetchedAt: integer('fetchedAt', { mode: 'timestamp_ms' }),
+});
+
+/** Languages the Platform has Bibles for, named in the locale they were fetched for. */
+export const languages = sqliteTable('languages', {
+  /** Canonical BCP 47 id ('en', 'sr-Latn', 'pt-BR'). */
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** The Accept-Language the names were fetched in. */
+  locale: text('locale').notNull(),
+  textDirection: text('textDirection', { enum: ['ltr', 'rtl'] })
+    .notNull()
+    .default('ltr'),
+  fetchedAt: integer('fetchedAt', { mode: 'timestamp_ms' }).notNull(),
 });
 
 export const verses = sqliteTable(
@@ -27,7 +52,7 @@ export const verses = sqliteTable(
     verse: integer('verse').notNull(),
     text: text('text').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.translationId, t.bookId, t.chapter, t.verse] })]
+  (t) => [primaryKey({ columns: [t.translationId, t.bookId, t.chapter, t.verse] })],
 );
 
 export const goals = sqliteTable('goals', {
@@ -69,7 +94,7 @@ export const chunks = sqliteTable(
       .default('locked'),
     memorizedAt: integer('memorizedAt', { mode: 'timestamp_ms' }),
   },
-  (t) => [index('chunks_goalId_idx').on(t.goalId, t.orderIndex)]
+  (t) => [index('chunks_goalId_idx').on(t.goalId, t.orderIndex)],
 );
 
 export const attempts = sqliteTable(
@@ -80,7 +105,16 @@ export const attempts = sqliteTable(
       .notNull()
       .references(() => chunks.id, { onDelete: 'cascade' }),
     mode: text('mode', {
-      enum: ['read', 'firstLetters', 'blanks25', 'blanks50', 'blanks75', 'arrange', 'type', 'speak'],
+      enum: [
+        'read',
+        'firstLetters',
+        'blanks25',
+        'blanks50',
+        'blanks75',
+        'arrange',
+        'type',
+        'speak',
+      ],
     }).notNull(),
     /** 0–1. */
     accuracy: real('accuracy').notNull(),
@@ -94,7 +128,7 @@ export const attempts = sqliteTable(
       enum: ['practice', 'review', 'popquiz', 'unlock', 'stitch'],
     }).notNull(),
   },
-  (t) => [index('attempts_chunkId_idx').on(t.chunkId, t.createdAt)]
+  (t) => [index('attempts_chunkId_idx').on(t.chunkId, t.createdAt)],
 );
 
 export const reviewItems = sqliteTable(
@@ -113,7 +147,7 @@ export const reviewItems = sqliteTable(
       .notNull()
       .default('fresh'),
   },
-  (t) => [index('reviewItems_dueAt_idx').on(t.dueAt)]
+  (t) => [index('reviewItems_dueAt_idx').on(t.dueAt)],
 );
 
 export const streaks = sqliteTable('streaks', {
