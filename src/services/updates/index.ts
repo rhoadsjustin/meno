@@ -8,12 +8,13 @@
  */
 import { useSegments } from 'expo-router';
 import * as Updates from 'expo-updates';
-import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState, type AppStateStatus } from 'react-native';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { Alert, AppState } from 'react-native';
 
 import { palette, type ColorScheme } from '@/theme/tokens';
 
 import {
+  changesWhatRuns,
   shouldCheckOnForeground,
   shouldOfferRestart,
   updateKey,
@@ -52,6 +53,20 @@ export async function restartIntoUpdate(scheme: ColorScheme): Promise<void> {
   });
 }
 
+function subscribeToAppState(onChange: () => void): () => void {
+  const sub = AppState.addEventListener('change', onChange);
+  return () => sub.remove();
+}
+
+/**
+ * The live AppState. useSyncExternalStore re-reads the snapshot after it
+ * subscribes, so a cold launch that turns active between the first render
+ * and the subscription is not missed (a useState seeded once would be).
+ */
+function useAppState() {
+  return useSyncExternalStore(subscribeToAppState, () => AppState.currentState);
+}
+
 function toDownloaded(info: Updates.UpdateInfo | undefined): DownloadedUpdate | undefined {
   if (!info) return undefined;
   if (info.type === Updates.UpdateInfoType.ROLLBACK) return { type: 'rollback' };
@@ -66,14 +81,14 @@ function toDownloaded(info: Updates.UpdateInfo | undefined): DownloadedUpdate | 
  */
 export function useUpdateLifecycle(scheme: ColorScheme): void {
   const segments = useSegments();
-  const { downloadedUpdate, isUpdatePending } = Updates.useUpdates();
-  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  const { downloadedUpdate, isUpdatePending, currentlyRunning } = Updates.useUpdates();
+  const runningEmbedded = currentlyRunning.isEmbeddedLaunch;
+  const appState = useAppState();
   const offered = useRef(new Set<string>());
 
   useEffect(() => {
     if (!updatesEnabled) return;
     const sub = AppState.addEventListener('change', (state) => {
-      setAppState(state);
       if (state !== 'active') return;
       const now = Date.now();
       if (!shouldCheckOnForeground(now, lastCheckAt)) return;
@@ -88,6 +103,7 @@ export function useUpdateLifecycle(scheme: ColorScheme): void {
     const update = toDownloaded(downloadedUpdate);
     const offer = shouldOfferRestart({
       update,
+      runningEmbedded,
       segments,
       appActive: appState === 'active',
       alreadyOffered: offered.current,
@@ -102,7 +118,7 @@ export function useUpdateLifecycle(scheme: ColorScheme): void {
         { text: 'Restart', onPress: () => void restartIntoUpdate(scheme) },
       ],
     );
-  }, [isUpdatePending, downloadedUpdate, segments, appState, scheme]);
+  }, [isUpdatePending, downloadedUpdate, runningEmbedded, segments, appState, scheme]);
 }
 
 export type UpdateStatus = {
@@ -114,10 +130,12 @@ export type UpdateStatus = {
 
 /** For Settings: is an update waiting, and is Meno running one now. */
 export function useUpdateStatus(): UpdateStatus {
-  const { isUpdatePending, currentlyRunning } = Updates.useUpdates();
+  const { isUpdatePending, downloadedUpdate, currentlyRunning } = Updates.useUpdates();
   if (!updatesEnabled) return { pending: false, runningUpdateDate: null };
+  const update = toDownloaded(downloadedUpdate);
   return {
-    pending: isUpdatePending,
+    pending:
+      isUpdatePending && (!update || changesWhatRuns(update, currentlyRunning.isEmbeddedLaunch)),
     runningUpdateDate: currentlyRunning.isEmbeddedLaunch
       ? null
       : (currentlyRunning.createdAt ?? null),

@@ -35,13 +35,44 @@ export type DownloadedUpdate =
 /**
  * Critical when the publisher said so (`npm run ota -- --critical` sets
  * `extra.updatePriority` in the app config the update carries), and always
- * for a rollback: `eas update:rollback` only happens when the running update
- * is the problem.
+ * for a rollback to the build's own code: that only happens when the running
+ * update is the problem.
+ *
+ * A rollback reaches JS in two shapes. The in-app check reports it as
+ * `type: 'rollback'`. The native check at cold launch (expo-updates 57)
+ * reports it as an ordinary new update whose manifest is the embedded one,
+ * `{ id, commitTime, assets }`, with no flag. Seen on the simulator.
  */
 export function updatePriority(update: DownloadedUpdate): UpdatePriority {
-  if (update.type === 'rollback') return 'critical';
+  if (update.type === 'rollback' || isRollback(update)) return 'critical';
   const flag = readPath(update.manifest, ['extra', 'expoClient', 'extra', 'updatePriority']);
   return flag === 'critical' ? 'critical' : 'normal';
+}
+
+/** A rollback to the build's own code, in either shape (see updatePriority). */
+export function isRollback(update: DownloadedUpdate): boolean {
+  return update.type === 'rollback' || isEmbeddedManifest(update.manifest);
+}
+
+/**
+ * Whether restarting into a downloaded update would change what runs. A
+ * rollback while Meno already runs its own code changes nothing, yet
+ * expo-updates still reports one: a fresh install that finds an earlier
+ * rollback directive on its channel "downloads" it once. That must not show
+ * the Settings row or the restart offer.
+ */
+export function changesWhatRuns(update: DownloadedUpdate, runningEmbedded: boolean): boolean {
+  return !(runningEmbedded && isRollback(update));
+}
+
+/**
+ * The binary's own manifest: a commit time and no launch asset. Every
+ * manifest served by EAS Update has a launchAsset and a createdAt instead.
+ */
+export function isEmbeddedManifest(manifest: unknown): boolean {
+  if (typeof manifest !== 'object' || manifest === null) return false;
+  const m = manifest as Record<string, unknown>;
+  return typeof m.commitTime === 'number' && !('launchAsset' in m);
 }
 
 /** Identifies an update for "already offered"; rollbacks carry no id. */
@@ -58,15 +89,20 @@ export function isCalmRoute(segments: readonly string[]): boolean {
   return segments[0] === '(tabs)';
 }
 
-/** Offer an immediate restart: critical, not yet offered, app in front, calm route. */
+/**
+ * Offer an immediate restart: critical, changes what runs, not yet offered,
+ * app in front, calm route.
+ */
 export function shouldOfferRestart(args: {
   update: DownloadedUpdate | undefined;
+  runningEmbedded: boolean;
   segments: readonly string[];
   appActive: boolean;
   alreadyOffered: ReadonlySet<string>;
 }): boolean {
-  const { update, segments, appActive, alreadyOffered } = args;
+  const { update, runningEmbedded, segments, appActive, alreadyOffered } = args;
   if (!update || !appActive) return false;
+  if (!changesWhatRuns(update, runningEmbedded)) return false;
   if (updatePriority(update) !== 'critical') return false;
   if (alreadyOffered.has(updateKey(update))) return false;
   return isCalmRoute(segments);
