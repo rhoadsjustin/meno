@@ -141,8 +141,9 @@ async function fetchAllPages<T>(
 
 /**
  * Every language the Platform has Bibles for, named in `locale`. One
- * request: `page_size=_` returns the whole collection when at most three
- * fields are asked for; a server that refuses that form is paged instead.
+ * request: `page_size=*` returns the whole collection when at most three
+ * fields are asked for (the live API; its docs also mention `_`); a server
+ * that refuses that form is paged instead.
  */
 export async function fetchLanguages(locale: string, fetchImpl?: Fetch): Promise<LanguageInfo[]> {
   const options = { acceptLanguage: locale, fetchImpl };
@@ -151,12 +152,12 @@ export async function fetchLanguages(locale: string, fetchImpl?: Fetch): Promise
   try {
     const page = await request<Page<YvLanguage>>(
       '/languages',
-      { bibles_available: 'true', page_size: '_', 'fields[]': fields },
+      { bibles_available: 'true', page_size: '*', 'fields[]': fields },
       options,
     );
     rows = page.data ?? [];
   } catch (e) {
-    if (!(e instanceof YouVersionError && e.status === 422)) throw e;
+    if (!(e instanceof YouVersionError && (e.status === 400 || e.status === 422))) throw e;
     rows = await fetchAllPages<YvLanguage>(
       '/languages',
       { bibles_available: 'true', page_size: '99', 'fields[]': fields },

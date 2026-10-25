@@ -288,13 +288,13 @@ describe('requests', () => {
       { id: 'ar', name: 'ar', textDirection: 'rtl' },
     ]);
     expect(calls[0].url).toBe(
-      'https://api.youversion.com/v1/languages?bibles_available=true&page_size=_&fields%5B%5D=id&fields%5B%5D=localized_name&fields%5B%5D=text_direction',
+      'https://api.youversion.com/v1/languages?bibles_available=true&page_size=*&fields%5B%5D=id&fields%5B%5D=localized_name&fields%5B%5D=text_direction',
     );
     expect(calls[0].headers['Accept-Language']).toBe('en-US');
 
     calls.length = 0;
     const paged = fake((url) =>
-      url.includes('page_size=_')
+      url.includes('page_size=*')
         ? new Response('{"detail":[{"loc":["page_size"]}]}', { status: 422 })
         : json({ data: [{ id: 'fr', localized_name: 'French' }], next_page_token: null }),
     );

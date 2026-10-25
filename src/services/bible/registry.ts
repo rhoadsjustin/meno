@@ -84,6 +84,25 @@ export function clearRegisteredTranslations(): void {
   registered.clear();
 }
 
+/** Drops one runtime translation (a version the Platform no longer lists). */
+export function unregisterTranslation(id: string): void {
+  registered.delete(id);
+}
+
+/** Platform abbreviations that are the same text as a bundled translation. */
+const BUNDLED_TWINS: Record<string, string> = { WEBUS: 'WEB' };
+
+/**
+ * Whether a Platform version duplicates text already on this device (the
+ * public-domain ASV and WEB are on the Platform too). The bundled copy is
+ * offline and cacheable, so the picker hides the Platform one.
+ */
+export function duplicatesBundled(t: Translation): boolean {
+  if (t.source !== 'youversion') return false;
+  const abbrev = BUNDLED_TWINS[t.abbrev.toUpperCase()] ?? t.abbrev.toUpperCase();
+  return TRANSLATIONS.some((s) => s.source === 'bundled' && s.abbrev === abbrev);
+}
+
 export function registeredTranslations(): Translation[] {
   return [...registered.values()];
 }

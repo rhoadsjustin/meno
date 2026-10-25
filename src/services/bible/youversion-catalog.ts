@@ -10,6 +10,7 @@ import {
   getTranslation,
   registerTranslations,
   registeredTranslations,
+  unregisterTranslation,
   youversionBibleId,
 } from '@/services/bible/registry';
 import type { Translation } from '@/services/bible/types';
@@ -223,6 +224,7 @@ export async function ensureBibles(
   if (!youversionKeyConfigured()) return cachedTranslationsFor(languageId);
   const list = await fetchBibles(languageId, undefined, options.locale);
   await storeTranslations(list);
+  await pruneTranslations(languageId, new Set(list.map((t) => t.id)));
   const now = Date.now();
   const { db, tables } = await dbModule();
   await db
@@ -231,6 +233,24 @@ export async function ensureBibles(
     .onConflictDoUpdate({ target: tables.settings.key, set: { value: String(now) } });
   biblesFetchedAt.set(languageId, now);
   return list;
+}
+
+/**
+ * Drops cached versions of one language that the Platform no longer lists
+ * for this key — except any a goal still names, which keep their metadata
+ * (the goal's text fetch will say 403 on its own).
+ */
+async function pruneTranslations(languageId: string, keep: ReadonlySet<string>): Promise<void> {
+  const { db, tables } = await dbModule();
+  const { inArray } = await import('drizzle-orm');
+  const goals = await db.select({ translationId: tables.goals.translationId }).from(tables.goals);
+  const named = new Set(goals.map((g) => g.translationId));
+  const stale = cachedTranslationsFor(languageId)
+    .map((t) => t.id)
+    .filter((id) => !keep.has(id) && !named.has(id));
+  if (stale.length === 0) return;
+  await db.delete(tables.translations).where(inArray(tables.translations.id, stale));
+  for (const id of stale) unregisterTranslation(id);
 }
 
 /** Fills in a version the registry only holds a placeholder for. */

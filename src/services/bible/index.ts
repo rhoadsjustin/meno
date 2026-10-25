@@ -9,6 +9,7 @@ import { getBook } from '@/services/bible/canon';
 import { chaptersInRange, esvKeyConfigured, fetchEsvChapter } from '@/services/bible/esv';
 import { compareRefs, refInRange } from '@/services/bible/refs';
 import {
+  duplicatesBundled,
   getTranslation,
   mayPersistText,
   registeredTranslations,
@@ -89,7 +90,9 @@ export function availableTranslations(): Translation[] {
   const out = TRANSLATIONS.filter(
     (t) => t.source === 'bundled' || (t.source === 'esv_api' && esvKeyConfigured()),
   );
-  if (youversionKeyConfigured()) out.push(...registeredTranslations());
+  if (youversionKeyConfigured()) {
+    out.push(...registeredTranslations().filter((t) => !duplicatesBundled(t)));
+  }
   return out;
 }
 
