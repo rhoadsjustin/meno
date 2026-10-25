@@ -32,7 +32,7 @@ import {
   type Page,
   type Run,
 } from '@/features/reader/paginate';
-import { getChapterVerseCount, getPassage, getTranslation, type Verse } from '@/services/bible';
+import { getChapter, getTranslation, type Verse } from '@/services/bible';
 import { fonts, layout, scriptureType, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 type Side = 'left' | 'right';
@@ -296,11 +296,7 @@ function useChapterVerses(translationId: string, bookId: string, wanted: number[
     let cancelled = false;
     for (const c of missing.split(',').filter(Boolean).map(Number)) {
       (async () => {
-        const count = await getChapterVerseCount(translationId, bookId, c);
-        const rows = await getPassage(translationId, {
-          start: { bookId, chapter: c, verse: 1 },
-          end: { bookId, chapter: c, verse: count },
-        });
+        const rows = await getChapter(translationId, bookId, c);
         if (cancelled) return;
         setCache((prev) => ({
           key,

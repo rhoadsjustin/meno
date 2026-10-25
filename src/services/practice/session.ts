@@ -190,9 +190,19 @@ export type LadderProgress = {
  * one tier's rounds, so on its own it cannot say how much is left — and a
  * practice run that never shows its end reads as stuck.
  */
-export function ladderProgress(state: SessionState): LadderProgress {
+export function ladderProgress(
+  state: SessionState,
+  options: {
+    /** The round just finished moved on without counting (an almost at the
+     * top tier with nothing banked today): it is still owed, so it is not
+     * shown as done — the bar must not read complete beside "not a clean
+     * pass yet", then step back when the retry starts. */
+    lastRoundOwed?: boolean;
+  } = {}
+): LadderProgress {
   const before = TIERS.filter((t) => t.tier < state.tier).reduce((n, t) => n + t.modes.length, 0);
-  const done = before + Math.min(state.roundIndex, state.rounds.length);
+  const cleared = Math.min(state.roundIndex, state.rounds.length);
+  const done = before + Math.max(0, cleared - (options.lastRoundOwed ? 1 : 0));
   let pass: LadderProgress['pass'] = null;
   if (!isComplete(state)) {
     const mode = currentMode(state);

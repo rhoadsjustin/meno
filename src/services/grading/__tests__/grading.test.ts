@@ -4,7 +4,10 @@ import {
   almostBudget,
   almostThresholdFor,
   errorBudget,
+  feedbackSequence,
+  feedbackSummary,
   gradeBand,
+  gradeBandAtLine,
   slipCount,
   gradeSpoken,
   gradeTyped,
@@ -274,5 +277,113 @@ describe('slipCount', () => {
     expect(
       slipCount(gradeTyped('For God so loved the world', 'For God loved the whole world')),
     ).toBe(2);
+  });
+});
+
+describe('feedbackSequence', () => {
+  const shape = (ref: string, input: string) =>
+    feedbackSequence(gradeTyped(ref, input)).map((t) =>
+      t.kind === 'extra' ? `+${t.word}` : t.word.tag === 'correct' ? t.word.word : `-${t.word.word}`,
+    );
+
+  it('is just the reference words when nothing was added', () => {
+    expect(shape('Jesus wept', 'jesus wept')).toEqual(['jesus', 'wept']);
+  });
+
+  it('places an extra word where it was said', () => {
+    expect(shape('for God so loved the world', 'for god so loved the whole world')).toEqual([
+      'for',
+      'god',
+      'so',
+      'loved',
+      'the',
+      '+whole',
+      'world',
+    ]);
+  });
+
+  it('keeps extras at the start and the end', () => {
+    expect(shape('rejoice in the Lord always', 'and rejoice in the lord always amen')).toEqual([
+      '+and',
+      'rejoice',
+      'in',
+      'the',
+      'lord',
+      'always',
+      '+amen',
+    ]);
+  });
+
+  it('shows something to mark when extra words are the only slips', () => {
+    const result = gradeTyped('rejoice in the Lord always', 'rejoice in the the lord always');
+    expect(result.words.every((w) => w.tag === 'correct')).toBe(true);
+    expect(result.accuracy).toBeLessThan(1);
+    expect(feedbackSequence(result).filter((t) => t.kind === 'extra')).toHaveLength(1);
+  });
+
+  it('gives every extra its own key, even a repeated word', () => {
+    const keys = feedbackSequence(gradeTyped('a b', 'x a x b x'))
+      .filter((t) => t.kind === 'extra')
+      .map((t) => (t.kind === 'extra' ? t.key : ''));
+    expect(new Set(keys).size).toBe(3);
+  });
+
+  it('interleaves missed words and extras in reference order', () => {
+    // "in" is dropped and "now" added further on.
+    expect(shape('rejoice in the Lord always', 'rejoice the lord now always')).toEqual([
+      'rejoice',
+      '-in',
+      'the',
+      'lord',
+      '+now',
+      'always',
+    ]);
+  });
+});
+
+describe('gradeBandAtLine', () => {
+  it('passes at the line whatever the length — no error budget is applied', () => {
+    expect(gradeBandAtLine(0.9, 0.9, 5)).toBe('pass');
+    // The ladder would pass a five-word round at 80%; a fixed line does not.
+    expect(gradeBand(0.9, 0.8, 5)).toBe('pass');
+    expect(gradeBandAtLine(0.9, 0.8, 5)).toBe('almost');
+  });
+
+  it('is an almost just beneath the line and a miss further down', () => {
+    // 25 words at 90%: the almost band reaches 80%.
+    expect(gradeBandAtLine(0.9, 0.88, 25)).toBe('almost');
+    expect(gradeBandAtLine(0.9, 0.8, 25)).toBe('almost');
+    expect(gradeBandAtLine(0.9, 0.76, 25)).toBe('miss');
+  });
+
+  it('never calls anything below the almost floor an almost', () => {
+    expect(gradeBandAtLine(0.9, 0.7, 8)).toBe('miss');
+    expect(gradeBandAtLine(0.9, 0.5, 40)).toBe('miss');
+  });
+
+  it('has no band without a length', () => {
+    expect(gradeBandAtLine(0.9, 0.89, 0)).toBe('miss');
+  });
+});
+
+describe('feedbackSummary', () => {
+  it('says so when nothing slipped', () => {
+    expect(feedbackSummary(gradeTyped('Jesus wept', 'jesus wept'))).toBe('Every word correct.');
+  });
+
+  it('names missed and added words', () => {
+    const summary = feedbackSummary(
+      gradeTyped('rejoice in the Lord always', 'rejoice the lord now always'),
+    );
+    expect(summary).toBe('Missed: in. Added, not in the verse: now.');
+  });
+
+  it('names a wrong word with what was given, and a near miss as close', () => {
+    expect(feedbackSummary(gradeTyped('pray without ceasing', 'pray without stopping'))).toBe(
+      'Wrong: ceasing, you had stopping.',
+    );
+    expect(feedbackSummary(gradeTyped('pray without ceasing', 'pray without ceasin'))).toBe(
+      'Close: ceasing.',
+    );
   });
 });

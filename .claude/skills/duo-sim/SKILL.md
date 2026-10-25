@@ -84,3 +84,20 @@ header rows to stack screens; modals keep their bottom Cancel/Continue bars.
 4. Half-open (`fold --posture half-open`, 120°): UIKit now reports the folding region through `modules/reserved-regions`, so `FoldAwareRow` resizes Today's, Stats' and Practice's panes to leave the crease clear and the Reader turns into two facing pages (`book` pose) with the sidebar hidden. Fold back to open and the even halves and sidebar return. Nothing else should jump.
 5. Fold while a session is running (practice, speak): state survives, no re-mount.
 6. Split View (Device Hub: drag the home indicator to one side): the window becomes compact again; nothing assumes the inner panel is always wide.
+
+## Modals on the Duo
+
+- Modal routes read the root safe-area provider unless they host their own. Wrap them in `ModalSafeArea` (`src/components/modal-safe-area.tsx`): a form sheet on the inner panel is centred and must not take the window's status-strip inset, and a full-screen modal detaches the root view, so its insets otherwise freeze at the pose it opened in.
+- A full-screen modal also detaches the app-wide `ReservedRegionsProvider` observer; a route that needs the fold (onboarding) mounts its own provider.
+- Half-open, iOS itself moves a form sheet into the leading half. That is system behaviour, not a layout bug.
+- A deep link that cold-starts a modal route makes it the stack root, shown full-screen. To check the sheet presentation, open it from Today.
+
+## Running beside another session
+
+Another session may hold Metro on 8081. Start Metro on a free port (`npx expo start --port 8082`, without `CI=1`: CI mode stops watching files and serves stale code) and point the installed Debug build at it:
+
+```bash
+xcrun simctl spawn B3688EEA-04C1-4F28-BFC0-5EBBCD01624B defaults write com.rhoadsdev.meno RCT_jsLocation "localhost:8082"
+```
+
+Delete the key afterwards (`defaults delete com.rhoadsdev.meno RCT_jsLocation`) so the build goes back to 8081.

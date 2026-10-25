@@ -9,13 +9,13 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { TimeField } from '@/components/time-field';
 import { HelpGuide } from '@/features/help/HelpGuide';
+import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
+import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { availableTranslations } from '@/services/bible';
 import { loadLockConfig, lockEventCounts, saveLockConfig } from '@/services/db/repos/lock';
 import { isLockAvailable, killSwitch } from '@/services/lock';
 import {
   DEFAULT_REMINDER_TIME,
-  notificationsBlocked,
-  notificationsEnabled,
   reminderTime,
   setNotificationsEnabled,
   setReminderTime,
@@ -34,9 +34,14 @@ export default function SettingsScreen() {
   // the row — instead of pushing a modal (HIG: list and detail side by side).
   const { isWide } = useContentLayout();
   const [detail, setDetail] = useState<Detail>('guide');
-  const [notifsOn, setNotifsOn] = useState(false);
-  // On in Meno but declined in iPhone Settings: nothing would arrive.
-  const [notifsBlocked, setNotifsBlocked] = useState(false);
+  // Whether each reminder will arrive, and why not (the guide reads the same).
+  const reminders = useReminderStatus();
+  // The switch answers the tap at once and holds that until the next status
+  // lands (iOS may be showing its prompt in between).
+  const [tapped, setTapped] = useState<{ value: boolean; over: typeof reminders } | null>(null);
+  const notifsOn =
+    tapped && tapped.over === reminders ? tapped.value : !!reminders && reminders.overall !== 'off';
+  const notifsBlocked = reminders?.overall === 'blocked';
   const [remindAt, setRemindAt] = useState<ReminderTime>(DEFAULT_REMINDER_TIME);
   const [lockEnabled, setLockEnabled] = useState(false);
   const [lockStats, setLockStats] = useState({ recitations: 0, overrides: 0 });
@@ -45,16 +50,12 @@ export default function SettingsScreen() {
     useCallback(() => {
       let cancelled = false;
       void (async () => {
-        const [notifs, blocked, time, lock, stats] = await Promise.all([
-          notificationsEnabled(),
-          notificationsBlocked(),
+        const [time, lock, stats] = await Promise.all([
           reminderTime(),
           loadLockConfig(),
           lockEventCounts(),
         ]);
         if (!cancelled) {
-          setNotifsOn(notifs);
-          setNotifsBlocked(blocked);
           setRemindAt(time);
           setLockEnabled(lock.enabled);
           setLockStats(stats);
@@ -66,13 +67,15 @@ export default function SettingsScreen() {
     }, []),
   );
 
-  const toggleNotifications = useCallback(async (value: boolean) => {
-    const applied = await setNotificationsEnabled(value);
-    setNotifsOn(value && applied);
-    // Asked for, and iOS said no: point at iPhone Settings instead of
-    // leaving a switch that silently snaps back.
-    setNotifsBlocked(value && !applied);
-  }, []);
+  // Asked for, and iOS said no: the switch stays on and the card says what
+  // is in the way, instead of silently snapping back.
+  const toggleNotifications = useCallback(
+    async (value: boolean) => {
+      setTapped({ value, over: reminders });
+      await setNotificationsEnabled(value);
+    },
+    [reminders],
+  );
 
   const changeReminderTime = useCallback(async (time: ReminderTime) => {
     setRemindAt(time);
@@ -149,32 +152,68 @@ export default function SettingsScreen() {
             accessibilityLabel="Reminders"
           />
         </View>
-        {notifsOn && !notifsBlocked && (
-          <View style={[styles.row, styles.subRow, { borderTopColor: colors.separator }]}>
-            <Text style={[styles.rowLabel, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Remind me at
+        {reminders && reminders.overall === 'off' && (
+          <View style={[styles.subRow, { borderTopColor: colors.separator }]}>
+            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              Off. Meno won’t send you anything until you turn this on.
             </Text>
-            <TimeField
-              hour={remindAt.hour}
-              minute={remindAt.minute}
-              onChange={(time) => void changeReminderTime(time)}
-              accessibilityLabel="Daily reminder time"
-            />
           </View>
         )}
-        {notifsBlocked && (
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => void Linking.openSettings()}
-            style={[styles.subRow, { borderTopColor: colors.separator }]}>
-            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Notifications are turned off for Meno on this iPhone, so reminders can’t arrive.
-            </Text>
-            <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Open iPhone Settings
-            </Text>
-          </Pressable>
+        {reminders && reminders.overall !== 'off' && (
+          <View style={[styles.subRow, { borderTopColor: colors.separator }]}>
+            <ReminderStatusList status={reminders} />
+          </View>
         )}
+        {reminders?.overall === 'on' && (
+          <>
+            <View style={[styles.row, styles.subRow, { borderTopColor: colors.separator }]}>
+              <Text style={[styles.rowLabel, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                Remind me at
+              </Text>
+              <TimeField
+                hour={remindAt.hour}
+                minute={remindAt.minute}
+                onChange={(time) => void changeReminderTime(time)}
+                accessibilityLabel="Daily reminder time"
+              />
+            </View>
+            <Text
+              style={[
+                styles.rowSub,
+                styles.footnote,
+                { color: colors.inkFaint, fontFamily: fonts?.ui },
+              ]}>
+              A Focus or Scheduled Summary on your iPhone can still hold these back. Meno can’t see
+              either one.
+            </Text>
+          </>
+        )}
+        {notifsBlocked &&
+          (reminders.canAsk ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void toggleNotifications(true)}
+              style={[styles.subRow, { borderTopColor: colors.separator }]}>
+              <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                Your iPhone will ask if Meno can send notifications. Tap Allow.
+              </Text>
+              <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                Allow notifications
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => void Linking.openSettings()}
+              style={[styles.subRow, { borderTopColor: colors.separator }]}>
+              <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                Turn on Allow Notifications for Meno and they start by themselves.
+              </Text>
+              <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                Open iPhone Settings
+              </Text>
+            </Pressable>
+          ))}
       </Card>
 
       <Card style={rowCard('lock')}>
@@ -240,7 +279,7 @@ export default function SettingsScreen() {
     detail === 'guide' ? (
       <HelpGuide />
     ) : detail === 'reminders' ? (
-      <HelpGuide sections={['quizzes']} overview={false} faq={false} />
+      <HelpGuide sections={['quizzes']} overview={false} faq={false} reminderLines={false} />
     ) : (
       <HelpGuide sections={['lock']} overview={false} faq={false} />
     );
@@ -266,6 +305,7 @@ const styles = StyleSheet.create({
   rowSub: { fontSize: 14, lineHeight: 19 },
   rowLabel: { flex: 1, fontSize: 16 },
   credit: { marginTop: spacing.sm },
+  footnote: { marginTop: spacing.md },
   rowAction: { fontSize: 15, fontWeight: '600', marginTop: spacing.xs },
   subRow: {
     marginTop: spacing.md,

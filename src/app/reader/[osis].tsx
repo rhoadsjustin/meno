@@ -12,8 +12,7 @@ import { BookSpread } from '@/features/reader/BookSpread';
 import {
   DEFAULT_TRANSLATION_ID,
   getBook,
-  getChapterVerseCount,
-  getPassage,
+  getChapter,
   getTranslation,
   parseOsisRef,
   type Verse,
@@ -45,11 +44,7 @@ export default function ReaderRoute() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const count = await getChapterVerseCount(translationId, ref.bookId, ref.chapter);
-      const rows = await getPassage(translationId, {
-        start: { bookId: ref.bookId, chapter: ref.chapter, verse: 1 },
-        end: { bookId: ref.bookId, chapter: ref.chapter, verse: count },
-      });
+      const rows = await getChapter(translationId, ref.bookId, ref.chapter);
       if (!cancelled) setVerses(rows);
     })().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
     return () => {

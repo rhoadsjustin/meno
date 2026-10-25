@@ -75,7 +75,9 @@ export function BlanksRound({
 
   return (
     <>
-      <View style={styles.textWrap} accessibilityLabel="Passage with blanks">
+      {/* No label here: the words and blanks are read one by one, and a label
+          on a container that is not itself an element is never spoken. */}
+      <View style={styles.textWrap}>
         {tokens.map((t, i) => {
           const blankState = states[i];
           if (blankState === undefined) {

@@ -3,8 +3,8 @@
  * something outside the app — iOS permissions, widgets, Screen Time — written
  * for people who don't live in Settings.
  *
- * Sections show live status where the app can read it (notification and
- * microphone permissions, the lock config) with a one-tap fix: ask for the
+ * Sections show live status where the app can read it (reminders, the
+ * microphone permission, the lock config) with a one-tap fix: ask for the
  * permission, or open iPhone Settings once iOS won't ask again. iOS doesn't
  * let apps see which widgets are placed, so the widget sections are numbered
  * steps beside a real capture. Common questions close the guide.
@@ -12,7 +12,6 @@
  * Rendered whole by the Help modal, and in part by Settings' detail pane on
  * wide windows (iPhone Duo opened), where each row shows its own section.
  */
-import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
@@ -30,7 +29,13 @@ import { Card } from '@/components/card';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { loadLockConfig } from '@/services/db/repos/lock';
 import { getAuthorizationStatus, isLockAvailable } from '@/services/lock';
-import { notificationsEnabled, setNotificationsEnabled } from '@/services/notifications';
+import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
+import { useReminderStatus } from '@/features/reminders/useReminderStatus';
+import {
+  reminderSummary,
+  setNotificationsEnabled,
+  type ReminderStatus,
+} from '@/services/notifications';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
 export type SectionKey = 'quizzes' | 'homeWidget' | 'lockWidget' | 'speak' | 'lock';
@@ -66,28 +71,34 @@ const INITIAL: Statuses = {
   lock: 'notYet',
 };
 
-/** Granted (and switched on in Meno) → ready; declined for good → iPhone Settings. */
-function permissionStatus(
-  perm: { granted: boolean; canAskAgain: boolean },
-  switchedOn: boolean,
-): Status {
-  if (perm.granted) return switchedOn ? 'ready' : 'notYet';
+/** Granted → ready; declined for good → iPhone Settings. */
+function permissionStatus(perm: { granted: boolean; canAskAgain: boolean }): Status {
+  if (perm.granted) return 'ready';
   return perm.canAskAgain ? 'notYet' : 'openSettings';
 }
 
+/**
+ * The reminders section's status, from the same source Settings and Today
+ * read (services/notifications/status), so the three always agree.
+ */
+function remindersStatus(reminders: ReminderStatus | null): Status {
+  if (!reminders || reminders.overall === 'off') return 'notYet';
+  if (reminders.overall === 'blocked') return reminders.canAsk ? 'notYet' : 'openSettings';
+  return 'ready';
+}
+
+/** Everything but reminders, which `useReminderStatus` keeps live. */
 async function readStatuses(): Promise<Statuses> {
-  const [notifPerm, notifOn, micPerm, lock, auth] = await Promise.all([
-    Notifications.getPermissionsAsync(),
-    notificationsEnabled(),
+  const [micPerm, lock, auth] = await Promise.all([
     ExpoSpeechRecognitionModule.getPermissionsAsync(),
     loadLockConfig(),
     getAuthorizationStatus(),
   ]);
   return {
-    quizzes: permissionStatus(notifPerm, notifOn),
+    quizzes: 'notYet',
     homeWidget: 'manual',
     lockWidget: 'manual',
-    speak: permissionStatus(micPerm, true),
+    speak: permissionStatus(micPerm),
     lock: !isLockAvailable()
       ? 'unavailable'
       : lock.enabled && auth === 'approved'
@@ -99,7 +110,7 @@ async function readStatuses(): Promise<Statuses> {
 const FAQ: { q: string; a: string }[] = [
   {
     q: 'Can I learn more than one passage at a time?',
-    a: 'Yes. Tap “+ Practice another passage” on Today (or New goal in Library). Each passage keeps its own progress, and Today lists them all — the one on your widgets at the top.',
+    a: 'Yes. Tap “+ Practice another passage” on Today (or in Library). Each passage keeps its own progress, and Today lists them all — the one on your widgets at the top.',
   },
   {
     q: 'How do I choose which verse my widgets show?',
@@ -115,7 +126,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'I’m not getting any reminders or quizzes.',
-    a: 'Check that Reminders and quizzes says Ready at the top of this page. The daily reminder comes at the time you set in Settings → Reminders, and skips a day you’ve already practiced. Quizzes start once a verse is memorized, and only come between 9am and 9pm. A Focus mode like Sleep or Do Not Disturb holds both until it ends.',
+    a: 'Open Settings → Reminders. Each kind of reminder says when the next one comes, or why none will yet. The daily reminder comes at the time you set and skips a day you’ve already practiced. Quizzes start once a verse is memorized, and only come between 9am and 9pm. If everything there looks right, check your iPhone: a Focus like Sleep or Do Not Disturb holds notifications until it ends, and Scheduled Summary saves them for set times of day. Meno can’t see either one.',
   },
   {
     q: 'An app is shielded and I need it right now.',
@@ -142,6 +153,8 @@ export type HelpGuideProps = {
   scrollTo?: (y: number) => void;
   /** Runs before the guide pushes another route (the Help modal closes itself first). */
   onBeforeNavigate?: () => void;
+  /** The per-reminder lines; Settings' detail pane leaves them to the row beside it. */
+  reminderLines?: boolean;
 };
 
 export function HelpGuide({
@@ -150,11 +163,20 @@ export function HelpGuide({
   faq = true,
   scrollTo,
   onBeforeNavigate,
+  reminderLines = true,
 }: HelpGuideProps) {
   const colors = useThemeColors();
   const rootY = useRef(0);
   const offsets = useRef<Partial<Record<SectionKey, number>>>({});
-  const [statuses, setStatuses] = useState<Statuses>(INITIAL);
+  const [rest, setStatuses] = useState<Statuses>(INITIAL);
+  const reminders = useReminderStatus();
+  const statuses: Statuses = { ...rest, quizzes: remindersStatus(reminders) };
+  // The checklist says more than "Ready" for reminders: off, blocked, or when
+  // the next one comes.
+  const statusLabel = (key: SectionKey) =>
+    key === 'quizzes' && reminders
+      ? reminderSummary(reminders, { now: new Date() })
+      : STATUS_LABEL[statuses[key]];
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const shown = new Set(sections);
 
@@ -188,8 +210,7 @@ export function HelpGuide({
 
   const turnOnQuizzes = useCallback(async () => {
     await setNotificationsEnabled(true);
-    await refresh();
-  }, [refresh]);
+  }, []);
 
   const allowMicrophone = useCallback(async () => {
     await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -229,7 +250,7 @@ export function HelpGuide({
             <Pressable
               key={key}
               accessibilityRole="button"
-              accessibilityLabel={`${title}: ${STATUS_LABEL[statuses[key]]}`}
+              accessibilityLabel={`${title}: ${statusLabel(key)}`}
               accessibilityHint="Shows the steps"
               onPress={() => jumpTo(key)}
               style={[
@@ -240,7 +261,7 @@ export function HelpGuide({
                 },
               ]}>
               <Text style={[styles.overviewTitle, text]}>{title}</Text>
-              <StatusText status={statuses[key]} />
+              <StatusText status={statuses[key]} label={statusLabel(key)} />
             </Pressable>
           ))}
         </Card>
@@ -251,11 +272,18 @@ export function HelpGuide({
           sectionKey="quizzes"
           title="Reminders and quizzes"
           status={statuses.quizzes}
+          statusLabel={statusLabel('quizzes')}
           onSectionLayout={recordOffset}>
           <Text style={[styles.body, text]}>
             A daily reminder to practice, at a time you choose, and short surprise quizzes on verses
             you’ve memorized (between 9am and 9pm). Never more than two notifications a day.
           </Text>
+          {reminders?.overall === 'blocked' && (
+            <Text style={[styles.tip, { color: colors.error, fontFamily: fonts?.ui }]}>
+              Reminders are on in Meno, but your iPhone isn’t letting them through, so nothing
+              can arrive yet.
+            </Text>
+          )}
           {statuses.quizzes === 'openSettings' ? (
             <>
               <Steps
@@ -269,15 +297,25 @@ export function HelpGuide({
               <Action label="Open iPhone Settings" onPress={openIphoneSettings} />
             </>
           ) : statuses.quizzes === 'ready' ? (
-            <Text style={[styles.tip, faint]}>
-              You’re all set. You can turn quizzes off anytime in Settings → Reminders.
-            </Text>
+            <>
+              {reminderLines && reminders && <ReminderStatusList status={reminders} />}
+              <Text style={[styles.tip, faint]}>
+                Change the time or turn reminders off in Settings → Reminders. A Focus or
+                Scheduled Summary on your iPhone can still hold notifications back; Meno can’t
+                see either one.
+              </Text>
+            </>
           ) : (
             <>
               <Text style={[styles.tip, faint]}>
-                Your iPhone will ask if Meno can send notifications — tap Allow.
+                {reminders?.overall === 'off'
+                  ? 'Reminders are off in Meno. If your iPhone asks whether Meno can send notifications, tap Allow.'
+                  : 'Your iPhone will ask if Meno can send notifications — tap Allow.'}
               </Text>
-              <Action label="Turn on reminders" onPress={() => void turnOnQuizzes()} />
+              <Action
+                label={reminders?.canAsk ? 'Allow notifications' : 'Turn on reminders'}
+                onPress={() => void turnOnQuizzes()}
+              />
             </>
           )}
         </Section>
@@ -457,12 +495,15 @@ function Section({
   sectionKey,
   title,
   status,
+  statusLabel,
   onSectionLayout,
   children,
 }: PropsWithChildren<{
   sectionKey: SectionKey;
   title: string;
   status: Status;
+  /** Overrides the stock wording for `status`. */
+  statusLabel?: string;
   /** Reports the section's scroll offset so the overview can jump to it. */
   onSectionLayout: (key: SectionKey, e: LayoutChangeEvent) => void;
 }>) {
@@ -476,7 +517,7 @@ function Section({
             style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {title}
           </Text>
-          <StatusText status={status} />
+          <StatusText status={status} label={statusLabel} />
         </View>
         {children}
       </Card>
@@ -485,7 +526,7 @@ function Section({
 }
 
 /** Status is always spelled out, never color alone. */
-function StatusText({ status }: { status: Status }) {
+function StatusText({ status, label }: { status: Status; label?: string }) {
   const colors = useThemeColors();
   const color =
     status === 'ready'
@@ -497,7 +538,7 @@ function StatusText({ status }: { status: Status }) {
   return (
     <Text style={[styles.status, { color, fontFamily: fonts?.ui }]}>
       {mark}
-      {STATUS_LABEL[status]}
+      {label ?? STATUS_LABEL[status]}
     </Text>
   );
 }

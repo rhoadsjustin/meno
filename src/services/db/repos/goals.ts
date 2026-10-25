@@ -19,7 +19,7 @@ import { meetsThreshold, tokenize } from '@/services/grading';
 import { db, tables } from '@/services/db';
 import { resolveFocusGoal } from '@/services/focus';
 import { daysAgo, planPractice, type ChunkStanding, type PracticePlan } from '@/services/practice/plan';
-import { nextTier, tierDef, TIERS } from '@/services/practice/tiers';
+import { MASTERY_TIER, nextTier, tierDef, TIERS } from '@/services/practice/tiers';
 
 export type Goal = typeof tables.goals.$inferSelect;
 export type Chunk = typeof tables.chunks.$inferSelect;
@@ -224,10 +224,10 @@ export async function practicePlan(
   const standings: ChunkStanding[] = [];
   for (const chunk of chunks) {
     let masteryDaysAgo: number[] = [];
-    // Cheap check first: anything still climbing the ladder is plain work,
-    // so only a chunk sitting at the ceiling costs a passage read.
+    // Cheap check first: below Type no pass counts toward Memorized, so only
+    // a chunk that has cleared it costs a passage read.
     const unfinished = chunk.status === 'active' || chunk.status === 'learning';
-    if (unfinished && nextTier(chunk.tier) === chunk.tier) {
+    if (unfinished && chunk.tier >= MASTERY_TIER) {
       translationId ??= (await getGoal(goalId))?.translationId ?? 'web';
       const dates = await masteryDates(chunk.id, await chunkUnitCount(chunk, translationId));
       masteryDaysAgo = daysAgo(dates, now);
@@ -281,7 +281,7 @@ export async function applyTierCleared(
   unitCount: number
 ): Promise<{ memorized: boolean }> {
   const newTier = Math.max(chunk.tier, clearedTier);
-  const memorized = clearedTier >= 5 && (await masteryDays(chunk.id, unitCount)).size >= 2;
+  const memorized = clearedTier >= MASTERY_TIER && (await masteryDays(chunk.id, unitCount)).size >= 2;
   await db
     .update(tables.chunks)
     .set({

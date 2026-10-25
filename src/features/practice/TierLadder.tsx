@@ -5,8 +5,9 @@ import { useThemeColors, fonts, spacing } from '@/theme';
 
 /**
  * The practice ladder for one chunk (docs/03 §1): Read → First Letters →
- * Blanks → Arrange → Type → Speak. Cleared tiers are filled gold, the tier
+ * Blanks → Arrange → Type → Speak. Cleared tiers are filled lapis, the tier
  * being practiced is ringed in lapis, the rest wait in the separator tone.
+ * Not gold: a cleared rung is progress, and gold is kept for Memorized.
  * Shown where there is room for context — the Today rail and the practice
  * rail on wide windows.
  */
@@ -29,7 +30,9 @@ export function TierLadder({
   ).join(', ');
 
   return (
-    <View accessibilityLabel={`Ladder: ${summary}`} style={styles.ladder}>
+    // One element: read rung by rung, VoiceOver would say the names and
+    // drop which are cleared — the dots carry that, and they are silent.
+    <View accessible accessibilityLabel={`Ladder: ${summary}`} style={styles.ladder}>
       {TIERS.map((t) => {
         const cleared = t.tier <= highestCleared;
         const active = !cleared && t.tier === current;
@@ -39,7 +42,7 @@ export function TierLadder({
               style={[
                 styles.dot,
                 cleared
-                  ? { backgroundColor: colors.gold, borderColor: colors.gold }
+                  ? { backgroundColor: colors.lapis, borderColor: colors.lapis }
                   : active
                     ? { backgroundColor: colors.lapisWash, borderColor: colors.lapis }
                     : { backgroundColor: 'transparent', borderColor: colors.separator },

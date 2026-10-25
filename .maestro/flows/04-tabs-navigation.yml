@@ -8,7 +8,7 @@ tags:
 - runFlow: ../helpers/complete-onboarding.yml
 - tapOn: "Library"
 - assertVisible: "In progress"
-- assertVisible: "No goals yet"
+- assertVisible: "No passages yet"
 - tapOn: "Stats"
 - assertVisible: ".*day streak.*"
 - assertVisible: "Badges"

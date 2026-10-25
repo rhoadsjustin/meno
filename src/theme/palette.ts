@@ -12,7 +12,8 @@ export const palette = {
     inkFaint: '#6E7280',
     lapis: '#2244AA',
     lapisWash: '#E9EEFA',
-    gold: '#A8802E',
+    // Dark enough for body-size text on both light surfaces (4.6:1).
+    gold: '#8F6C1F',
     error: '#B3402E',
     errorWash: '#F9E9E4',
     success: '#2E7D5B',
