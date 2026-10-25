@@ -4,7 +4,7 @@ _Effective: August 27, 2026_
 
 Meno is built so that your practice of Scripture stays between you and God.
 The short version: **no personal data is ever collected** — only anonymous
-crash and performance diagnostics, described below.
+diagnostics and update checks, described below.
 
 ## What stays on your device
 
@@ -36,6 +36,18 @@ Crossway's ESV API once per passage to download the text, which is then
 cached on your device under Crossway's license. That request contains only
 the passage reference (for example, "Philippians 1") and our API key —
 no personal information, no identifiers, nothing about you.
+
+## App updates
+
+So fixes can reach you without waiting for an App Store release, Meno asks
+Expo's EAS Update service whether a newer version of its code is available
+when it opens, and downloads it if so. That request contains technical
+details only: the app version, which update is running, and a random
+identifier Meno creates when it is installed (deleting and reinstalling the
+app replaces it), which lets a fix roll out to some devices before others.
+If Meno crashed while starting, the next request also includes that error
+message. It never contains your goals, progress, recitations, or anything
+you typed or said, and it is never linked to your identity.
 
 ## Anonymous diagnostics
 
