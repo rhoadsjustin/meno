@@ -34,8 +34,30 @@ Meno works fully offline with its built-in public-domain translations
 (WEB, KJV, ASV). If you choose the English Standard Version, Meno contacts
 Crossway's ESV API once per passage to download the text, which is then
 cached on your device under Crossway's license. That request contains only
-the passage reference (for example, "Philippians 1") and our API key —
-no personal information, no identifiers, nothing about you.
+the passage reference (for example, "Philippians 1") and our API key.
+
+Other translations come from the YouVersion Platform, which licenses each
+version from its publisher. When you open the translation list, Meno asks
+it which languages and versions it can offer. Those requests contain our
+app key, your phone's language setting (for example, "es-MX") so the names
+come back in your language, and which language to list versions for: yours
+and English at first, then any language you tap. Searching the list happens
+on your phone, and what you type is never sent. The list is saved on your
+device, so Meno asks again only after a week has passed, your phone's
+language has changed, or you tap a language.
+
+When you read or practice a passage in one of these versions, Meno asks for
+that chapter. The request contains our app key, the version, and the
+chapter (for example, "Philippians 1"). If a goal uses a version your phone
+hasn't seen yet, such as after reinstalling or from a challenge link, Meno
+also looks up that version's name and copyright line. The verse text itself
+is never saved: it stays in memory only until Meno closes, so these versions
+need a connection each time you practice.
+
+Neither service receives personal information, identifiers, or anything
+about you: not your goals, your progress, or your recitations. As with any
+internet request, each can see the network address a request came from and
+which version of Meno and iOS sent it.
 
 ## App updates
 

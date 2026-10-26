@@ -108,6 +108,14 @@ no web access, no gambling). Result: **4+**.
 - **Diagnostics → Crash Data + Performance Data**: collected, **not linked
   to identity**, not used for tracking (EAS Observe).
 - Everything else: not collected. Tracking: **No**.
+- Scripture requests are not declared. The Crossway ESV API and the YouVersion
+  Platform receive only our keys, the passage or chapter, and (YouVersion) the
+  device language and the language being browsed: no identifiers, no user
+  content, nothing Meno keeps off the device (see `privacy-policy.md`,
+  "Network use"). Unconfirmed: whether YouVersion keeps request logs. Its
+  platform offers developers usage analytics, so it may; if it does, which
+  chapters were requested could count as Usage Data → Product Interaction
+  under Apple's definition of "collect". Same question for ESV.
 
 ## Copyright
 
