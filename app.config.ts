@@ -19,10 +19,33 @@ const variant = process.env.APP_VARIANT === 'review' ? 'review' : null;
 const bundleId = variant ? `com.rhoadsdev.meno.${variant}` : 'com.rhoadsdev.meno';
 const appGroup = `group.${bundleId}`;
 
+// Over-the-air updates (EAS Update). Values from `eas update:configure`.
+// The runtime version is the app version: an update reaches only binaries
+// built at the same `version`, so bump `version` whenever native code or
+// native config changes (docs/ship/ota-updates.md). `npm run ota` refuses to
+// publish onto a binary whose native fingerprint differs.
+//
+// MENO_UPDATE_PRIORITY=critical is set by `npm run ota -- --critical` at
+// publish time. It travels in the update's manifest, so the running app can
+// read it before applying the update and offer an immediate restart
+// (src/services/updates). Builds are always 'normal'.
+const updatePriority = process.env.MENO_UPDATE_PRIORITY === 'critical' ? 'critical' : 'normal';
+
+// EAS Build sets each build's channel from eas.json. A local build has none,
+// so it never receives updates, unless MENO_UPDATES_CHANNEL names one at
+// prebuild time. That is how an update is rehearsed on the simulator against
+// the ota-qa channel, which no shipped build listens to (docs/ship/ota-updates.md).
+const updatesChannel = process.env.MENO_UPDATES_CHANNEL;
+
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
   version: '1.5.0',
+  runtimeVersion: { policy: 'appVersion' },
+  updates: {
+    url: 'https://u.expo.dev/6473c486-4b56-4c2c-9365-2ca7eeef6729',
+    ...(updatesChannel ? { requestHeaders: { 'expo-channel-name': updatesChannel } } : {}),
+  },
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   // 'device-activity' is the hardcoded scheme the ShieldAction extension's
@@ -201,6 +224,7 @@ const config: ExpoConfig = {
     eas: {
       projectId: '6473c486-4b56-4c2c-9365-2ca7eeef6729',
     },
+    updatePriority,
   },
   owner: 'rhoadsjustin',
 };

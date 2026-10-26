@@ -223,7 +223,9 @@ export function PracticeScreen({
       let memorized = false;
       let standing: TopTierStanding | null = null;
       if (outcome.tierCleared) {
-        const unitCount = tokenize(text).length;
+        const unitCount = tokenize(text, {
+          language: getTranslation(goal?.translationId ?? 'web').languageCode,
+        }).length;
         ({ memorized } = await applyTierCleared(chunk, session.tier, unitCount));
         // Tier 6 is the top of the ladder, so a clear that didn't seal the
         // chunk would otherwise reload into the identical Speak round. A
@@ -287,7 +289,7 @@ export function PracticeScreen({
         result: input.result,
       });
     },
-    [session, chunk, text, roundStartedAt],
+    [session, chunk, text, roundStartedAt, goal?.translationId],
   );
 
   // One result per round: the round is still on screen while its attempt is
@@ -551,12 +553,12 @@ export function PracticeScreen({
                 : phase.needsCleanPass
                   ? 'Try again'
                   : phase.restPoint
-                  ? 'Done for today'
-                  : phase.tierCleared
-                  ? 'Continue'
-                  : phase.passed
-                    ? 'Next round'
-                    : 'Try again'}
+                    ? 'Done for today'
+                    : phase.tierCleared
+                      ? 'Continue'
+                      : phase.passed
+                        ? 'Next round'
+                        : 'Try again'}
             </Text>
           </Pressable>
           {phase.restPoint && (
@@ -730,7 +732,14 @@ function RoundBody({
         />
       );
     case 'type':
-      return <TypeRound text={text} reference={reference} onDone={(o) => onFinish(o)} />;
+      return (
+        <TypeRound
+          text={text}
+          reference={reference}
+          translationId={translationId}
+          onDone={(o) => onFinish(o)}
+        />
+      );
     case 'speak':
       return (
         <SpeakRound

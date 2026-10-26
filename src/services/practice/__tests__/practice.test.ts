@@ -18,6 +18,7 @@ import {
   ladderProgress,
   LADDER_ROUNDS,
   startSession,
+  displayTokens,
   displayWords,
 } from '@/services/practice';
 
@@ -28,6 +29,47 @@ describe('firstLetters', () => {
   it('reduces words to first letters, keeping punctuation', () => {
     expect(firstLetters('Do not be anxious about anything,')).toBe('D n b a a a,');
     expect(firstLetters('“Come!” he said.')).toBe('“C!” h s.');
+  });
+
+  it('treats accented and non-Latin letters as letters', () => {
+    expect(displayWords('Él vino por testimonio, para que diese testimonio de la luz.')).toEqual([
+      'Él',
+      'vino',
+      'por',
+      'testimonio',
+      'para',
+      'que',
+      'diese',
+      'testimonio',
+      'de',
+      'la',
+      'luz',
+    ]);
+    expect(firstLetters('Él vino por testimonio, para que diese.')).toBe('É v p t, p q d.');
+    expect(displayWords('क्योंकि परमेश्वर ने जगत से ऐसा प्रेम रखा।')).toEqual([
+      'क्योंकि',
+      'परमेश्वर',
+      'ने',
+      'जगत',
+      'से',
+      'ऐसा',
+      'प्रेम',
+      'रखा',
+    ]);
+    expect(firstLetters('क्योंकि परमेश्वर ने जगत से ऐसा प्रेम रखा।')).toBe(
+      'क्यों प ने ज से ऐ प्रे र।',
+    );
+    expect(displayWords('لأَنَّهُ هكَذَا أَحَبَّ اللهُ الْعَالَمَ')).toHaveLength(5);
+    expect(firstLetters('لأَنَّهُ هكَذَا')).toMatch(/^ل\S* ه/u);
+  });
+
+  it('splits Chinese into words with the punctuation kept on the word before it', () => {
+    const tokens = displayTokens('神爱世人，甚至将他的独生子赐给他们。');
+    expect(tokens.length).toBeGreaterThan(1);
+    expect(tokens.map((t) => t.word).join('')).toBe('神爱世人甚至将他的独生子赐给他们');
+    expect(tokens.some((t) => t.suffix.includes('，'))).toBe(true);
+    expect(tokens[tokens.length - 1].suffix).toBe('。');
+    expect(tokens.every((t) => t.word.length > 0)).toBe(true);
   });
 });
 

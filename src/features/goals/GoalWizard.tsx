@@ -2,7 +2,6 @@
  * Goal wizard (docs/07 §6): Passage → Plan, presented as a native form
  * sheet. Translation rides along as a menu on the passage step.
  */
-import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,9 +13,17 @@ import {
   View,
 } from 'react-native';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { loadFailureMessage, PassageStep } from '@/features/goals/PassageStep';
-import { DEFAULT_TRANSLATION_ID, availableTranslations, formatRange } from '@/services/bible';
+import {
+  BOOKS,
+  DEFAULT_TRANSLATION_ID,
+  availableTranslations,
+  formatRange,
+  getTranslation,
+  translationHasBook,
+} from '@/services/bible';
 import {
   defaultSelection,
   selectionToRange,
@@ -81,18 +88,27 @@ export function GoalWizard() {
     };
   }, [initialTranslation]);
 
-  const selectTranslation = useCallback((id: string) => {
-    setError(null);
-    setTranslationId(id);
-    void rememberTranslation(id).catch(() => {});
-  }, []);
-
   const selectBook = useCallback((id: string) => {
     setError(null);
     setBookId(id);
     setChapter(1);
     setSelection(defaultSelection(id));
   }, []);
+
+  const selectTranslation = useCallback(
+    (id: string) => {
+      setError(null);
+      setTranslationId(id);
+      void rememberTranslation(id).catch(() => {});
+      // A New Testament, or a few books: open on the first book it has.
+      const t = getTranslation(id);
+      if (!translationHasBook(t, bookId)) {
+        const first = BOOKS.find((b) => translationHasBook(t, b.id));
+        if (first) selectBook(first.id);
+      }
+    },
+    [bookId, selectBook],
+  );
 
   const toPlan = useCallback(async () => {
     if (!selection) return;
@@ -120,10 +136,7 @@ export function GoalWizard() {
     setError(null);
     try {
       await createGoal({ translationId, range, title: title.trim() || formatRange(range) });
-      // Opened by a link with nothing beneath it, there is nowhere to go back
-      // to and the sheet would sit on its spinner.
-      if (router.canGoBack()) router.back();
-      else router.replace('/');
+      closeModal();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
@@ -199,7 +212,7 @@ export function GoalWizard() {
           accessibilityRole="button"
           onPress={() => {
             setError(null);
-            if (step === 'passage') router.back();
+            if (step === 'passage') closeModal();
             else setStep('passage');
           }}
           style={styles.footerSecondary}>

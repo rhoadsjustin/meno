@@ -9,6 +9,7 @@
  */
 import { refToOsis } from '@/services/bible/refs';
 import type { Ref, Verse } from '@/services/bible/types';
+import { splitUnspaced } from '@/services/grading/script';
 
 export type ChunkPlan = {
   /** Stable id: `${translationId}:${startOsis}-${endOsis}`. */
@@ -24,8 +25,12 @@ export const MIN_WORDS = 15;
 export const MAX_WORDS = 60;
 export const MAX_VERSES = 4;
 
+/** Words as the graders count them: spaces split most scripts; Chinese and Thai are split per word or letter. */
 function wordCount(text: string): number {
-  return text.split(/\s+/).filter(Boolean).length;
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((token) => splitUnspaced(token)).length;
 }
 
 function endsSentence(text: string): boolean {
