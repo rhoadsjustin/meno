@@ -2,12 +2,13 @@ import * as Notifications from 'expo-notifications';
 import { Observe, ObserveRoot, useObserve } from 'expo-observe';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppState, Pressable, StyleSheet, useColorScheme, Text, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
+import { fillPlaceholders, loadCatalog } from '@/services/bible';
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
@@ -98,11 +99,30 @@ function RootLayout() {
   const scheme = useColorScheme();
   const { success, error } = useMigrations();
   const { markInteractive } = useObserve();
+  // The translation catalog cache names the versions goals use (02 §5), so
+  // screens wait for it as they wait for migrations. An unreadable cache
+  // still lets the app open — those goals show a placeholder name.
+  const [catalogReady, setCatalogReady] = useState(false);
 
   useEffect(() => {
-    // TTI: the app is genuinely ready once migrations have run.
-    if (success) markInteractive();
-  }, [success, markInteractive]);
+    if (!success) return;
+    let cancelled = false;
+    void loadCatalog()
+      .catch(() => {})
+      .then(() => {
+        if (cancelled) return;
+        setCatalogReady(true);
+        void fillPlaceholders().catch(() => {});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [success]);
+
+  useEffect(() => {
+    // TTI: the app is genuinely ready once migrations and the catalog have loaded.
+    if (success && catalogReady) markInteractive();
+  }, [success, catalogReady, markInteractive]);
 
   useEffect(() => {
     if (!success) return;
@@ -144,7 +164,7 @@ function RootLayout() {
       </View>
     );
   }
-  if (!success) return null;
+  if (!success || !catalogReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -164,6 +184,12 @@ function RootLayout() {
                 options={{ presentation: 'modal', headerShown: false }}
               />
               <Stack.Screen name="help" options={{ presentation: 'modal', headerShown: false }} />
+              {/* Opened from the goal wizard (itself a sheet); hands its
+            choice back through features/goals/translation-choice. */}
+              <Stack.Screen
+                name="translation-picker"
+                options={{ presentation: 'modal', headerShown: false }}
+              />
               <Stack.Screen
                 name="onboarding"
                 options={{

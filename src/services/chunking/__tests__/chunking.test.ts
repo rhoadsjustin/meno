@@ -7,11 +7,25 @@ import { chunkPassage, MAX_VERSES, MAX_WORDS, MIN_WORDS } from '@/services/chunk
 import type { Verse } from '@/services/bible/types';
 
 function verse(chapter: number, verseNo: number, words: number, opts?: { end?: boolean }): Verse {
-  const text = Array.from({ length: words }, (_, i) => `w${i}`).join(' ') + (opts?.end === false ? ',' : '.');
+  const text =
+    Array.from({ length: words }, (_, i) => `w${i}`).join(' ') + (opts?.end === false ? ',' : '.');
   return { translationId: 'web', bookId: 'John', chapter, verse: verseNo, text };
 }
 
 describe('chunkPassage (synthetic)', () => {
+  it('counts the words of an unspaced script, not the spaces', () => {
+    const zh = (v: number) => ({
+      translationId: 'yv-1',
+      bookId: 'John',
+      chapter: 3,
+      verse: v,
+      text: '神爱世人，甚至将他的独生子赐给他们，叫一切信他的，不至灭亡，反得永生。',
+    });
+    const chunks = chunkPassage([zh(16), zh(17), zh(18), zh(19)]);
+    expect(chunks[0].wordCount).toBeGreaterThan(5);
+    expect(chunks.reduce((n, c) => n + c.verseCount, 0)).toBe(4);
+  });
+
   it('groups 2–4 verses within word limits', () => {
     const verses = Array.from({ length: 8 }, (_, i) => verse(1, i + 1, 12));
     const chunks = chunkPassage(verses);
@@ -54,7 +68,7 @@ describe.skipIf(!existsSync(dbPath))('chunkPassage on real WEB text (M1 acceptan
   const db = new Database(dbPath, { readonly: true });
   const rows = db
     .prepare(
-      "SELECT bookId, chapter, verse, text FROM verses WHERE translationId='web' AND bookId='John' AND chapter <= 3 ORDER BY chapter, verse"
+      "SELECT bookId, chapter, verse, text FROM verses WHERE translationId='web' AND bookId='John' AND chapter <= 3 ORDER BY chapter, verse",
     )
     .all() as { bookId: string; chapter: number; verse: number; text: string }[];
   const verses: Verse[] = rows.map((r) => ({ ...r, translationId: 'web' }));

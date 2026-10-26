@@ -16,7 +16,14 @@ import {
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { loadFailureMessage, PassageStep } from '@/features/goals/PassageStep';
-import { DEFAULT_TRANSLATION_ID, availableTranslations, formatRange } from '@/services/bible';
+import {
+  BOOKS,
+  DEFAULT_TRANSLATION_ID,
+  availableTranslations,
+  formatRange,
+  getTranslation,
+  translationHasBook,
+} from '@/services/bible';
 import {
   defaultSelection,
   selectionToRange,
@@ -81,18 +88,27 @@ export function GoalWizard() {
     };
   }, [initialTranslation]);
 
-  const selectTranslation = useCallback((id: string) => {
-    setError(null);
-    setTranslationId(id);
-    void rememberTranslation(id).catch(() => {});
-  }, []);
-
   const selectBook = useCallback((id: string) => {
     setError(null);
     setBookId(id);
     setChapter(1);
     setSelection(defaultSelection(id));
   }, []);
+
+  const selectTranslation = useCallback(
+    (id: string) => {
+      setError(null);
+      setTranslationId(id);
+      void rememberTranslation(id).catch(() => {});
+      // A New Testament, or a few books: open on the first book it has.
+      const t = getTranslation(id);
+      if (!translationHasBook(t, bookId)) {
+        const first = BOOKS.find((b) => translationHasBook(t, b.id));
+        if (first) selectBook(first.id);
+      }
+    },
+    [bookId, selectBook],
+  );
 
   const toPlan = useCallback(async () => {
     if (!selection) return;

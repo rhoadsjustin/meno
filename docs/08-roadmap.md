@@ -6,7 +6,7 @@ Build in order. Each milestone ends with its acceptance criteria passing on a **
 - Expo SDK 56 app, TypeScript strict, Expo Router, ESLint/Prettier, Vitest (or Jest) for pure services, EAS dev-client build profile.
 - Theme tokens from 07 §3–5; app icon placeholder; `meno://` scheme + universal-link scaffold.
 - Bundled WEB translation compiled into SQLite; Drizzle schema + migrations from 02 §4; `services/bible` reading WEB.
-- **Human, in parallel**: enroll dev account tasks — request Family Controls entitlement (04 §2), obtain ESV API + API.Bible keys.
+- **Human, in parallel**: enroll dev account tasks — request Family Controls entitlement (04 §2), obtain ESV API + YouVersion Platform app keys.
 - ✅ App boots to empty Today screen; `SELECT text FROM verses WHERE bookId='John' AND chapter=3 AND verse=16` returns WEB text via the service; tests run in CI.
 
 ## M1 — Core engine (pure)
@@ -34,7 +34,7 @@ Build in order. Each milestone ends with its acceptance criteria passing on a **
 - ✅ On-device: shield a test app, first-pickup mode arms overnight (simulate via schedule), recite clears shields, override works instantly, kill switch clears everything. App Review notes + demo video drafted.
 
 ## M6 — Licensed translations + polish pass
-- ESV API + API.Bible integration with per-license caching enforcement (02 §5); translation picker with download states; attribution everywhere.
+- ESV API + YouVersion Platform integration with per-license caching enforcement (02 §5); translation picker grouped by language, with where each translation's text lives; attribution everywhere.
 - Full design-system audit (07), accessibility pass (VoiceOver on all quiz modes), performance budget check, empty/error states, onboarding flow (first goal + notification opt-in + widget hint).
 - ✅ ESV goal works offline after creation (cached per license); an ephemeral-license translation clearly degrades; VoiceOver user can complete a Blanks quiz.
 
@@ -52,6 +52,6 @@ Build in order. Each milestone ends with its acceptance criteria passing on a **
 
 ## Open questions for the human
 1. App name + bundle ID (affects entitlement request — decide before M0 ends).
-2. ESV/NIV priority? (ESV API is the easy licensed win; NIV via API.Bible needs terms review.)
+2. ESV/NIV priority? (ESV API is the easy licensed win; NIV comes from the YouVersion Platform, ephemeral until its license is reviewed.)
 3. Monetization intent (free / one-time / subscription) — affects ESV "non-commercial" key eligibility; flag before M6.
 4. Challenge domain for universal links (e.g., meno.app).

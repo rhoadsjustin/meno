@@ -100,7 +100,12 @@ export default function SettingsScreen() {
     .filter((t) => t.licenseType === 'public_domain')
     .map((t) => t.abbrev)
     .join(', ');
-  const licensed = translations.filter((t) => t.licenseType !== 'public_domain');
+  // ESV carries its own line here; versions from the translation catalog
+  // are credited where their text shows and named as a group.
+  const licensed = translations.filter(
+    (t) => t.licenseType !== 'public_domain' && t.source !== 'youversion',
+  );
+  const catalogCount = translations.filter((t) => t.source === 'youversion').length;
 
   const rows = (
     <>
@@ -246,10 +251,25 @@ export default function SettingsScreen() {
         {licensed.map((t) => (
           <Text
             key={t.id}
-            style={[styles.rowSub, styles.credit, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            style={[
+              styles.rowSub,
+              styles.credit,
+              { color: colors.inkFaint, fontFamily: fonts?.ui },
+            ]}>
             {t.attribution}
           </Text>
         ))}
+        {catalogCount > 0 && (
+          <Text
+            style={[
+              styles.rowSub,
+              styles.credit,
+              { color: colors.inkFaint, fontFamily: fonts?.ui },
+            ]}>
+            Other translations are shown under license from their publishers, each with its own
+            copyright line, and aren’t stored on this device.
+          </Text>
+        )}
       </Card>
     </>
   );

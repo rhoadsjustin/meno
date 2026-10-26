@@ -5,6 +5,7 @@
  */
 import { Host, Picker } from '@expo/ui';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import {
   memo,
   useCallback,
@@ -29,14 +30,15 @@ import {
 
 import { contentColumn } from '@/components/content-layout';
 import { ExtendMenu } from '@/features/goals/ExtendMenu';
+import { useTranslationChoice } from '@/features/goals/translation-choice';
 import {
   BOOKS,
   DEFAULT_TRANSLATION_ID,
-  availableTranslations,
   formatRange,
   getBook,
   getChapter,
   getTranslation,
+  translationHasBook,
   type Verse,
 } from '@/services/bible';
 import {
@@ -62,9 +64,7 @@ const VERSE_ACTIONS = [
   { name: 'end', label: 'End passage here' },
 ];
 
-type Loaded =
-  | { key: string; verses: Verse[] }
-  | { key: string; verses: null };
+type Loaded = { key: string; verses: Verse[] } | { key: string; verses: null };
 
 type Props = {
   /** The step's title block, scrolled with the controls. */
@@ -108,6 +108,19 @@ export function PassageStep({
   const colors = useThemeColors();
   const book = getBook(bookId);
   const listRef = useRef<FlatList<Verse>>(null);
+  const translation = translationId ? getTranslation(translationId) : null;
+  // A New Testament or a few books: the book menu offers only what the
+  // translation has.
+  const books = translation ? BOOKS.filter((b) => translationHasBook(translation, b.id)) : BOOKS;
+
+  // The picker screen hands its choice back through the store.
+  const choice = useTranslationChoice((s) => s.choice);
+  const clearChoice = useTranslationChoice((s) => s.clear);
+  useEffect(() => {
+    if (!choice) return;
+    clearChoice();
+    if (choice !== translationId) onTranslationChange(choice);
+  }, [choice, clearChoice, onTranslationChange, translationId]);
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -159,15 +172,15 @@ export function PassageStep({
       setSelection(next);
       void Haptics.selectionAsync();
       AccessibilityInfo.announceForAccessibility(
-        next ? `${formatRange(selectionToRange(next))} selected` : 'Selection cleared'
+        next ? `${formatRange(selectionToRange(next))} selected` : 'Selection cleared',
       );
     },
-    [setSelection]
+    [setSelection],
   );
 
   const onVersePress = useCallback(
     (verse: number) => commit(tapVerse(selection, bookId, { chapter, verse })),
-    [commit, selection, bookId, chapter]
+    [commit, selection, bookId, chapter],
   );
 
   const onVerseAction = useCallback(
@@ -176,7 +189,7 @@ export function PassageStep({
       if (action === 'start') commit(setStart(selection, bookId, point));
       else if (action === 'end') commit(setEnd(selection, bookId, point));
     },
-    [commit, selection, bookId, chapter]
+    [commit, selection, bookId, chapter],
   );
 
   const extend = async (through: number) => {
@@ -184,7 +197,9 @@ export function PassageStep({
     try {
       const rows = await getChapter(translationId, bookId, through);
       if (rows.length === 0) throw new Error('empty chapter');
-      commit(extendThroughChapter(selection, bookId, chapter, through, rows[rows.length - 1].verse));
+      commit(
+        extendThroughChapter(selection, bookId, chapter, through, rows[rows.length - 1].verse),
+      );
     } catch {
       setExtendError(loadFailureMessage(translationId, `${book.name} ${through}`));
     }
@@ -214,20 +229,25 @@ export function PassageStep({
         <Text style={[styles.controlLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           Translation
         </Text>
-        {translationId && (
-          <Host matchContents seedColor={colors.lapis}>
-            <Picker selectedValue={translationId} onValueChange={(v) => onTranslationChange(String(v))}>
-              {availableTranslations().map((t) => (
-                <Picker.Item key={t.id} label={t.name} value={t.id} />
-              ))}
-            </Picker>
-          </Host>
+        {translation && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Translation: ${translation.name}, ${translation.abbrev}`}
+            accessibilityHint="Opens the list of translations by language"
+            onPress={() =>
+              router.push({ pathname: '/translation-picker', params: { selected: translation.id } })
+            }
+            style={styles.textButton}>
+            <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              {translation.abbrev} · {translation.name} ›
+            </Text>
+          </Pressable>
         )}
       </View>
       <View style={styles.controlRow}>
         <Host matchContents seedColor={colors.lapis}>
           <Picker selectedValue={bookId} onValueChange={(v) => onBookChange(String(v))}>
-            {BOOKS.map((b) => (
+            {books.map((b) => (
               <Picker.Item key={b.id} label={b.name} value={b.id} />
             ))}
           </Picker>
@@ -317,10 +337,18 @@ export function PassageStep({
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         ListFooterComponent={
-          verses && translationId ? (
-            <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {getTranslation(translationId).attribution}
-            </Text>
+          verses && translation ? (
+            <View style={styles.footer}>
+              <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {translation.attribution}
+              </Text>
+              {translation.licenseType === 'api_ephemeral' && (
+                <Text
+                  style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  This translation isn’t stored on your phone, so practicing it needs a connection.
+                </Text>
+              )}
+            </View>
           ) : null
         }
         initialNumToRender={12}
@@ -400,7 +428,9 @@ const VerseRow = memo(function VerseRow({
       accessibilityState={{ selected }}
       accessibilityHint={hint}
       accessibilityActions={VERSE_ACTIONS}
-      onAccessibilityAction={(e: AccessibilityActionEvent) => onAction(verse, e.nativeEvent.actionName)}
+      onAccessibilityAction={(e: AccessibilityActionEvent) =>
+        onAction(verse, e.nativeEvent.actionName)
+      }
       onPress={() => onPress(verse)}
       style={[styles.verseRow, selected && { backgroundColor: colors.lapisWash }]}>
       <View style={[styles.verseMark, selected && { backgroundColor: colors.lapis }]} />
@@ -423,6 +453,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingBottom: spacing.xl },
   header: { padding: spacing.xl, paddingBottom: spacing.md, gap: spacing.sm },
+  footer: { gap: spacing.xs },
   // Wraps rather than squeezes: at accessibility sizes each control takes its own line.
   controlRow: {
     flexDirection: 'row',
