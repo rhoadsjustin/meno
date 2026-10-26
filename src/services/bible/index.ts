@@ -8,7 +8,15 @@ import * as SQLite from 'expo-sqlite';
 import { getBook } from '@/services/bible/canon';
 import { chaptersInRange, esvKeyConfigured, fetchEsvChapter } from '@/services/bible/esv';
 import { compareRefs, refInRange } from '@/services/bible/refs';
-import { getTranslation, mayPersistText, TRANSLATIONS } from '@/services/bible/registry';
+import {
+  duplicatesBundled,
+  getTranslation,
+  mayPersistText,
+  registeredTranslations,
+  translationHasBook,
+  TRANSLATIONS,
+  youversionBibleId,
+} from '@/services/bible/registry';
 import {
   resolveStarterPassages,
   STARTER_TRANSLATION_ID,
@@ -17,15 +25,34 @@ import {
   type StarterVerse,
 } from '@/services/bible/starters';
 import type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
+import { fetchYouVersionChapter, youversionKeyConfigured } from '@/services/bible/youversion';
 
 export { BOOKS, getBook, isValidBookId, bookOrder } from '@/services/bible/canon';
 export * from '@/services/bible/refs';
-export { TRANSLATIONS, DEFAULT_TRANSLATION_ID, getTranslation, mayPersistText } from '@/services/bible/registry';
 export {
-  DEFAULT_STARTER,
-  STARTER_VERSES,
-  trimUnbalancedQuotes,
-} from '@/services/bible/starters';
+  TRANSLATIONS,
+  DEFAULT_TRANSLATION_ID,
+  getTranslation,
+  mayPersistText,
+  registerTranslations,
+  translationHasBook,
+  youversionBibleId,
+  youversionTranslationId,
+} from '@/services/bible/registry';
+export * from '@/services/bible/catalog';
+export {
+  browsedLanguageIds,
+  cachedLanguages,
+  deviceLocale,
+  ensureBibles,
+  ensureLanguages,
+  ensureTranslation,
+  fillPlaceholders,
+  languagesById,
+  loadCatalog,
+} from '@/services/bible/youversion-catalog';
+export { youversionKeyConfigured, YouVersionError } from '@/services/bible/youversion';
+export { DEFAULT_STARTER, STARTER_VERSES, trimUnbalancedQuotes } from '@/services/bible/starters';
 export type { StarterPassage, StarterVerse } from '@/services/bible/starters';
 export type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
 
@@ -54,16 +81,28 @@ const CHAPTER_END = 999;
 
 type VerseRow = { bookId: string; chapter: number; verse: number; text: string };
 
-/** Translations usable right now (bundled always; ESV once a key is set). */
+/**
+ * Translations usable right now: bundled always, ESV once its key is set,
+ * and every YouVersion Platform version the catalog cache holds once that
+ * key is set (02 §5).
+ */
 export function availableTranslations(): Translation[] {
-  return TRANSLATIONS.filter((t) => t.source === 'bundled' || (t.source === 'esv_api' && esvKeyConfigured()));
+  const out = TRANSLATIONS.filter(
+    (t) => t.source === 'bundled' || (t.source === 'esv_api' && esvKeyConfigured()),
+  );
+  if (youversionKeyConfigured()) {
+    out.push(...registeredTranslations().filter((t) => !duplicatesBundled(t)));
+  }
+  return out;
 }
 
 /** Single verse text, e.g. for the Today hero card. */
 export async function getVerse(translationId: string, ref: Ref): Promise<Verse> {
   const rows = await getPassage(translationId, { start: ref, end: ref });
   if (!rows[0]) {
-    throw new Error(`Verse not found: ${ref.bookId} ${ref.chapter}:${ref.verse} (${translationId})`);
+    throw new Error(
+      `Verse not found: ${ref.bookId} ${ref.chapter}:${ref.verse} (${translationId})`,
+    );
   }
   return rows[0];
 }
@@ -84,7 +123,11 @@ export function previewPassage(translationId: string, range: RefRange): Promise<
   return readPassage(translationId, range, false);
 }
 
-async function readPassage(translationId: string, range: RefRange, persist: boolean): Promise<Verse[]> {
+async function readPassage(
+  translationId: string,
+  range: RefRange,
+  persist: boolean,
+): Promise<Verse[]> {
   const translation = getTranslation(translationId);
   if (compareRefs(range.start, range.end) > 0) {
     throw new Error('Passage range start is after end');
@@ -93,6 +136,9 @@ async function readPassage(translationId: string, range: RefRange, persist: bool
   // book-scoped in v1); cross-book ranges walk book by book.
   if (range.start.bookId !== range.end.bookId) {
     throw new Error('Cross-book passages are not supported yet');
+  }
+  if (!translationHasBook(translation, range.start.bookId)) {
+    throw new Error(`${getBook(range.start.bookId).name} isn’t in the ${translation.abbrev}`);
   }
   if (translation.source === 'bundled') {
     const db = await openBundledDb();
@@ -109,12 +155,15 @@ async function readPassage(translationId: string, range: RefRange, persist: bool
       range.start.verse,
       range.end.chapter,
       range.end.chapter,
-      range.end.verse
+      range.end.verse,
     );
     return rows.map((row) => ({ ...row, translationId: translation.id }));
   }
   if (translation.source === 'esv_api') {
     return getEsvPassage(range, persist);
+  }
+  if (translation.source === 'youversion') {
+    return getYouVersionPassage(translation, range);
   }
   throw new Error(`Translation ${translation.abbrev} is not available yet`);
 }
@@ -142,7 +191,7 @@ export function starterPassages(): Promise<StarterPassage[]> {
  */
 export async function starterPassage(
   starter: StarterVerse,
-  options: { preferEsv?: boolean } = {}
+  options: { preferEsv?: boolean } = {},
 ): Promise<StarterPassage> {
   const [passage] = await resolveStarterPassages([starter], {
     preferredAvailable: (options.preferEsv ?? true) && starterTranslationAvailable(),
@@ -156,7 +205,11 @@ export async function starterPassage(
  * the chapter's length from the last row's verse number, not the row count:
  * the ESV omits a few verses its base text lacks (John 5:4).
  */
-export async function getChapter(translationId: string, bookId: string, chapter: number): Promise<Verse[]> {
+export async function getChapter(
+  translationId: string,
+  bookId: string,
+  chapter: number,
+): Promise<Verse[]> {
   const book = getBook(bookId);
   if (chapter < 1 || chapter > book.chapters) {
     throw new Error(`${book.name} has no chapter ${chapter}`);
@@ -196,8 +249,8 @@ async function esvChapterCached(bookId: string, chapter: number, persist = true)
       and(
         eq(tables.verses.translationId, 'esv'),
         eq(tables.verses.bookId, bookId),
-        eq(tables.verses.chapter, chapter)
-      )
+        eq(tables.verses.chapter, chapter),
+      ),
     )
     .orderBy(tables.verses.verse);
   if (cached.length > 0) {
@@ -219,4 +272,50 @@ async function esvChapterCached(bookId: string, chapter: number, persist = true)
     await db.insert(tables.verses).values(fetched).onConflictDoNothing();
   }
   return fetched;
+}
+
+/**
+ * YouVersion Platform versions (02 §5): ephemeral. Every chapter is read into
+ * memory for this launch and nothing is written, so a goal in one of these
+ * needs a connection to practice. The chapter is the unit the API serves,
+ * as with ESV.
+ */
+async function getYouVersionPassage(translation: Translation, range: RefRange): Promise<Verse[]> {
+  const bibleId = youversionBibleId(translation.id);
+  if (bibleId === null) throw new Error(`Not a YouVersion translation: ${translation.id}`);
+  const { bookId } = range.start;
+  const out: Verse[] = [];
+  for (const chapter of chaptersInRange(range.start, range.end)) {
+    const verses = await youversionChapter(translation.id, bibleId, bookId, chapter);
+    for (const v of verses) {
+      if (refInRange(v, range)) out.push(v);
+    }
+  }
+  return out;
+}
+
+/** Most chapters held in memory at once; a long reader session drops the oldest. */
+const YOUVERSION_MEMORY_CHAPTERS = 40;
+
+/** Chapters fetched this launch, never written anywhere; gone when the app quits. */
+const youversionInMemory = new Map<string, Promise<Verse[]>>();
+
+function youversionChapter(
+  translationId: string,
+  bibleId: number,
+  bookId: string,
+  chapter: number,
+): Promise<Verse[]> {
+  const key = `${translationId}.${bookId}.${chapter}`;
+  let pending = youversionInMemory.get(key);
+  if (!pending) {
+    pending = fetchYouVersionChapter(translationId, bibleId, bookId, chapter);
+    youversionInMemory.set(key, pending);
+    // A failed fetch is retried next time rather than remembered.
+    pending.catch(() => youversionInMemory.delete(key));
+    if (youversionInMemory.size > YOUVERSION_MEMORY_CHAPTERS) {
+      youversionInMemory.delete(youversionInMemory.keys().next().value as string);
+    }
+  }
+  return pending;
 }

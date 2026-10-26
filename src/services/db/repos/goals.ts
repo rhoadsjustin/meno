@@ -5,7 +5,14 @@
 import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
-import { formatRange, getPassage, refEquals, starterPassage, type StarterVerse } from '@/services/bible';
+import {
+  formatRange,
+  getPassage,
+  getTranslation,
+  refEquals,
+  starterPassage,
+  type StarterVerse,
+} from '@/services/bible';
 import type { RefRange } from '@/services/bible/types';
 import { formatRangeIn, isPassageTitle } from '@/services/challenges/codec';
 import { chunkPassage, type ChunkPlan } from '@/services/chunking';
@@ -230,7 +237,9 @@ async function chunkUnitCount(chunk: Chunk, translationId: string): Promise<numb
     start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
     end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
   });
-  return tokenize(verses.map((v) => v.text).join(' ')).length;
+  return tokenize(verses.map((v) => v.text).join(' '), {
+    language: getTranslation(translationId).languageCode,
+  }).length;
 }
 
 /**

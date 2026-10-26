@@ -30,6 +30,15 @@ export default {
     unavailable: 'Disponible en tu iPhone (no en el simulador).',
     killSwitch: 'Desactivar y quitar todos los bloqueos ahora',
   },
+  update: {
+    title: 'Actualización lista',
+    body: 'Se instala la próxima vez que abras Meno. Tus versículos y tu progreso se quedan tal como están.',
+    restart: 'Reiniciar Meno ahora',
+    hint: 'Reinicia Meno con la nueva versión',
+  },
+  updatedVersion: '{{version}}, actualizada el {{date}}',
+  catalogCredit:
+    'Las demás traducciones se muestran con licencia de sus editoriales, cada una con su propia línea de derechos de autor, y no se guardan en este dispositivo.',
   footer:
     'Meno {{version}} · Escrituras: {{translations}}, de dominio público. El audio de tus recitaciones nunca sale de este dispositivo.',
 } satisfies Catalog<typeof en>;

@@ -2,12 +2,28 @@ import type { Catalog } from '@/i18n/catalog';
 import type en from '@/i18n/locales/en/goals';
 
 export default {
+  picker: {
+    onDevice: 'En este dispositivo',
+    savedForGoals: 'Guardada para tus metas',
+    needsConnection: 'Necesita conexión',
+    moreLanguages: 'Más idiomas',
+    noVersionsFor: 'Todavía no hay versiones en {{language}} disponibles para Meno.',
+    loadFailed: 'No se pudo cargar {{language}}.',
+    languageHint: 'Carga las traducciones de este idioma',
+    noVersions: 'Todavía no hay versiones disponibles para Meno',
+    search: 'Buscar traducciones e idiomas',
+    loading: 'Cargando idiomas…',
+    catalogFailed: 'No se pudo conectar con el catálogo de traducciones.',
+    noMatches: 'Nada coincide con «{{query}}».',
+    empty: 'No hay traducciones disponibles.',
+  },
   wizard: {
     choosePassage: 'Elige un pasaje',
     yourPlan: 'Tu plan',
     stepOf: 'Paso {{step}} de {{total}}',
     passageName: 'Nombre del pasaje',
-    planNote: 'Más o menos un fragmento nuevo al día, con repasos para conservar lo que ya guardaste.',
+    planNote:
+      'Más o menos un fragmento nuevo al día, con repasos para conservar lo que ya guardaste.',
     startMemorizing: 'Empezar a memorizar',
   },
   stats: {
@@ -19,6 +35,10 @@ export default {
   },
   passage: {
     translation: 'Traducción',
+    translationLabel: 'Traducción: {{name}}, {{abbrev}}',
+    translationHint: 'Abre la lista de traducciones por idioma',
+    needsConnectionNote:
+      'Esta traducción no se guarda en tu teléfono, así que practicarla necesita conexión.',
     chapter: 'Capítulo {{chapter}}',
     bookChapter: '{{book}} {{chapter}}',
     selectWholeChapter: 'Seleccionar todo {{chapter}}',

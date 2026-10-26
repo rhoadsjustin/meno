@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Switch, Text, useColorScheme, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
@@ -9,6 +9,7 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { TimeField } from '@/components/time-field';
 import { HelpGuide } from '@/features/help/HelpGuide';
+import { locale } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
@@ -22,6 +23,7 @@ import {
   setReminderTime,
   type ReminderTime,
 } from '@/services/notifications';
+import { restartIntoUpdate, useUpdateStatus } from '@/services/updates';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
 /** Which row's detail the right pane shows on wide windows. */
@@ -30,6 +32,9 @@ type Detail = 'guide' | 'reminders' | 'lock';
 export default function SettingsScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation(['settings', 'stats', 'app']);
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  // An over-the-air update waiting for a restart, and whether one is running.
+  const update = useUpdateStatus();
   // Wide windows (iPhone Duo opened, Split View): a split view. The rows
   // become a selectable list on the left and the right pane shows what the
   // row leads to — the whole setup guide, or just the section that explains
@@ -102,7 +107,12 @@ export default function SettingsScreen() {
     .filter((tr) => tr.licenseType === 'public_domain')
     .map((tr) => tr.abbrev)
     .join(', ');
-  const licensed = translations.filter((tr) => tr.licenseType !== 'public_domain');
+  // ESV carries its own line here; versions from the translation catalog
+  // are credited where their text shows and named as a group.
+  const licensed = translations.filter(
+    (tr) => tr.licenseType !== 'public_domain' && tr.source !== 'youversion',
+  );
+  const catalogCount = translations.filter((tr) => tr.source === 'youversion').length;
 
   const rows = (
     <>
@@ -239,20 +249,62 @@ export default function SettingsScreen() {
         )}
       </Card>
 
+      {update.pending && (
+        <Card>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint={t('update.hint')}
+            onPress={() => void restartIntoUpdate(scheme)}
+            style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              {t('update.title')}
+            </Text>
+            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              {t('update.body')}
+            </Text>
+            <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              {t('update.restart')}
+            </Text>
+          </Pressable>
+        </Card>
+      )}
+
       <Card>
         <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {t('footer', {
-            version: Constants.expoConfig?.version ?? '',
+            version: update.runningUpdateDate
+              ? t('updatedVersion', {
+                  version: Constants.expoConfig?.version ?? '',
+                  date: update.runningUpdateDate.toLocaleDateString(locale(), {
+                    month: 'short',
+                    day: 'numeric',
+                  }),
+                })
+              : (Constants.expoConfig?.version ?? ''),
             translations: publicDomain,
           })}
         </Text>
         {licensed.map((tr) => (
           <Text
             key={tr.id}
-            style={[styles.rowSub, styles.credit, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            style={[
+              styles.rowSub,
+              styles.credit,
+              { color: colors.inkFaint, fontFamily: fonts?.ui },
+            ]}>
             {tr.attribution}
           </Text>
         ))}
+        {catalogCount > 0 && (
+          <Text
+            style={[
+              styles.rowSub,
+              styles.credit,
+              { color: colors.inkFaint, fontFamily: fonts?.ui },
+            ]}>
+            {t('catalogCredit')}
+          </Text>
+        )}
       </Card>
     </>
   );

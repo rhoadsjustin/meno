@@ -10,5 +10,8 @@ export default {
   nextPage: 'Página siguiente',
   page: 'Página {{page}}',
   loadFailed: 'No se pudo cargar {{chapter}}.',
+  // A catalog version whose details haven't loaded; named by number only.
+  placeholderAbbrev: 'Biblia {{n}}',
+  placeholderName: 'Traducción {{n}} (detalles aún sin cargar)',
   publicDomainAttribution: '{{name}} ({{abbrev}}), dominio público.',
 } satisfies Catalog<typeof en>;

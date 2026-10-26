@@ -65,7 +65,10 @@ src/
 // Canonical reference type used everywhere
 type Ref = { bookId: string; chapter: number; verse: number }; // bookId = OSIS (e.g. 'Phil')
 
-translations(id, abbrev, name, languageCode, licenseType /* 'public_domain' | 'api_cached' | 'api_ephemeral' */, source /* 'bundled' | 'api_bible' | 'esv_api' */, isDownloaded)
+translations(id, abbrev, name, languageCode /* BCP 47 */, licenseType /* 'public_domain' | 'api_cached' | 'api_ephemeral' */, source /* 'bundled' | 'youversion' | 'esv_api' */, isDownloaded, attribution, booksJson? /* OSIS ids; null = whole canon */, textDirection?, fetchedAt?)
+  — the YouVersion catalog cache (metadata only); bundled and ESV entries are static in services/bible/registry
+languages(id /* BCP 47 */, name, locale /* the Accept-Language the names came in */, textDirection, fetchedAt)
+
 
 verses(translationId, bookId, chapter, verse, text)          // bundled + permitted cache only
   // composite PK; FTS5 virtual table for search
@@ -103,7 +106,12 @@ Public-domain English translations shipped as a prebuilt SQLite database (~4–5
 
 ### Licensed via API
 - **ESV** — Crossway ESV API: free key for non-commercial use with verse-limit and caching restrictions (500-verse per query limits, no full-Bible caching, attribution required). Cache only what the license allows (verses the user has explicitly added to goals), store `licenseType='api_cached'`, purge on goal deletion.
-- **NIV / NASB / CSB / NLT etc.** — API.Bible (scripture.api.bible) where available. Many licenses are **ephemeral-only**: display but don't persist. Mark `api_ephemeral`; memory goals in ephemeral translations require connectivity and show a notice, or (better) prompt to use a cacheable translation for the memorizing itself.
+- **YouVersion Platform** (`services/bible/youversion.ts`) — NIV, NASB, NVI, Amplified, BSB and the Platform's long tail: 1,479 versions in 1,257 languages as of October 2026. Not on it: ESV, KJV, NKJV, NLT, CSB, RVR1960 — so ESV stays on Crossway's API and KJV stays bundled. The app key is the whole authentication (`X-YVP-App-Key`, from `EXPO_PUBLIC_YOUVERSION_APP_KEY`); there is no sign-in, so no callback URI. Rules:
+  - **Ephemeral by default**: every Platform version is `api_ephemeral`. Chapters are read into the same per-launch memory as ESV browsing and nothing is written; goals in these need a connection to practice, the wizard says so under the verse list, and the widget shows the reference only. Promote a version to `api_cached` only after reading its license (`GET /v1/licenses?bible_id=…` returns the license as HTML prose — there is no machine-readable caching flag), and check it for wording on modifying the text before offering that version in Blanks and First Letters.
+  - **Catalog cache** (`services/bible/youversion-catalog.ts`): the `translations` and `languages` tables hold metadata only — titles, the copyright line, which books a version has, language names in the device locale — refreshed weekly, so the registry can name a goal's version offline and the picker opens with what it showed last time. Versions are fetched one language at a time (`language_ranges[]` is required, and several ranges fall back rather than union); the picker loads the device language and English when opened and any other language on demand.
+  - **Only what the key is licensed for**: the catalog is what `/v1/bibles` returns without `all_available`. Publisher licenses are accepted in the Platform portal; content endpoints answer 403 for anything else, and metadata endpoints may still answer 200.
+  - **Attribution** is the version's `copyright` line, else `promotional_content`, else its title — rendered wherever text shows. YouVersion's marks stay out of user-facing text (Platform Terms of Use, License Restrictions).
+  - **Book ids** are USFM on the wire (`JHN`, `1CO`); `canon.ts` maps them to OSIS and drops the deuterocanon. A version's `books` list gates the wizard's book menu, and a translation id is `yv-<Platform Bible id>`.
 - Attribution strings per translation stored in the registry and rendered wherever text appears (reader footer, quiz footer, widget where space allows).
 
 ### Rules enforced by `services/bible`
@@ -111,7 +119,7 @@ Public-domain English translations shipped as a prebuilt SQLite database (~4–5
 2. Never include licensed text in analytics, logs, or share sheets beyond permitted excerpt lengths.
 3. Widget snapshots for licensed translations only include text if caching is permitted; otherwise widget shows reference + first-letters (derived data — verify per license; safe default is reference only).
 
-**Action item for the human**: register for ESV API and API.Bible keys; review current license terms at build time — terms change and the above reflects mid-2026 understanding.
+**Action item for the human**: register for the ESV API and YouVersion Platform app keys, and accept the publisher licenses you want in the Platform portal; review current license terms at build time — terms change and the above reflects October 2026 understanding.
 
 ## 6. Offline & sync
 

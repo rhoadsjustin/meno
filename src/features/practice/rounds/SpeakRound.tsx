@@ -4,10 +4,7 @@
  * accumulates across takes (stopping never erases), and between takes it is
  * directly editable in place. On-device recognition only (02 §7).
  */
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -111,7 +108,7 @@ export function SpeakRound({
       // Breathing ring: state indication while the mic is hot. Dies with it.
       pulse.set(0);
       pulse.set(
-        withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), -1, false)
+        withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), -1, false),
       );
     } else {
       cancelAnimation(pulse);
@@ -121,11 +118,7 @@ export function SpeakRound({
 
   const micStyle = useAnimatedStyle(() => ({
     transform: [{ scale: 1 - pressed.get() * 0.03 }],
-    backgroundColor: interpolateColor(
-      listeningSv.get(),
-      [0, 1],
-      [colors.lapis, colors.error]
-    ),
+    backgroundColor: interpolateColor(listeningSv.get(), [0, 1], [colors.lapis, colors.error]),
   }));
 
   const ringStyle = useAnimatedStyle(() => {
@@ -192,14 +185,16 @@ export function SpeakRound({
   }, [listening, translationId, contextualStrings, setInterim, t]);
 
   const submitTranscript = useCallback(() => {
-    const result = gradeSpoken(text, committed);
+    const result = gradeSpoken(text, committed, {
+      language: getTranslation(translationId).languageCode,
+    });
     onDone({
       accuracy: result.accuracy,
       unitCount: result.unitCount,
       missedWords: result.words.filter((w) => w.tag !== 'correct').map((w) => w.word),
       result,
     });
-  }, [text, committed, onDone]);
+  }, [text, committed, translationId, onDone]);
 
   if (typeMode) {
     return (
@@ -207,6 +202,7 @@ export function SpeakRound({
         <TypeRound
           text={text}
           reference={reference}
+          translationId={translationId}
           onDone={(o) => onDone({ ...o, typed: true })}
         />
         <Pressable accessibilityRole="button" onPress={() => setTypeMode(false)}>

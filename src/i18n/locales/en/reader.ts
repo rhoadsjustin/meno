@@ -10,5 +10,8 @@ export default {
   page: 'Page {{page}}',
   loadFailed: 'Couldn’t load {{chapter}}.',
   /** Footer for the bundled public-domain translations. */
+  // A catalog version whose details haven't loaded; named by number only.
+  placeholderAbbrev: 'Bible {{n}}',
+  placeholderName: 'Translation {{n}} (details not loaded yet)',
   publicDomainAttribution: '{{name}} ({{abbrev}}), public domain.',
 } as const;

@@ -1,5 +1,21 @@
 /** Goal wizard (passage + plan steps), the extend menu, and the starter deck. */
 export default {
+  // The translation picker opened from the passage step.
+  picker: {
+    onDevice: 'On this device',
+    savedForGoals: 'Saved for your goals',
+    needsConnection: 'Needs a connection',
+    moreLanguages: 'More languages',
+    noVersionsFor: 'No {{language}} versions are available to Meno yet.',
+    loadFailed: 'Couldn’t load {{language}}.',
+    languageHint: 'Loads this language’s translations',
+    noVersions: 'No versions available to Meno yet',
+    search: 'Search translations and languages',
+    loading: 'Loading languages…',
+    catalogFailed: 'Couldn’t reach the translation catalog.',
+    noMatches: 'Nothing matches “{{query}}”.',
+    empty: 'No translations available.',
+  },
   wizard: {
     choosePassage: 'Choose a passage',
     yourPlan: 'Your plan',
@@ -18,6 +34,10 @@ export default {
   },
   passage: {
     translation: 'Translation',
+    translationLabel: 'Translation: {{name}}, {{abbrev}}',
+    translationHint: 'Opens the list of translations by language',
+    needsConnectionNote:
+      'This translation isn’t stored on your phone, so practicing it needs a connection.',
     chapter: 'Chapter {{chapter}}',
     /** A book and chapter, e.g. "John 3". */
     bookChapter: '{{book}} {{chapter}}',
@@ -41,7 +61,8 @@ export default {
     startHere: 'Start passage here',
     endHere: 'End passage here',
     loadFailed: 'Couldn’t load {{what}}.',
-    loadFailedRemote: 'Couldn’t load {{what}} in the {{abbrev}}. It needs a connection the first time.',
+    loadFailedRemote:
+      'Couldn’t load {{what}} in the {{abbrev}}. It needs a connection the first time.',
   },
   starter: {
     practiceReference: 'Practice {{reference}}',

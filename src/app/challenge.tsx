@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
 import { t as translate } from '@/i18n';
@@ -212,7 +213,7 @@ function ChallengeScreen() {
       <View style={[styles.footer, { borderTopColor: colors.separator }]}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          onPress={closeModal}
           style={styles.footerSecondary}>
           <Text style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
             {view.kind === 'ready' ? tr('common:notNow') : tr('common:close')}

@@ -2,11 +2,18 @@
  * Text normalization ahead of any comparison (docs/03-memory-engine.md §2).
  * Pure TypeScript — no React Native imports.
  *
- * Pipeline: lowercase → NFKD → strip diacritics → strip punctuation (keeping
- * intra-word apostrophes) → collapse whitespace → number-word ↔ digit
- * canonicalization. Archaic forms (thee/thou/thy/thine) are deliberately NOT
- * normalized away — the user must actually say them.
+ * Pipeline: lowercase → NFKD → drop accent-type marks → strip punctuation
+ * (keeping intra-word apostrophes) in any script → split words, including
+ * the words of scripts written without spaces → for English only,
+ * number-word ↔ digit canonicalization. Archaic forms (thee/thou/thy/thine)
+ * are deliberately NOT normalized away — the user must actually say them.
  */
+import { isEnglish, OPTIONAL_MARKS, splitUnspaced } from '@/services/grading/script';
+
+export type TokenizeOptions = {
+  /** BCP 47 tag of the text's language; English when absent. */
+  language?: string | null;
+};
 
 /** Single number words → digit strings. Compounds are joined per-token after
  * punctuation stripping ("forty-two" → "forty two" → "42"). */
@@ -82,25 +89,31 @@ function foldNumberRun(tokens: string[]): string {
 }
 
 /** Normalizes a full string for grading; returns a single spaced string. */
-export function normalize(text: string): string {
-  return tokenize(text).join(' ');
+export function normalize(text: string, options: TokenizeOptions = {}): string {
+  return tokenize(text, options).join(' ');
 }
 
 /** Normalized word tokens for alignment. */
-export function tokenize(text: string): string[] {
+export function tokenize(text: string, options: TokenizeOptions = {}): string[] {
   const base = text
     .toLowerCase()
     .normalize('NFKD')
-    // strip combining diacritics
-    .replace(/[\u0300-\u036f]/g, '')
+    // accents, points and harakat are pronunciation hints, not letters
+    .replace(OPTIONAL_MARKS, '')
     // typographic apostrophes → ASCII before the punctuation pass
     .replace(/[‘’]/g, "'")
-    // strip everything but letters, digits, apostrophes and whitespace
-    .replace(/[^a-z0-9'\s]+/g, ' ')
+    // strip everything but letters, marks, digits, apostrophes and whitespace
+    .replace(/[^\p{L}\p{M}\p{N}'\s]+/gu, ' ')
     // drop apostrophes not inside a word (quote marks), keep "god's"
     .replace(/(^|\s)'+|'+(\s|$)/g, '$1 $2');
 
-  const rawTokens = base.split(/\s+/).filter(Boolean);
+  const rawTokens = base
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((token) => splitUnspaced(token));
+
+  // Number words are English; "cuarenta" stays "cuarenta".
+  if (!isEnglish(options.language)) return rawTokens;
 
   // Canonicalize number-word runs to digits so "forty" == "40".
   const out: string[] = [];

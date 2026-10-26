@@ -9,6 +9,7 @@ import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { FoldAwareRow } from '@/components/fold-aware-row';
@@ -69,7 +70,7 @@ function Onboarding() {
 
   const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
     await markOnboardingDone();
-    router.back();
+    closeModal();
     if (then) router.push(`/${then}`);
   }, []);
 

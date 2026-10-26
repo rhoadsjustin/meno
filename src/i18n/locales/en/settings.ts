@@ -29,6 +29,16 @@ export default {
     unavailable: 'Available on your iPhone (not in the simulator).',
     killSwitch: 'Turn off and clear all shields now',
   },
+  update: {
+    title: 'Update ready',
+    body: 'It installs the next time Meno opens. Your verses and progress stay right where they are.',
+    restart: 'Restart Meno now',
+    hint: 'Restarts Meno into the new version',
+  },
+  // {{version}} in footer when an over-the-air update is running.
+  updatedVersion: '{{version}}, updated {{date}}',
+  catalogCredit:
+    'Other translations are shown under license from their publishers, each with its own copyright line, and aren’t stored on this device.',
   footer:
     'Meno {{version}} · Scripture: {{translations}} — public domain. Recitation audio never leaves this device.',
 } as const;

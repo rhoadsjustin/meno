@@ -6,7 +6,7 @@
 import { eq } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
-import { getPassage } from '@/services/bible';
+import { getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { t } from '@/i18n';
 import { loadStreak } from '@/services/db/repos/streaks';
@@ -76,7 +76,10 @@ async function memorizedUniqueWordCount(): Promise<number> {
       start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
       end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
     });
-    for (const v of verses) for (const w of tokenize(v.text)) words.add(w);
+    for (const v of verses) {
+      const language = getTranslation(v.translationId).languageCode;
+      for (const w of tokenize(v.text, { language })) words.add(w);
+    }
   }
   return words.size;
 }
@@ -109,7 +112,7 @@ export async function refreshBadges(): Promise<BadgeCode[]> {
   }
   conditions.set(
     'first_chapter',
-    [...byChapter.values()].some((e) => e.total > 0 && e.done === e.total)
+    [...byChapter.values()].some((e) => e.total > 0 && e.done === e.total),
   );
 
   // Whole goal memorized where the goal spans an entire book.
@@ -128,18 +131,15 @@ export async function refreshBadges(): Promise<BadgeCode[]> {
         g.startVerse === 1 &&
         g.endChapter === book.chapters;
       return allDone && wholeBook;
-    })
+    }),
   );
 
   conditions.set(
     'perfect_speak',
-    attempts.some((a) => a.mode === 'speak' && a.accuracy >= 1)
+    attempts.some((a) => a.mode === 'speak' && a.accuracy >= 1),
   );
   conditions.set('century_reviews', attempts.filter((a) => a.source === 'review').length >= 100);
-  conditions.set(
-    'dawn_reciter',
-    lockEvents.filter((e) => e.type === 'reciteSuccess').length >= 10
-  );
+  conditions.set('dawn_reciter', lockEvents.filter((e) => e.type === 'reciteSuccess').length >= 10);
   conditions.set('steady_30', streak.longest >= 30);
   conditions.set('steady_100', streak.longest >= 100);
   conditions.set('steady_365', streak.longest >= 365);
