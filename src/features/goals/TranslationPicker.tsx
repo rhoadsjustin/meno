@@ -8,7 +8,7 @@
  * A modal over the goal wizard's sheet; the choice travels back through
  * features/goals/translation-choice.
  */
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,7 +20,9 @@ import {
   View,
   type SectionListRenderItem,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
 import {
@@ -62,9 +64,12 @@ function availabilityLabel(t: Translation): string {
 
 export function TranslationPicker() {
   const colors = useThemeColors();
+  // Insets are this modal's own (the route wraps it in ModalSafeArea). In a
+  // sheet the top one is zero; shown full-screen it is the status bar's.
   // Side insets matter on iPhone Duo's cover panel, where the status bar is
   // a strip down one side.
   const { insets, sides } = useContentLayout();
+  const { top } = useSafeAreaInsets();
   const { selected } = useLocalSearchParams<{ selected?: string }>();
   const choose = useTranslationChoice((s) => s.choose);
 
@@ -139,7 +144,7 @@ export function TranslationPicker() {
   const pick = useCallback(
     (id: string) => {
       choose(id);
-      router.back();
+      closeModal();
     },
     [choose],
   );
@@ -298,8 +303,8 @@ export function TranslationPicker() {
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
-      <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" hitSlop={12} onPress={() => router.back()}>
+      <View style={[styles.topBar, { paddingTop: top + spacing.lg }]}>
+        <Pressable accessibilityRole="button" hitSlop={12} onPress={closeModal}>
           <Text style={[styles.cancel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
             Cancel
           </Text>
@@ -349,7 +354,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingHorizontal: layout.screenMargin,
-    paddingTop: spacing.lg,
   },
   cancel: { fontSize: 17 },
   content: { paddingHorizontal: layout.screenMargin },
