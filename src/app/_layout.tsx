@@ -10,7 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
 import { applyDeviceLocale } from '@/i18n/device';
 import { useTranslation } from '@/i18n/react';
-import { fillPlaceholders, loadCatalog } from '@/services/bible';
+import { fillPlaceholders, loadCatalog, purgeUnreferencedText } from '@/services/bible';
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
@@ -162,6 +162,8 @@ function RootLayout() {
     void rescheduleAll();
     void maybePresentUnlock();
     void refreshShieldForCurrentVerse();
+    // Licensed text no goal covers any more goes at launch (02 §5).
+    void purgeUnreferencedText().catch(() => {});
     // Launch is also when a language change lands (iOS relaunches the app),
     // so re-render the widget's copy now rather than at the next close.
     void publishWidgetSnapshot();

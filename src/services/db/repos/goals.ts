@@ -6,9 +6,11 @@ import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
 import {
+  cachePassage,
   formatRange,
-  getPassage,
   getTranslation,
+  getPassage,
+  purgeUnreferencedText,
   refEquals,
   starterPassage,
   type StarterVerse,
@@ -19,13 +21,13 @@ import { chunkPassage, type ChunkPlan } from '@/services/chunking';
 import { meetsThreshold, tokenize } from '@/services/grading';
 import { db, tables } from '@/services/db';
 import { resolveFocusGoal } from '@/services/focus';
-import { daysAgo, planPractice, type ChunkStanding, type PracticePlan } from '@/services/practice/plan';
 import {
-  chunkProgressCopy,
-  MASTERY_TIER,
-  nextTier,
-  TIERS,
-} from '@/services/practice/tiers';
+  daysAgo,
+  planPractice,
+  type ChunkStanding,
+  type PracticePlan,
+} from '@/services/practice/plan';
+import { chunkProgressCopy, MASTERY_TIER, nextTier, TIERS } from '@/services/practice/tiers';
 
 export type Goal = typeof tables.goals.$inferSelect;
 export type Chunk = typeof tables.chunks.$inferSelect;
@@ -99,6 +101,15 @@ export async function createGoal(input: {
     challengeId: input.challengeId ?? null,
   });
 
+  // Licensed text is cached only once a goal covers it (02 §5), and reads
+  // inside the goal then trust the cache — so no text, no goal.
+  try {
+    await cachePassage(input.translationId, input.range);
+  } catch (e) {
+    await db.delete(tables.goals).where(eq(tables.goals.id, goalId));
+    throw e;
+  }
+
   await db.insert(tables.chunks).values(
     plan.chunks.map((c) => ({
       id: `${goalId}:${c.id}`,
@@ -115,12 +126,30 @@ export async function createGoal(input: {
       // First chunk starts active; the rest unlock when their predecessor
       // reaches Tier 3 (docs/03 §5).
       status: c.orderIndex === 0 ? ('active' as const) : ('locked' as const),
-    }))
+    })),
   );
 
   const goal = await getGoal(goalId);
   if (!goal) throw new Error('Goal insert failed');
   return goal;
+}
+
+/**
+ * Deletes a goal with its chunks, attempts and review items, then purges any
+ * licensed text no remaining goal covers (02 §5). Callers refresh widgets
+ * and the shield afterwards, as they do for any change of focus goal.
+ */
+export async function deleteGoal(goalId: string): Promise<void> {
+  const chunkIds = (await chunksForGoal(goalId)).map((c) => c.id);
+  if (chunkIds.length > 0) {
+    // Spelled out rather than left to ON DELETE CASCADE, which only fires
+    // when the connection has foreign keys switched on.
+    await db.delete(tables.reviewItems).where(inArray(tables.reviewItems.chunkId, chunkIds));
+    await db.delete(tables.attempts).where(inArray(tables.attempts.chunkId, chunkIds));
+    await db.delete(tables.chunks).where(eq(tables.chunks.goalId, goalId));
+  }
+  await db.delete(tables.goals).where(eq(tables.goals.id, goalId));
+  await purgeUnreferencedText();
 }
 
 /** Starter starts in flight, by starter id — a second tap joins the first. */
@@ -136,7 +165,7 @@ const starterStarts = new Map<string, Promise<Goal>>();
  */
 export function startStarterGoal(
   starter: StarterVerse,
-  options: { preferEsv?: boolean } = {}
+  options: { preferEsv?: boolean } = {},
 ): Promise<Goal> {
   let pending = starterStarts.get(starter.id);
   if (!pending) {
@@ -145,9 +174,12 @@ export function startStarterGoal(
         (g) =>
           refEquals(
             { bookId: g.startBookId, chapter: g.startChapter, verse: g.startVerse },
-            starter.range.start
+            starter.range.start,
           ) &&
-          refEquals({ bookId: g.endBookId, chapter: g.endChapter, verse: g.endVerse }, starter.range.end)
+          refEquals(
+            { bookId: g.endBookId, chapter: g.endChapter, verse: g.endVerse },
+            starter.range.end,
+          ),
       );
       if (existing) return existing;
       const { translationId } = await starterPassage(starter, options);
@@ -249,7 +281,7 @@ async function chunkUnitCount(chunk: Chunk, translationId: string): Promise<numb
  */
 export async function practicePlan(
   goalId: string,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): Promise<{ plan: PracticePlan; chunks: Chunk[] }> {
   const chunks = await chunksForGoal(goalId);
   let translationId: string | undefined;
@@ -310,10 +342,11 @@ const MASTERY_THRESHOLD = 0.95;
 export async function applyTierCleared(
   chunk: Chunk,
   clearedTier: number,
-  unitCount: number
+  unitCount: number,
 ): Promise<{ memorized: boolean }> {
   const newTier = Math.max(chunk.tier, clearedTier);
-  const memorized = clearedTier >= MASTERY_TIER && (await masteryDays(chunk.id, unitCount)).size >= 2;
+  const memorized =
+    clearedTier >= MASTERY_TIER && (await masteryDays(chunk.id, unitCount)).size >= 2;
   await db
     .update(tables.chunks)
     .set({
@@ -359,8 +392,8 @@ async function masteryDates(chunkId: string, unitCount: number): Promise<Date[]>
       and(
         eq(tables.attempts.chunkId, chunkId),
         inArray(tables.attempts.mode, ['type', 'speak']),
-        ne(tables.attempts.source, 'stitch')
-      )
+        ne(tables.attempts.source, 'stitch'),
+      ),
     );
   return rows
     .filter((r) => meetsThreshold(MASTERY_THRESHOLD, r.accuracy, unitCount))

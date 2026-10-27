@@ -1,9 +1,10 @@
 /**
  * ESV via the Crossway ESV API (docs/02 §5, docs/00-decisions.md #4).
  *
- * License rules enforced here: cache only verses the user explicitly added
- * to goals (`licenseType='api_cached'`), purge on goal deletion, attribute
- * everywhere. The free key is non-commercial; the app is free (decision #3).
+ * License rules (enforced in services/bible/index + retention): cache only
+ * verses the user explicitly added to goals (`licenseType='api_cached'`),
+ * purge on goal deletion, attribute everywhere. The free key is
+ * non-commercial; the app is free (decision #3).
  *
  * The key lives in .env as EXPO_PUBLIC_ESV_API_KEY (never committed).
  */
@@ -67,7 +68,9 @@ export async function fetchEsvChapter(bookId: string, chapter: number): Promise<
     headers: { Authorization: `Token ${key}` },
   });
   if (!res.ok) {
-    throw new Error(`ESV API error ${res.status}${res.status === 401 ? ' — check your API key' : ''}`);
+    throw new Error(
+      `ESV API error ${res.status}${res.status === 401 ? ' — check your API key' : ''}`,
+    );
   }
   const json = (await res.json()) as { passages?: string[] };
   const passage = json.passages?.[0];

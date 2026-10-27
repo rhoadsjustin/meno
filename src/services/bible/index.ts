@@ -9,6 +9,13 @@ import { getBook } from '@/services/bible/canon';
 import { chaptersInRange, esvKeyConfigured, fetchEsvChapter } from '@/services/bible/esv';
 import { compareRefs, refInRange } from '@/services/bible/refs';
 import {
+  chapterSlice,
+  coveredByRetained,
+  PURGE_UNREFERENCED_SQL,
+  retainedOnly,
+  RETAINING_GOAL_STATUSES,
+} from '@/services/bible/retention';
+import {
   duplicatesBundled,
   getTranslation,
   mayPersistText,
@@ -107,27 +114,11 @@ export async function getVerse(translationId: string, ref: Ref): Promise<Verse> 
   return rows[0];
 }
 
-/** All verses in an inclusive range, in canonical order. */
-export function getPassage(translationId: string, range: RefRange): Promise<Verse[]> {
-  return readPassage(translationId, range, true);
-}
-
 /**
- * Passage text for display only, before the user has added it to a goal
- * (the starter cards). Bundled translations read as usual. ESV comes from
- * the cache when the chapter is already there; otherwise it is fetched and
- * held in memory for this launch, never written to `verses` (02 §5: cache
- * only what the user explicitly added to a goal).
+ * All verses in an inclusive range, in canonical order. A read never caches
+ * licensed text outside a goal's range (see `getEsvPassage`).
  */
-export function previewPassage(translationId: string, range: RefRange): Promise<Verse[]> {
-  return readPassage(translationId, range, false);
-}
-
-async function readPassage(
-  translationId: string,
-  range: RefRange,
-  persist: boolean,
-): Promise<Verse[]> {
+export async function getPassage(translationId: string, range: RefRange): Promise<Verse[]> {
   const translation = getTranslation(translationId);
   if (compareRefs(range.start, range.end) > 0) {
     throw new Error('Passage range start is after end');
@@ -160,7 +151,7 @@ async function readPassage(
     return rows.map((row) => ({ ...row, translationId: translation.id }));
   }
   if (translation.source === 'esv_api') {
-    return getEsvPassage(range, persist);
+    return getEsvPassage(range);
   }
   if (translation.source === 'youversion') {
     return getYouVersionPassage(translation, range);
@@ -175,19 +166,20 @@ function starterTranslationAvailable(): boolean {
 /**
  * The starter set with its text, for the cards on Today's empty state: ESV
  * when a key is configured and every verse arrives in time, bundled KJV
- * otherwise. Display only — see `previewPassage`.
+ * otherwise. Display only: nothing here is cached.
  */
 export function starterPassages(): Promise<StarterPassage[]> {
   return resolveStarterPassages(STARTER_VERSES, {
     preferredAvailable: starterTranslationAvailable(),
-    read: previewPassage,
+    read: getPassage,
   });
 }
 
 /**
- * One starter the user has chosen to practice, about to become a goal — so
- * ESV goes through the normal cache-first path here. `preferEsv: false`
- * keeps a start in KJV when that is what the card showed.
+ * One starter the user has chosen to practice, about to become a goal.
+ * `preferEsv: false` keeps a start in KJV when that is what the card showed.
+ * An ESV fetch that outlives the timeout lands in memory only, so a start
+ * that fell back to KJV leaves no ESV text behind.
  */
 export async function starterPassage(
   starter: StarterVerse,
@@ -221,57 +213,68 @@ export async function getChapter(
 }
 
 /**
- * ESV, cache-first (02 §5): verses persist to the app database only under
- * `api_cached` license, are fetched chapter-at-a-time on miss, and are
- * purged when the goals referencing them are deleted.
+ * ESV (02 §5). Text is cached in the app database only where a goal the
+ * user still has covers it; everything else — the reader, the wizard's
+ * verse list, the starter cards — is fetched a chapter at a time and held in
+ * memory for this launch. So a read inside a goal works offline, and
+ * browsing leaves nothing behind.
  */
-async function getEsvPassage(range: RefRange, persist: boolean): Promise<Verse[]> {
+async function getEsvPassage(range: RefRange): Promise<Verse[]> {
+  const retained = await retainedRanges('esv');
   const out: Verse[] = [];
   for (const chapter of chaptersInRange(range.start, range.end)) {
-    const verses = await esvChapterCached(range.start.bookId, chapter, persist);
+    const slice = chapterSlice(range, chapter);
+    const verses = coveredByRetained(slice, retained)
+      ? await esvCached(slice, retained)
+      : await esvChapter(slice.start.bookId, chapter);
     for (const v of verses) {
-      if (refInRange({ bookId: v.bookId, chapter: v.chapter, verse: v.verse }, range)) out.push(v);
+      if (refInRange(v, slice)) out.push(v);
     }
   }
   return out;
 }
 
-/** Chapters fetched for display only (`persist: false`); gone when the app quits. */
-const esvUnpersisted = new Map<string, Promise<Verse[]>>();
-
-async function esvChapterCached(bookId: string, chapter: number, persist = true): Promise<Verse[]> {
+/** Ranges of the goals that keep `translationId` text cached (see retention). */
+async function retainedRanges(translationId: string): Promise<RefRange[]> {
   const { db, tables } = await import('@/services/db');
-  const { and, eq } = await import('drizzle-orm');
-  const cached = await db
+  const { and, eq, inArray } = await import('drizzle-orm');
+  const goals = await db
     .select()
-    .from(tables.verses)
+    .from(tables.goals)
     .where(
       and(
-        eq(tables.verses.translationId, 'esv'),
-        eq(tables.verses.bookId, bookId),
-        eq(tables.verses.chapter, chapter),
+        eq(tables.goals.translationId, translationId),
+        inArray(tables.goals.status, [...RETAINING_GOAL_STATUSES]),
       ),
-    )
-    .orderBy(tables.verses.verse);
-  if (cached.length > 0) {
-    return cached.map((r) => ({ ...r, translationId: 'esv' }));
-  }
-  if (!persist) {
-    const key = `${bookId}.${chapter}`;
-    let pending = esvUnpersisted.get(key);
-    if (!pending) {
-      pending = fetchEsvChapter(bookId, chapter);
-      esvUnpersisted.set(key, pending);
-      // A failed fetch is retried next time rather than remembered.
-      pending.catch(() => esvUnpersisted.delete(key));
+    );
+  return goals.map((g) => ({
+    start: { bookId: g.startBookId, chapter: g.startChapter, verse: g.startVerse },
+    end: { bookId: g.endBookId, chapter: g.endChapter, verse: g.endVerse },
+  }));
+}
+
+/** Most chapters held in memory at once; a long reader session drops the oldest. */
+const MEMORY_CHAPTERS = 40;
+
+/** Chapters fetched this launch, never written anywhere; gone when the app quits. */
+const chaptersInMemory = new Map<string, Promise<Verse[]>>();
+
+function memoChapter(key: string, fetchChapter: () => Promise<Verse[]>): Promise<Verse[]> {
+  let pending = chaptersInMemory.get(key);
+  if (!pending) {
+    pending = fetchChapter();
+    chaptersInMemory.set(key, pending);
+    // A failed fetch is retried next time rather than remembered.
+    pending.catch(() => chaptersInMemory.delete(key));
+    if (chaptersInMemory.size > MEMORY_CHAPTERS) {
+      chaptersInMemory.delete(chaptersInMemory.keys().next().value as string);
     }
-    return pending;
   }
-  const fetched = await fetchEsvChapter(bookId, chapter);
-  if (fetched.length > 0 && mayPersistText('esv')) {
-    await db.insert(tables.verses).values(fetched).onConflictDoNothing();
-  }
-  return fetched;
+  return pending;
+}
+
+function esvChapter(bookId: string, chapter: number): Promise<Verse[]> {
+  return memoChapter(`esv.${bookId}.${chapter}`, () => fetchEsvChapter(bookId, chapter));
 }
 
 /**
@@ -286,7 +289,9 @@ async function getYouVersionPassage(translation: Translation, range: RefRange): 
   const { bookId } = range.start;
   const out: Verse[] = [];
   for (const chapter of chaptersInRange(range.start, range.end)) {
-    const verses = await youversionChapter(translation.id, bibleId, bookId, chapter);
+    const verses = await memoChapter(`${translation.id}.${bookId}.${chapter}`, () =>
+      fetchYouVersionChapter(translation.id, bibleId, bookId, chapter),
+    );
     for (const v of verses) {
       if (refInRange(v, range)) out.push(v);
     }
@@ -294,28 +299,66 @@ async function getYouVersionPassage(translation: Translation, range: RefRange): 
   return out;
 }
 
-/** Most chapters held in memory at once; a long reader session drops the oldest. */
-const YOUVERSION_MEMORY_CHAPTERS = 40;
+/**
+ * One chapter's slice of a goal, from the cache. `cachePassage` fills the
+ * cache when a goal is created, so a miss means a database from before that
+ * rule or a goal whose text was purged; fetch the chapter and keep what the
+ * goals cover.
+ */
+async function esvCached(slice: RefRange, retained: readonly RefRange[]): Promise<Verse[]> {
+  const { db, tables } = await import('@/services/db');
+  const { and, between, eq } = await import('drizzle-orm');
+  const cached = await db
+    .select()
+    .from(tables.verses)
+    .where(
+      and(
+        eq(tables.verses.translationId, 'esv'),
+        eq(tables.verses.bookId, slice.start.bookId),
+        eq(tables.verses.chapter, slice.start.chapter),
+        between(tables.verses.verse, slice.start.verse, slice.end.verse),
+      ),
+    )
+    .orderBy(tables.verses.verse);
+  if (cached.length > 0) return cached;
+  const fetched = await esvChapter(slice.start.bookId, slice.start.chapter);
+  await persistVerses(retainedOnly(fetched, retained));
+  return fetched;
+}
 
-/** Chapters fetched this launch, never written anywhere; gone when the app quits. */
-const youversionInMemory = new Map<string, Promise<Verse[]>>();
+async function persistVerses(verses: Verse[]): Promise<void> {
+  if (verses.length === 0 || !verses.every((v) => mayPersistText(v.translationId))) return;
+  const { db, tables } = await import('@/services/db');
+  await db.insert(tables.verses).values(verses).onConflictDoNothing();
+}
 
-function youversionChapter(
-  translationId: string,
-  bibleId: number,
-  bookId: string,
-  chapter: number,
-): Promise<Verse[]> {
-  const key = `${translationId}.${bookId}.${chapter}`;
-  let pending = youversionInMemory.get(key);
-  if (!pending) {
-    pending = fetchYouVersionChapter(translationId, bibleId, bookId, chapter);
-    youversionInMemory.set(key, pending);
-    // A failed fetch is retried next time rather than remembered.
-    pending.catch(() => youversionInMemory.delete(key));
-    if (youversionInMemory.size > YOUVERSION_MEMORY_CHAPTERS) {
-      youversionInMemory.delete(youversionInMemory.keys().next().value as string);
-    }
+/**
+ * Caches a goal's text so the goal works offline. Call once the goal row
+ * exists (the purge keeps only what a goal covers) and before relying on the
+ * goal: reads inside it trust the cache to hold the whole range. A no-op for
+ * bundled translations. Throws if the text cannot be had.
+ */
+export async function cachePassage(translationId: string, range: RefRange): Promise<void> {
+  const translation = getTranslation(translationId);
+  if (translation.source !== 'esv_api' || !mayPersistText(translationId)) return;
+  const verses: Verse[] = [];
+  for (const chapter of chaptersInRange(range.start, range.end)) {
+    const fetched = await esvChapter(range.start.bookId, chapter);
+    verses.push(...fetched.filter((v) => refInRange(v, range)));
   }
-  return pending;
+  if (verses.length === 0) throw new Error('Passage contains no verses');
+  await persistVerses(verses);
+}
+
+/**
+ * Removes cached licensed text that no goal the user still has covers (02
+ * §5). Run after a goal is deleted or archived, and once at launch to trim
+ * anything an earlier version left behind. Local and cheap: one DELETE over
+ * a table that holds only goal text. Bundled translations are in another
+ * database and are never touched.
+ */
+export async function purgeUnreferencedText(): Promise<void> {
+  const { db } = await import('@/services/db');
+  const { sql } = await import('drizzle-orm');
+  await db.run(sql.raw(PURGE_UNREFERENCED_SQL));
 }
