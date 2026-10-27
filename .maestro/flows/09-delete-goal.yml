@@ -1,0 +1,58 @@
+# Deleting passages from Library: the card's trash button, then a
+# confirmation that says what goes. Two passages first. Library lists the
+# oldest first, and with no "Show on widgets" pick the oldest is the focus,
+# so the first deletion removes the focus passage and the other one stays in
+# progress. Deleting the last one empties Library and brings Today's empty
+# state back. Both goals use the wizard defaults (John 1:1), so the flow
+# checks structure, not titles.
+appId: com.rhoadsdev.meno
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- runFlow: ../helpers/create-goal.yml
+- tapOn: "\\+ Practice another passage"
+- extendedWaitUntil:
+    visible: "Choose a passage"
+    timeout: 10000
+- tapOn: "Continue"
+- assertVisible: "Your plan"
+- tapOn: "Start memorizing"
+- extendedWaitUntil:
+    visible: "Also practicing"
+    timeout: 10000
+- tapOn: "Library"
+- extendedWaitUntil:
+    visible: "Delete John 1:1"
+    timeout: 10000
+# First passage: the dialog names the passage and what is lost, and
+# promises the streak and badges stay.
+- tapOn: "Delete John 1:1"
+- extendedWaitUntil:
+    visible: "Delete John 1:1\\?"
+    timeout: 5000
+- assertVisible: "This deletes your practice history for this passage\\. Your streak and badges stay\\..*"
+- tapOn: "Delete passage"
+# One passage is still in progress.
+- extendedWaitUntil:
+    notVisible: "Delete John 1:1\\?"
+    timeout: 5000
+- assertVisible: "Delete John 1:1"
+- assertNotVisible: "No passages yet"
+# Last passage: Library is empty again.
+- tapOn: "Delete John 1:1"
+- extendedWaitUntil:
+    visible: "Delete John 1:1\\?"
+    timeout: 5000
+- tapOn: "Delete passage"
+- extendedWaitUntil:
+    visible: "No passages yet"
+    timeout: 10000
+- assertNotVisible: "Delete John 1:1"
+# Today is back to its empty state, with nothing left pointing at the goals.
+- tapOn: "Today"
+- scrollUntilVisible:
+    element: "Choose my own passage"
+    direction: DOWN

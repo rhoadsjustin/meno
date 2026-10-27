@@ -33,4 +33,17 @@ export default {
     fading: 'desvaneciéndose',
     atRisk: 'en riesgo',
   },
+
+  remove: {
+    tryAgain: 'Vuelve a intentarlo en un momento.',
+    delete: {
+      spoken: 'Eliminar {{title}}',
+      title: '¿Eliminar {{title}}?',
+      message:
+        'Se borrará tu historial de práctica de este pasaje. Tu racha y tus insignias se mantienen. No se puede deshacer.',
+      confirm: 'Eliminar pasaje',
+      done: 'Se eliminó {{title}}.',
+      failed: 'No se pudo eliminar {{title}}',
+    },
+  },
 } satisfies Catalog<typeof en>;

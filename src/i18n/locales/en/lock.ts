@@ -32,7 +32,7 @@ export default {
     cancelSetup: 'Cancel setup',
   },
   unlock: {
-    errorNoGoal: 'No active goal',
+    errorNoGoal: 'There’s no passage in progress to recite right now.',
     errorNothingToRecite: 'Nothing to recite yet',
     unlockAnyway: 'Unlock anyway',
     missedRetry: 'Close — a few words slipped. One more go?',

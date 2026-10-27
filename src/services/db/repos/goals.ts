@@ -20,6 +20,8 @@ import { formatRangeIn, isPassageTitle } from '@/services/challenges/codec';
 import { chunkPassage, type ChunkPlan } from '@/services/chunking';
 import { meetsThreshold, tokenize } from '@/services/grading';
 import { db, tables } from '@/services/db';
+import { clearActiveSession, loadActiveSession } from '@/services/db/repos/sessionStore';
+import { keepPracticeDaysOf } from '@/services/db/repos/stats';
 import { resolveFocusGoal } from '@/services/focus';
 import {
   daysAgo,
@@ -136,12 +138,29 @@ export async function createGoal(input: {
 
 /**
  * Deletes a goal with its chunks, attempts and review items, then purges any
- * licensed text no remaining goal covers (02 §5). Callers refresh widgets
- * and the shield afterwards, as they do for any change of focus goal.
+ * licensed text no remaining goal covers (02 §5). Nothing else in the
+ * database is left pointing at it: a "Show on widgets" pick on it is
+ * cleared, so the oldest active goal takes the focus (services/focus), and
+ * so is a practice session left open on it.
+ *
+ * The days its attempts were made on are kept for the practice grid
+ * (services/stats/practice-days); the streak and earned badges are stored on
+ * their own and do not change.
+ *
+ * Use features/goals `removeGoal` from screens: it refuses a goal that is
+ * finished or has anything memorized (memorized Scripture is never deleted),
+ * and refreshes what lives outside the database — widgets, the shield and
+ * scheduled notifications.
  */
 export async function deleteGoal(goalId: string): Promise<void> {
   const chunkIds = (await chunksForGoal(goalId)).map((c) => c.id);
   if (chunkIds.length > 0) {
+    const attempted = await db
+      .select({ createdAt: tables.attempts.createdAt })
+      .from(tables.attempts)
+      .where(inArray(tables.attempts.chunkId, chunkIds));
+    await keepPracticeDaysOf(attempted.map((a) => a.createdAt));
+
     // Spelled out rather than left to ON DELETE CASCADE, which only fires
     // when the connection has foreign keys switched on.
     await db.delete(tables.reviewItems).where(inArray(tables.reviewItems.chunkId, chunkIds));
@@ -149,6 +168,12 @@ export async function deleteGoal(goalId: string): Promise<void> {
     await db.delete(tables.chunks).where(eq(tables.chunks.goalId, goalId));
   }
   await db.delete(tables.goals).where(eq(tables.goals.id, goalId));
+
+  if ((await focusGoalId()) === goalId) {
+    await db.delete(tables.settings).where(eq(tables.settings.key, FOCUS_KEY));
+  }
+  if ((await loadActiveSession())?.goalId === goalId) await clearActiveSession();
+
   await purgeUnreferencedText();
 }
 

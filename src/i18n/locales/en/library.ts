@@ -31,4 +31,18 @@ export default {
     fading: 'fading',
     atRisk: 'at risk',
   },
+
+  // Taking a passage off the In progress shelf (services/goals/deletion).
+  remove: {
+    tryAgain: 'Try again in a moment.',
+    delete: {
+      spoken: 'Delete {{title}}',
+      title: 'Delete {{title}}?',
+      message:
+        'This deletes your practice history for this passage. Your streak and badges stay. You can’t undo this.',
+      confirm: 'Delete passage',
+      done: '{{title}} deleted.',
+      failed: 'Couldn’t delete {{title}}',
+    },
+  },
 } as const;

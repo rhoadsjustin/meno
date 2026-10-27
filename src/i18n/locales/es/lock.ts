@@ -35,7 +35,7 @@ export default {
     cancelSetup: 'Cancelar configuración',
   },
   unlock: {
-    errorNoGoal: 'No hay ninguna meta activa',
+    errorNoGoal: 'Ahora mismo no hay ningún pasaje en curso que recitar.',
     errorNothingToRecite: 'Todavía no hay nada que recitar',
     unlockAnyway: 'Desbloquear de todos modos',
     missedRetry: 'Casi: se te escaparon algunas palabras. ¿Otro intento?',

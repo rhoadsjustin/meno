@@ -1,12 +1,22 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
+import { DeleteGoalButton } from '@/features/goals/DeleteGoalButton';
+import { removeGoal } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getTranslation } from '@/services/bible';
@@ -19,11 +29,17 @@ import {
   type Goal,
 } from '@/services/db/repos/goals';
 import { itemHealth, reviewItemForChunk } from '@/services/db/repos/reviews';
+import { deleteGoalPrompt, mayDeleteGoal } from '@/services/goals/deletion';
 import type { Health } from '@/services/scheduler';
 import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, radius, spacing, type ThemeColors } from '@/theme';
 
 type Segment = 'inProgress' | 'memorized';
+
+/** From the accessibility text sizes up (the breakpoint StarterDeck stacks
+ * at), the trash button leaves the title's line so the title keeps the
+ * card's full width instead of breaking mid-word beside it. */
+const BUTTON_BELOW_TEXT_SCALE = 1.4;
 type GoalWithChunks = { goal: Goal; chunks: Chunk[] };
 
 export default function LibraryScreen() {
@@ -33,6 +49,7 @@ export default function LibraryScreen() {
   // side — In progress on the left, Memorized on the right — instead of the
   // segmented control (HIG: show the next level of hierarchy when it fits).
   const { isWide } = useContentLayout();
+  const buttonBelow = useWindowDimensions().fontScale >= BUTTON_BELOW_TEXT_SCALE;
   const [segment, setSegment] = useState<Segment>('inProgress');
   const [items, setItems] = useState<GoalWithChunks[]>([]);
   const [healthByChunk, setHealthByChunk] = useState<Record<string, Health>>({});
@@ -84,6 +101,32 @@ export default function LibraryScreen() {
     [load, t],
   );
 
+  const remove = useCallback(
+    async (goal: Goal) => {
+      try {
+        await removeGoal(goal.id);
+        AccessibilityInfo.announceForAccessibility(t('remove.delete.done', { title: goal.title }));
+      } catch {
+        Alert.alert(t('remove.delete.failed', { title: goal.title }), t('remove.tryAgain'));
+      } finally {
+        await load(() => false);
+      }
+    },
+    [load, t],
+  );
+
+  /** The trash button, only on a passage in progress with nothing memorized
+   * yet: memorized Scripture is never deleted (services/goals/deletion). */
+  const deleteButton = (goal: Goal, chunks: Chunk[]) =>
+    mayDeleteGoal(goal, chunks) ? (
+      <DeleteGoalButton
+        label={t('remove.delete.spoken', { title: goal.title })}
+        tint={colors.inkFaint}
+        prompt={deleteGoalPrompt(goal.title)}
+        onDelete={() => void remove(goal)}
+      />
+    ) : null;
+
   const active = items.filter(({ goal }) => goal.status === 'active');
   // Only offer a choice once there is more than one passage in progress.
   const activeCount = active.length;
@@ -106,9 +149,17 @@ export default function LibraryScreen() {
         <View style={styles.stack}>
           {active.map(({ goal, chunks }) => (
             <Card key={goal.id}>
-              <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {goal.title}
-              </Text>
+              <View style={styles.titleRow}>
+                <Text
+                  style={[
+                    styles.goalTitle,
+                    styles.titleText,
+                    { color: colors.ink, fontFamily: fonts?.ui },
+                  ]}>
+                  {goal.title}
+                </Text>
+                {!buttonBelow && deleteButton(goal, chunks)}
+              </View>
               <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {t('goal.summary', {
                   translation: getTranslation(goal.translationId).abbrev,
@@ -184,6 +235,9 @@ export default function LibraryScreen() {
                       </Text>
                     </Pressable>
                   ))}
+                {buttonBelow && mayDeleteGoal(goal, chunks) && (
+                  <View style={styles.practiceLink}>{deleteButton(goal, chunks)}</View>
+                )}
               </View>
             </Card>
           ))}
@@ -360,6 +414,9 @@ const styles = StyleSheet.create({
   },
   segmentText: { fontSize: 15, fontWeight: '600' },
   goalTitle: { fontSize: 17, fontWeight: '600' },
+  // The title wraps beside the trash button, which stays top-right.
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  titleText: { flex: 1 },
   goalSub: { fontSize: 13, marginTop: spacing.xs },
   heatmap: {
     flexDirection: 'row',
