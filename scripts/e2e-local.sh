@@ -10,6 +10,7 @@
 #
 # Usage: npm run e2e [-- <simulator-udid>]
 #        E2E_KEEP_BUILD=1 npm run e2e   # keep ios/build for a fast rebuild
+#        E2E_SKIP_SWEEP=1 npm run e2e   # skip the post-run sweep of merged leftovers
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -57,6 +58,12 @@ cleanup() {
   else
     echo "    kept Maestro debug output: $DEBUG_OUTPUT"
   fi
+
+  # Sweep what earlier, merged PRs left behind (their worktrees, idle build
+  # output, old Maestro logs) so every gate run is also the moment the disk
+  # gets cleared. Detached and logged, so this run's result is not delayed
+  # or obscured; E2E_SKIP_SWEEP=1 leaves the sweep out.
+  [ -n "${E2E_SKIP_SWEEP:-}" ] || bash scripts/cleanup-validation.sh --background
 
   echo "    $(df -h / | awk 'NR==2 {print $4}') free on /"
   exit "$code"
