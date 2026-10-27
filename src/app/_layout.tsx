@@ -104,7 +104,7 @@ class AppErrorBoundary extends React.Component<BoundaryProps, BoundaryState> {
 // A link that cold-starts the app (meno://help, a widget, a challenge) still
 // gets the tabs underneath, so the screen it opens is presented as usual and
 // closing it lands on Today instead of leaving nothing to go back to.
-export const unstable_settings = { initialRouteName: '(tabs)' };
+export const unstable_settings = { anchor: '(tabs)' };
 
 function RootLayout() {
   const scheme = useColorScheme();

@@ -6,7 +6,7 @@ Full specs live in `docs/`. Read the relevant spec before implementing any featu
 
 ## Stack (do not deviate without asking)
 
-- **Expo SDK 56+**, TypeScript strict, Expo Router (file-based routing)
+- **Expo SDK 58+**, TypeScript strict, Expo Router (file-based routing)
 - **UI**: `@expo/ui` — universal components by default; drop to `@expo/ui/swift-ui` for iOS-specific polish (glassEffect, native pickers, etc.). Never re-implement a native control in JS if `@expo/ui` provides it.
 - **State**: Zustand for UI/session state; TanStack Query for server state (Phase 2+)
 - **Persistence**: `expo-sqlite` + Drizzle ORM. Local-first: the app is fully functional offline.
@@ -19,7 +19,7 @@ Full specs live in `docs/`. Read the relevant spec before implementing any featu
 ## Build & run
 
 - Use development builds: `npx expo run:ios` / EAS dev client. Expo Go is not compatible (widgets, device-activity, speech).
-- **Toolchain**: build with **Xcode 27.1 or later** (iOS 27.1 SDK) — locally via `DEVELOPER_DIR`, on EAS via the image pinned in `eas.json`. The iOS 27 SDK requires the UIKit scene life cycle (`expo-build-properties` → `ios.enableSceneSupport`, already on); the 27.1 SDK is what gives iPhone Duo its full-screen layout. Older SDK builds run letterboxed on the Duo, and from April 2027 Apple rejects uploads below the iOS 27 SDK.
+- **Toolchain**: build with **Xcode 27.1 or later** (iOS 27.1 SDK) — locally via `DEVELOPER_DIR`, on EAS via the image pinned in `eas.json`. The iOS 27 SDK requires the UIKit scene life cycle (SDK 58 prebuild generates `SceneDelegate.swift` by default); the 27.1 SDK is what gives iPhone Duo its full-screen layout. Older SDK builds run letterboxed on the Duo, and from April 2027 Apple rejects uploads below the iOS 27 SDK.
 - **iPhone Duo** (Apple HIG "Designing for iPhone Duo"): size layouts from `useWindowDimensions` (see `src/components/content-layout.ts`), never from idiom or orientation; apply left/right safe-area insets separately; split wide layouts into even halves so a half-folded hinge lands between panes; put navigation controls in the native bar (`src/components/screen-header.tsx` + `Stack.Toolbar`, symbols over text) rather than JS header rows, so they follow the system's vertical bar; keep two-pane layouts clear of the folding region with `FoldAwareRow` (`src/components/fold-aware-row.tsx`), fed by the local Expo module `modules/reserved-regions` (UIKit reserved regions, iOS 27.1+; `useReservedRegions()` / `useContentLayout().fold`). Test in Xcode's Device Hub on the iPhone Duo simulator in every pose: opened, closed, folded, rotated, Split View (project skill: `duo-sim`).
 - Prebuild is CNG-managed: never hand-edit `ios/` or `android/` — all native config goes through app.config.ts and config plugins.
 - Screen Time features only work on a **physical device**, never the simulator. Guard them behind capability checks so the simulator still runs everything else.

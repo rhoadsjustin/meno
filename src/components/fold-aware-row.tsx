@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent, type ViewInstance } from 'react-native';
 
 import { useReservedRegions } from '@modules/reserved-regions';
 import { spacing } from '@/theme';
@@ -26,7 +26,7 @@ export function FoldAwareRow({
   style?: object;
 }) {
   const { fold } = useReservedRegions();
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const [frame, setFrame] = useState<{ x: number; width: number } | null>(null);
 
   // Window position of the row, so the fold (window coordinates) can be

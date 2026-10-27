@@ -8,6 +8,7 @@
  */
 import { useSegments } from 'expo-router';
 import * as Updates from 'expo-updates';
+import { UpdateInfoType } from 'expo-updates';
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { Alert, AppState } from 'react-native';
 
@@ -70,7 +71,7 @@ function useAppState() {
 
 function toDownloaded(info: Updates.UpdateInfo | undefined): DownloadedUpdate | undefined {
   if (!info) return undefined;
-  if (info.type === Updates.UpdateInfoType.ROLLBACK) return { type: 'rollback' };
+  if (info.type === UpdateInfoType.ROLLBACK) return { type: 'rollback' };
   return { type: 'new', updateId: info.updateId, manifest: info.manifest };
 }
 

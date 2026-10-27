@@ -11,8 +11,9 @@ import {
   Text,
   useWindowDimensions,
   View,
-  type NativeSyntheticEvent,
-  type TextLayoutEventData,
+  type AccessibilityActionInfo,
+  type TextLayoutEvent,
+  type ViewInstance,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -59,6 +60,8 @@ const NO_CHAPTERS: Record<number, never> = {};
 // The footer is furniture: it grows with Dynamic Type, but only so far, so
 // the largest sizes spend the page on Scripture and the attribution fits.
 const FOOTER_MAX_SCALE = 1.4;
+// The one custom action a page number offers: VoiceOver's double-tap turns the page.
+const ACTIVATE: AccessibilityActionInfo[] = [{ name: 'activate' }];
 
 function reduce(state: Position, action: Action): Position {
   switch (action.type) {
@@ -104,7 +107,7 @@ export function BookSpread({
   }, [pos.chapter]);
 
   // Window frame of the spread, to map the fold (window points) onto it.
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const [frame, setFrame] = useState<{
     x: number;
     y: number;
@@ -327,7 +330,7 @@ function Measurer({
   onPaged: (result: Paged) => void;
 }) {
   const flow = useMemo(() => buildFlow(verses), [verses]);
-  const onTextLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) =>
+  const onTextLayout = (e: TextLayoutEvent) =>
     onPaged({ flow, pages: paginate(flow.text, e.nativeEvent.lines, geo.pageHeight) });
   return (
     <View
@@ -377,7 +380,10 @@ function PageContent({
             : t('nextPage')
           : t('page', { page: face.number })
       }
-      onAccessibilityTap={onTurn}
+      // VoiceOver's double-tap: the standard "activate" action replaces the
+      // onAccessibilityTap prop React Native 0.88 removed.
+      accessibilityActions={onTurn ? ACTIVATE : undefined}
+      onAccessibilityAction={onTurn}
       maxFontSizeMultiplier={FOOTER_MAX_SCALE}
       style={[styles.footerText, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
       {face.number}

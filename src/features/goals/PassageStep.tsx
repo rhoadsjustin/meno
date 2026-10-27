@@ -370,7 +370,7 @@ export function PassageStep({
                 </Text>
               )}
             </View>
-          ) : null
+          ) : undefined
         }
         initialNumToRender={12}
         windowSize={7}
