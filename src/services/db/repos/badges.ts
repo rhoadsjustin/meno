@@ -6,9 +6,10 @@
 import { eq } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
-import { getPassage, getTranslation } from '@/services/bible';
+import { getBook, getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { loadStreak } from '@/services/db/repos/streaks';
+import { memorizedFullChapter, memorizedWholeBook } from '@/services/goals/badge-rules';
 import { tokenize } from '@/services/grading';
 
 export type BadgeCode =
@@ -88,37 +89,12 @@ export async function refreshBadges(): Promise<BadgeCode[]> {
   const conditions = new Map<BadgeCode, boolean>();
   conditions.set('first_verse', memorized.length > 0);
 
-  // Full chapter memorized: every chunk of some (goal, chapter) memorized.
-  const byChapter = new Map<string, { total: number; done: number }>();
-  for (const c of chunks) {
-    const key = `${c.goalId}:${c.startBookId}:${c.startChapter}`;
-    const entry = byChapter.get(key) ?? { total: 0, done: 0 };
-    entry.total += 1;
-    if (c.status === 'memorized') entry.done += 1;
-    byChapter.set(key, entry);
-  }
-  conditions.set(
-    'first_chapter',
-    [...byChapter.values()].some((e) => e.total > 0 && e.done === e.total),
-  );
-
-  // Whole goal memorized where the goal spans an entire book.
+  // A whole chapter or book memorized; stopped goals don't count (badge-rules).
   const goals = await db.select().from(tables.goals);
-  const { getBook } = await import('@/services/bible');
+  conditions.set('first_chapter', memorizedFullChapter(goals, chunks));
   conditions.set(
     'first_book',
-    goals.some((g) => {
-      const goalChunks = chunks.filter((c) => c.goalId === g.id);
-      if (goalChunks.length === 0) return false;
-      const allDone = goalChunks.every((c) => c.status === 'memorized');
-      const book = getBook(g.startBookId);
-      const wholeBook =
-        g.startBookId === g.endBookId &&
-        g.startChapter === 1 &&
-        g.startVerse === 1 &&
-        g.endChapter === book.chapters;
-      return allDone && wholeBook;
-    }),
+    memorizedWholeBook(goals, chunks, (bookId) => getBook(bookId).chapters),
   );
 
   conditions.set(

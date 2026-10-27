@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import {
   chapterSlice,
   coveredByRetained,
-  goalRetainsText,
   PURGE_UNREFERENCED_SQL,
   retainedOnly,
+  retainedRangesOf,
+  type RangeRow,
 } from '@/services/bible/retention';
 import type { RefRange } from '@/services/bible/types';
 
@@ -15,11 +16,46 @@ const range = (bookId: string, sc: number, sv: number, ec: number, ev: number): 
   end: { bookId, chapter: ec, verse: ev },
 });
 
-describe('goalRetainsText', () => {
-  it('keeps text for goals still practiced or reviewed, not archived ones', () => {
-    expect(goalRetainsText('active')).toBe(true);
-    expect(goalRetainsText('completed')).toBe(true);
-    expect(goalRetainsText('archived')).toBe(false);
+const row = (r: RefRange, status: string): RangeRow & { status: string } => ({
+  startBookId: r.start.bookId,
+  startChapter: r.start.chapter,
+  startVerse: r.start.verse,
+  endBookId: r.end.bookId,
+  endChapter: r.end.chapter,
+  endVerse: r.end.verse,
+  status,
+});
+
+describe('retainedRangesOf', () => {
+  const goalRange = range('Rom', 8, 1, 8, 39);
+  const chunks = [
+    row(range('Rom', 8, 1, 8, 4), 'memorized'),
+    row(range('Rom', 8, 5, 8, 8), 'learning'),
+    row(range('Rom', 8, 9, 8, 11), 'memorized'),
+    row(range('Rom', 8, 12, 8, 39), 'locked'),
+  ];
+
+  it('keeps the whole range of a goal still practiced or reviewed', () => {
+    expect(retainedRangesOf(row(goalRange, 'active'), chunks)).toEqual([goalRange]);
+    expect(retainedRangesOf(row(goalRange, 'completed'), chunks)).toEqual([goalRange]);
+  });
+
+  it('keeps only the memorized chunks of a stopped goal', () => {
+    expect(retainedRangesOf(row(goalRange, 'stopped'), chunks)).toEqual([
+      range('Rom', 8, 1, 8, 4),
+      range('Rom', 8, 9, 8, 11),
+    ]);
+  });
+
+  it('keeps nothing for an archived goal', () => {
+    expect(retainedRangesOf(row(goalRange, 'archived'), chunks)).toEqual([]);
+  });
+
+  it('lets a stopped goal cover a review of one of its chunks, but not the gap between them', () => {
+    const kept = retainedRangesOf(row(goalRange, 'stopped'), chunks);
+    expect(coveredByRetained(range('Rom', 8, 9, 8, 11), kept)).toBe(true);
+    expect(coveredByRetained(range('Rom', 8, 5, 8, 8), kept)).toBe(false);
+    expect(coveredByRetained(range('Rom', 8, 1, 8, 11), kept)).toBe(false);
   });
 });
 
@@ -80,9 +116,12 @@ describe('PURGE_UNREFERENCED_SQL', () => {
         PRIMARY KEY (translationId, bookId, chapter, verse));
       CREATE TABLE goals (id TEXT PRIMARY KEY, translationId TEXT, startBookId TEXT, startChapter INTEGER,
         startVerse INTEGER, endBookId TEXT, endChapter INTEGER, endVerse INTEGER, status TEXT);
+      CREATE TABLE chunks (id TEXT PRIMARY KEY, goalId TEXT, startBookId TEXT, startChapter INTEGER,
+        startVerse INTEGER, endBookId TEXT, endChapter INTEGER, endVerse INTEGER, status TEXT);
     `);
     const addVerse = db.prepare("INSERT INTO verses VALUES ('esv', ?, ?, ?, 'text')");
     const addGoal = db.prepare('INSERT INTO goals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const addChunk = db.prepare('INSERT INTO chunks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
     return {
       db,
       cacheChapter(bookId: string, chapter: number, verses: number) {
@@ -92,6 +131,19 @@ describe('PURGE_UNREFERENCED_SQL', () => {
         addGoal.run(
           id,
           translationId,
+          r.start.bookId,
+          r.start.chapter,
+          r.start.verse,
+          r.end.bookId,
+          r.end.chapter,
+          r.end.verse,
+          status,
+        );
+      },
+      chunk(id: string, goalId: string, r: RefRange, status: string) {
+        addChunk.run(
+          id,
+          goalId,
           r.start.bookId,
           r.start.chapter,
           r.start.verse,
@@ -171,6 +223,54 @@ describe('PURGE_UNREFERENCED_SQL', () => {
     t.purge();
     expect(t.cached('John', 3)).toEqual([16]);
     expect(t.cached('Ps', 23)).toEqual([]);
+  });
+
+  it('trims a stopped goal to its memorized chunks', () => {
+    const t = setup();
+    t.cacheChapter('Ps', 119, 176);
+    t.goal('g1', range('Ps', 119, 1, 119, 16), 'stopped');
+    t.chunk('c1', 'g1', range('Ps', 119, 1, 119, 3), 'memorized');
+    t.chunk('c3', 'g1', range('Ps', 119, 7, 119, 8), 'memorized');
+    t.purge();
+    expect(t.cached('Ps', 119)).toEqual([1, 2, 3, 7, 8]);
+  });
+
+  it('drops verses of a stopped goal’s chunks left unmemorized by an interrupted stop', () => {
+    const t = setup();
+    t.cacheChapter('Ps', 119, 176);
+    t.goal('g1', range('Ps', 119, 1, 119, 8), 'stopped');
+    t.chunk('c1', 'g1', range('Ps', 119, 1, 119, 3), 'memorized');
+    t.chunk('c2', 'g1', range('Ps', 119, 4, 119, 6), 'learning');
+    t.purge();
+    expect(t.cached('Ps', 119)).toEqual([1, 2, 3]);
+  });
+
+  it('keeps a stopped goal’s dropped verses that another goal still covers', () => {
+    const t = setup();
+    t.cacheChapter('John', 3, 36);
+    t.goal('stopped', range('John', 3, 14, 3, 21), 'stopped');
+    t.chunk('c1', 'stopped', range('John', 3, 14, 3, 15), 'memorized');
+    t.goal('again', range('John', 3, 16, 3, 18), 'active');
+    t.purge();
+    expect(t.cached('John', 3)).toEqual([14, 15, 16, 17, 18]);
+  });
+
+  it('only looks at chunks through their goal: status, translation and book must match', () => {
+    const t = setup();
+    t.cacheChapter('John', 3, 36);
+    // A memorized chunk of an active goal is inside the goal range anyway.
+    t.goal('active', range('John', 3, 1, 3, 2), 'active');
+    t.chunk('a1', 'active', range('John', 3, 1, 3, 2), 'memorized');
+    // An archived goal's memorized chunks keep nothing.
+    t.goal('archived', range('John', 3, 10, 3, 12), 'archived');
+    t.chunk('x1', 'archived', range('John', 3, 10, 3, 12), 'memorized');
+    // A stopped goal in another translation keeps nothing of the ESV rows.
+    t.goal('kjv', range('John', 3, 20, 3, 21), 'stopped', 'kjv');
+    t.chunk('k1', 'kjv', range('John', 3, 20, 3, 21), 'memorized');
+    // A chunk whose goal is gone keeps nothing.
+    t.chunk('o1', 'gone', range('John', 3, 30, 3, 30), 'memorized');
+    t.purge();
+    expect(t.cached('John', 3)).toEqual([1, 2]);
   });
 
   it('ignores goals in another translation or another book', () => {

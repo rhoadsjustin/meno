@@ -4,20 +4,22 @@ import { Alert, Pressable, StyleSheet, type ColorValue } from 'react-native';
 import type { DeletePrompt } from '@/services/goals/deletion';
 
 export type DeleteGoalButtonProps = {
-  /** Spoken name of the button, e.g. "Delete Psalm 23". */
+  /** Spoken name of the button, e.g. "Delete Psalm 23" or "Stop Psalm 23". */
   label: string;
-  /** What deleting removes (services/goals `deleteGoalPrompt`). */
+  /** What the action removes and keeps (services/goals `deleteGoalPrompt`,
+   * `stopGoalPrompt`). */
   prompt: DeletePrompt;
-  onDelete: () => void;
+  /** Runs once the destructive button in the confirmation is tapped. */
+  onConfirm: () => void;
   tint: ColorValue;
 };
 
 /**
- * A goal card's trash button. It asks before deleting: iOS shows the system
- * confirmation dialog anchored to the button (`DeleteGoalButton.ios.tsx`);
- * elsewhere the platform alert stands in.
+ * A goal card's trash button, which deletes a passage or stops one partway.
+ * It asks first: iOS shows the system confirmation dialog anchored to the
+ * button (`DeleteGoalButton.ios.tsx`); elsewhere the platform alert stands in.
  */
-export function DeleteGoalButton({ label, prompt, onDelete, tint }: DeleteGoalButtonProps) {
+export function DeleteGoalButton({ label, prompt, onConfirm, tint }: DeleteGoalButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -25,7 +27,7 @@ export function DeleteGoalButton({ label, prompt, onDelete, tint }: DeleteGoalBu
       onPress={() =>
         Alert.alert(prompt.title, prompt.message, [
           { text: 'Cancel', style: 'cancel' },
-          { text: prompt.confirm, style: 'destructive', onPress: onDelete },
+          { text: prompt.confirm, style: 'destructive', onPress: onConfirm },
         ])
       }
       style={styles.target}>

@@ -1,5 +1,5 @@
-import { chunksForGoal, deleteGoal, getGoal } from '@/services/db/repos/goals';
-import { mayDeleteGoal } from '@/services/goals/deletion';
+import { chunksForGoal, deleteGoal, getGoal, stopGoal } from '@/services/db/repos/goals';
+import { mayDeleteGoal, mayStopGoal } from '@/services/goals/deletion';
 import { rescheduleAll } from '@/services/notifications';
 import { publishWidgetSnapshot } from '@/services/widgets';
 
@@ -31,6 +31,24 @@ export async function removeGoal(goalId: string): Promise<void> {
     throw new Error('Only a passage in progress with nothing memorized can be deleted');
   }
   await deleteGoal(goalId);
+  void refreshOutsideDatabase();
+}
+
+/**
+ * Stops a passage that is partly memorized (repos/goals `stopGoal`): its
+ * memorized chunks stay on the Memorized shelf and in reviews, the rest goes.
+ * Resolves once the database is done, then refreshes the widgets, the shield
+ * and notifications as `removeGoal` does — the stopped passage may have been
+ * the focus. Refuses a goal that is not in progress, has nothing memorized
+ * (delete it instead) or has everything memorized (services/goals
+ * `mayStopGoal`).
+ */
+export async function stopPassage(goalId: string): Promise<void> {
+  const [goal, chunks] = await Promise.all([getGoal(goalId), chunksForGoal(goalId)]);
+  if (!goal || !mayStopGoal(goal, chunks)) {
+    throw new Error('Only a passage in progress with some verses memorized can be stopped');
+  }
+  await stopGoal(goalId);
   void refreshOutsideDatabase();
 }
 

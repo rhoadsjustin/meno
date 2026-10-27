@@ -8,9 +8,9 @@ import type { DeleteGoalButtonProps } from '@/features/goals/DeleteGoalButton';
 /**
  * The trash button (SF Symbol `trash`). Tapping it opens the system
  * confirmation dialog anchored to the button, whose one action is the
- * destructive delete; tapping outside it cancels.
+ * destructive delete or stop; tapping outside it cancels.
  */
-export function DeleteGoalButton({ label, prompt, onDelete, tint }: DeleteGoalButtonProps) {
+export function DeleteGoalButton({ label, prompt, onConfirm, tint }: DeleteGoalButtonProps) {
   const [confirming, setConfirming] = useState(false);
   return (
     <Host matchContents seedColor={tint} style={styles.host}>
@@ -33,7 +33,7 @@ export function DeleteGoalButton({ label, prompt, onDelete, tint }: DeleteGoalBu
           />
         </ConfirmationDialog.Trigger>
         <ConfirmationDialog.Actions>
-          <Button role="destructive" label={prompt.confirm} onPress={onDelete} />
+          <Button role="destructive" label={prompt.confirm} onPress={onConfirm} />
         </ConfirmationDialog.Actions>
         <ConfirmationDialog.Message>
           <Text>{prompt.message}</Text>
