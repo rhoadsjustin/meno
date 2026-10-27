@@ -6,8 +6,19 @@
  * registered at runtime from the catalog cache (services/bible/youversion-
  * catalog) — their metadata is the only thing stored; text never is.
  */
+import { t } from '@/i18n';
 import { isValidBookId } from '@/services/bible/canon';
 import type { Translation } from '@/services/bible/types';
+
+/**
+ * Footer for a bundled public-domain translation, in the UI language. A
+ * getter, so it is read when shown rather than frozen at module load (the
+ * device language is applied after modules load). Translation names stay
+ * as published — they are the titles of English Bibles.
+ */
+function publicDomainAttribution(this: Translation): string {
+  return t('reader:publicDomainAttribution', { name: this.name, abbrev: this.abbrev });
+}
 
 export const TRANSLATIONS: readonly Translation[] = [
   {
@@ -18,7 +29,9 @@ export const TRANSLATIONS: readonly Translation[] = [
     licenseType: 'public_domain',
     source: 'bundled',
     isDownloaded: true,
-    attribution: 'World English Bible (WEB), public domain.',
+    get attribution() {
+      return publicDomainAttribution.call(this);
+    },
   },
   {
     id: 'kjv',
@@ -28,7 +41,9 @@ export const TRANSLATIONS: readonly Translation[] = [
     licenseType: 'public_domain',
     source: 'bundled',
     isDownloaded: true,
-    attribution: 'King James Version (KJV), public domain.',
+    get attribution() {
+      return publicDomainAttribution.call(this);
+    },
   },
   {
     id: 'asv',
@@ -38,7 +53,9 @@ export const TRANSLATIONS: readonly Translation[] = [
     licenseType: 'public_domain',
     source: 'bundled',
     isDownloaded: true,
-    attribution: 'American Standard Version (ASV), public domain.',
+    get attribution() {
+      return publicDomainAttribution.call(this);
+    },
   },
   {
     id: 'esv',
@@ -48,6 +65,7 @@ export const TRANSLATIONS: readonly Translation[] = [
     licenseType: 'api_cached',
     source: 'esv_api',
     isDownloaded: false,
+    // Crossway's required notice: kept verbatim in every UI language.
     attribution:
       'Scripture quotations are from the ESV® Bible, copyright © 2001 by Crossway. Used by permission. All rights reserved.',
   },
@@ -124,8 +142,8 @@ function placeholder(id: string): Translation {
   const n = youversionBibleId(id);
   return {
     id,
-    abbrev: `Bible ${n}`,
-    name: `Translation ${n} (details not loaded yet)`,
+    abbrev: t('reader:placeholderAbbrev', { n: String(n) }),
+    name: t('reader:placeholderName', { n: String(n) }),
     languageCode: 'und',
     licenseType: 'api_ephemeral',
     source: 'youversion',

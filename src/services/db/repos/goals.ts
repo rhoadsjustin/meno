@@ -16,6 +16,7 @@ import {
   type StarterVerse,
 } from '@/services/bible';
 import type { RefRange } from '@/services/bible/types';
+import { formatRangeIn, isPassageTitle } from '@/services/challenges/codec';
 import { chunkPassage, type ChunkPlan } from '@/services/chunking';
 import { meetsThreshold, tokenize } from '@/services/grading';
 import { db, tables } from '@/services/db';
@@ -29,10 +30,34 @@ import {
   type ChunkStanding,
   type PracticePlan,
 } from '@/services/practice/plan';
-import { MASTERY_TIER, nextTier, tierDef, TIERS } from '@/services/practice/tiers';
+import { chunkProgressCopy, MASTERY_TIER, nextTier, TIERS } from '@/services/practice/tiers';
 
 export type Goal = typeof tables.goals.$inferSelect;
 export type Chunk = typeof tables.chunks.$inferSelect;
+
+function goalRange(goal: Goal): RefRange {
+  return {
+    start: { bookId: goal.startBookId, chapter: goal.startChapter, verse: goal.startVerse },
+    end: { bookId: goal.endBookId, chapter: goal.endChapter, verse: goal.endVerse },
+  };
+}
+
+/**
+ * Goal titles that are just the passage reference are generated, not
+ * chosen, so they follow the UI language. They are stored in English
+ * (`storedTitle`) and replaced with the reference in the current language
+ * whenever a goal is read — so every screen, widget and share reading
+ * `goal.title` gets "Juan 3:16" in Spanish, without a migration, and older
+ * goals made under either language are recognized too.
+ */
+function withDisplayTitle(goal: Goal): Goal {
+  const range = goalRange(goal);
+  return isPassageTitle(goal.title, range) ? { ...goal, title: formatRange(range) } : goal;
+}
+
+function storedTitle(title: string, range: RefRange): string {
+  return isPassageTitle(title, range) ? formatRangeIn(range, 'en') : title.trim();
+}
 
 export type GoalPreview = {
   verseCount: number;
@@ -72,7 +97,7 @@ export async function createGoal(input: {
     endBookId: input.range.end.bookId,
     endChapter: input.range.end.chapter,
     endVerse: input.range.end.verse,
-    title: input.title,
+    title: storedTitle(input.title, input.range),
     createdAt: now,
     targetDate: input.targetDate ?? null,
     status: 'active',
@@ -241,7 +266,7 @@ export function startStarterGoal(
 
 export async function getGoal(id: string): Promise<Goal | undefined> {
   const rows = await db.select().from(tables.goals).where(eq(tables.goals.id, id)).limit(1);
-  return rows[0];
+  return rows[0] && withDisplayTitle(rows[0]);
 }
 
 /** Marks a goal as a shared challenge; the code goes into its links. */
@@ -259,20 +284,22 @@ export async function goalByChallengeId(code: string): Promise<Goal | undefined>
     .from(tables.goals)
     .where(and(eq(tables.goals.challengeId, code), ne(tables.goals.status, 'stopped')))
     .limit(1);
-  return rows[0];
+  return rows[0] && withDisplayTitle(rows[0]);
 }
 
 export async function listGoals(): Promise<Goal[]> {
-  return db.select().from(tables.goals).orderBy(asc(tables.goals.createdAt));
+  const rows = await db.select().from(tables.goals).orderBy(asc(tables.goals.createdAt));
+  return rows.map(withDisplayTitle);
 }
 
 /** Every passage in progress, oldest first. */
 export async function listActiveGoals(): Promise<Goal[]> {
-  return db
+  const rows = await db
     .select()
     .from(tables.goals)
     .where(eq(tables.goals.status, 'active'))
     .orderBy(asc(tables.goals.createdAt));
+  return rows.map(withDisplayTitle);
 }
 
 /**
@@ -470,7 +497,7 @@ export async function awaitingSecondDay(chunk: Chunk, unitCount: number): Promis
 /** Sub-line copy like "Chunk 4 of 12 · Blanks 50" (docs/07 §6). */
 export function chunkProgressLabel(chunk: Chunk, total: number): string {
   const tier = nextTier(chunk.tier);
-  return `Chunk ${chunk.orderIndex + 1} of ${total} · ${tierDef(tier).name}`;
+  return chunkProgressCopy(chunk.orderIndex + 1, total, tier);
 }
 
 export { TIERS };

@@ -22,6 +22,7 @@ import { useHeaderHeight } from 'expo-router/build/react-navigation/elements';
 
 import { PageCurlView } from '@modules/page-curl';
 import { useContentLayout } from '@/components/content-layout';
+import { useTranslation } from '@/i18n/react';
 import {
   buildFlow,
   pageRuns,
@@ -362,6 +363,7 @@ function PageContent({
   face,
   onTurn,
 }: PageProps & { onTurn?: () => void }) {
+  const { t } = useTranslation('reader');
   if (!face) return null;
   const box = { width: geo.textWidth, [side === 'left' ? 'right' : 'left']: geo.inner };
   const number = (
@@ -369,7 +371,11 @@ function PageContent({
       accessible
       accessibilityRole={onTurn ? 'button' : 'text'}
       accessibilityLabel={
-        onTurn ? (side === 'left' ? 'Previous page' : 'Next page') : `Page ${face.number}`
+        onTurn
+          ? side === 'left'
+            ? t('previousPage')
+            : t('nextPage')
+          : t('page', { page: face.number })
       }
       onAccessibilityTap={onTurn}
       maxFontSizeMultiplier={FOOTER_MAX_SCALE}

@@ -11,6 +11,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { ScreenHeader } from '@/components/screen-header';
+import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { recordAttempt } from '@/services/db/repos/attempts';
@@ -49,6 +50,7 @@ type Phase =
 
 export function ReviewSession() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['review', 'practice', 'common']);
   const { sides } = useContentLayout();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
@@ -166,15 +168,15 @@ export function ReviewSession() {
         backHidden
         title={
           queue.length > 0 && (phase.kind === 'round' || phase.kind === 'feedback')
-            ? `${Math.min(phase.index + 1, queue.length)} of ${queue.length}`
-            : 'Review'
+            ? t('position', { index: Math.min(phase.index + 1, queue.length), total: queue.length })
+            : t('title')
         }>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon="xmark"
-            accessibilityLabel="Close review"
+            accessibilityLabel={t('closeLabel')}
             onPress={() => router.back()}>
-            Close
+            {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
       </ScreenHeader>
@@ -184,16 +186,16 @@ export function ReviewSession() {
           {phase.kind === 'empty' && (
             <>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                Nothing due for review
+                {t('emptyTitle')}
               </Text>
               <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Memorized verses come back here as their review dates arrive.
+                {t('emptyBody')}
               </Text>
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.back()}
                 style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Done</Text>
+                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
               </Pressable>
             </>
           )}
@@ -201,7 +203,7 @@ export function ReviewSession() {
           {phase.kind === 'round' && queue[phase.index] && (
             <>
               <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Review · {queue[phase.index].reference}
+                {t('roundHeader', { reference: queue[phase.index].reference })}
               </Text>
               {queue[phase.index].mode === 'blanks75' ? (
                 <BlanksRound
@@ -246,7 +248,9 @@ export function ReviewSession() {
           {phase.kind === 'feedback' && (
             <>
               <Text
-                accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
+                accessibilityLabel={t('practice:feedback.accuracyLabel', {
+                  value: Math.round(phase.accuracy * 100),
+                })}
                 style={[
                   styles.accuracy,
                   {
@@ -259,13 +263,11 @@ export function ReviewSession() {
                     fontFamily: fonts?.scripture,
                   },
                 ]}>
-                {Math.round(phase.accuracy * 100)}%
+                {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
               </Text>
               {tone === 'almost' && (
                 <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                  {phase.result.words.length > 0
-                    ? 'Almost — the slipped words are marked below'
-                    : 'Almost'}
+                  {phase.result.words.length > 0 ? t('almostMarked') : t('almost')}
                 </Text>
               )}
               <WordFeedback result={phase.result} tone={tone === 'almost' ? 'almost' : 'error'} />
@@ -273,7 +275,7 @@ export function ReviewSession() {
                 accessibilityRole="button"
                 onPress={advance}
                 style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Continue</Text>
+                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
               </Pressable>
             </>
           )}
@@ -282,16 +284,16 @@ export function ReviewSession() {
             <>
               <Text
                 style={[styles.accuracy, { color: colors.lapis, fontFamily: fonts?.scripture }]}>
-                {Math.round(phase.averageAccuracy * 100)}%
+                {t('common:percent', { value: Math.round(phase.averageAccuracy * 100) })}
               </Text>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {phase.reviewed} {phase.reviewed === 1 ? 'verse' : 'verses'} kept fresh
+                {t('keptFresh', { count: phase.reviewed })}
               </Text>
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.back()}
                 style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Done</Text>
+                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
               </Pressable>
             </>
           )}

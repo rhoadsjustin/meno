@@ -1,6 +1,7 @@
 import { SymbolView } from 'expo-symbols';
 import { Alert, Pressable, StyleSheet, type ColorValue } from 'react-native';
 
+import { t } from '@/i18n';
 import type { DeletePrompt } from '@/services/goals/deletion';
 
 export type DeleteGoalButtonProps = {
@@ -26,7 +27,7 @@ export function DeleteGoalButton({ label, prompt, onConfirm, tint }: DeleteGoalB
       accessibilityLabel={label}
       onPress={() =>
         Alert.alert(prompt.title, prompt.message, [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common:cancel'), style: 'cancel' },
           { text: prompt.confirm, style: 'destructive', onPress: onConfirm },
         ])
       }

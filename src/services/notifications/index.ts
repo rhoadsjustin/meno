@@ -167,7 +167,10 @@ async function applyPlan(state?: PlanState): Promise<void> {
 
 /**
  * Cancels and re-plans everything. Cheap enough to call on every app
- * foreground and after each practice/review session.
+ * foreground and after each practice/review session. Pending notifications
+ * carry their text baked in, so re-planning from scratch is also what moves
+ * them to a new UI language: iOS relaunches Meno on a language change and
+ * the root layout calls this on launch.
  */
 export async function rescheduleAll(): Promise<void> {
   try {

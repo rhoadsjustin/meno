@@ -20,6 +20,8 @@
  * A goal whose chunks are all memorized offers neither: only its final
  * stitch is left, and stopping it would remove nothing.
  */
+import { t } from '@/i18n';
+
 export type DeletionCandidate = { status: string };
 
 const isMemorized = (c: DeletionCandidate) => c.status === 'memorized';
@@ -62,18 +64,16 @@ export type DeletePrompt = {
 
 export function deleteGoalPrompt(goalTitle: string): DeletePrompt {
   return {
-    title: `Delete ${goalTitle}?`,
-    message:
-      'This deletes your practice history for this passage. Your streak and badges stay. You can’t undo this.',
-    confirm: 'Delete passage',
+    title: t('library:remove.delete.title', { title: goalTitle }),
+    message: t('library:remove.delete.message'),
+    confirm: t('library:remove.delete.confirm'),
   };
 }
 
 export function stopGoalPrompt(goalTitle: string): DeletePrompt {
   return {
-    title: `Stop ${goalTitle}?`,
-    message:
-      'The verses you’ve memorized stay on your Memorized shelf and in your reviews. Your practice on the rest of this passage is deleted. You can’t undo this.',
-    confirm: 'Stop passage',
+    title: t('library:remove.stop.title', { title: goalTitle }),
+    message: t('library:remove.stop.message'),
+    confirm: t('library:remove.stop.confirm'),
   };
 }

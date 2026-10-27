@@ -1,6 +1,7 @@
 /** Pure Ref helpers — no React Native imports. */
 import { bookOrder, getBook } from '@/services/bible/canon';
 import type { Ref, RefRange } from '@/services/bible/types';
+import { t } from '@/i18n';
 
 /** Total ordering over canonical references. */
 export function compareRefs(a: Ref, b: Ref): number {
@@ -18,21 +19,30 @@ export function refInRange(ref: Ref, range: RefRange): boolean {
   return compareRefs(range.start, ref) <= 0 && compareRefs(ref, range.end) <= 0;
 }
 
+/**
+ * A book's display name in the UI language ("John", "Juan"). `Book.name`
+ * stays English — it is what translation APIs are queried with.
+ */
+export function bookName(bookId: string): string {
+  const book = getBook(bookId); // throws on unknown book
+  return t(`books:${book.id}` as 'books:Gen');
+}
+
 /** Human-readable reference, e.g. "John 3:16" or "1 Cor 13:4". */
 export function formatRef(ref: Ref): string {
-  return `${getBook(ref.bookId).name} ${ref.chapter}:${ref.verse}`;
+  return `${bookName(ref.bookId)} ${ref.chapter}:${ref.verse}`;
 }
 
 /** Range display, e.g. "Phil 1:1–11" or "John 3:16 – 4:2". */
 export function formatRange(range: RefRange): string {
   const { start, end } = range;
   if (refEquals(start, end)) return formatRef(start);
-  const book = getBook(start.bookId);
+  const name = bookName(start.bookId);
   if (start.bookId === end.bookId) {
     if (start.chapter === end.chapter) {
-      return `${book.name} ${start.chapter}:${start.verse}–${end.verse}`;
+      return `${name} ${start.chapter}:${start.verse}–${end.verse}`;
     }
-    return `${book.name} ${start.chapter}:${start.verse}–${end.chapter}:${end.verse}`;
+    return `${name} ${start.chapter}:${start.verse}–${end.chapter}:${end.verse}`;
   }
   return `${formatRef(start)} – ${formatRef(end)}`;
 }

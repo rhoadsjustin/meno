@@ -1,5 +1,6 @@
 import { Text } from 'react-native';
 
+import { locale } from '@/i18n';
 import { useThemeColors, fonts } from '@/theme';
 
 export type TimeFieldProps = {
@@ -22,7 +23,7 @@ export function TimeField({ hour, minute, accessibilityLabel }: TimeFieldProps) 
     <Text
       accessibilityLabel={accessibilityLabel}
       style={{ color: colors.ink, fontFamily: fonts?.ui, fontSize: 17 }}>
-      {at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+      {at.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })}
     </Text>
   );
 }

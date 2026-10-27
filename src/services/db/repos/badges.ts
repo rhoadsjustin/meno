@@ -8,6 +8,7 @@ import * as Crypto from 'expo-crypto';
 
 import { getBook, getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
+import { t } from '@/i18n';
 import { loadStreak } from '@/services/db/repos/streaks';
 import { memorizedFullChapter, memorizedWholeBook } from '@/services/goals/badge-rules';
 import { tokenize } from '@/services/grading';
@@ -26,20 +27,32 @@ export type BadgeCode =
   | 'word_hoard_5k'
   | 'word_hoard_10k';
 
-export const BADGE_DEFS: { code: BadgeCode; name: string; hint: string }[] = [
-  { code: 'first_verse', name: 'First verse', hint: 'Memorize your first chunk' },
-  { code: 'first_chapter', name: 'First chapter', hint: 'Memorize a full chapter' },
-  { code: 'first_book', name: 'First book', hint: 'Memorize an entire book' },
-  { code: 'perfect_speak', name: 'Word perfect', hint: '100% on a spoken recitation' },
-  { code: 'century_reviews', name: 'Century', hint: 'Complete 100 reviews' },
-  { code: 'dawn_reciter', name: 'Dawn reciter', hint: '10 recite-to-unlock successes' },
-  { code: 'steady_30', name: 'Steady 30', hint: 'A 30-day streak' },
-  { code: 'steady_100', name: 'Steady 100', hint: 'A 100-day streak' },
-  { code: 'steady_365', name: 'Steady 365', hint: 'A full year' },
-  { code: 'word_hoard_1k', name: 'Word hoard I', hint: '1,000 words memorized' },
-  { code: 'word_hoard_5k', name: 'Word hoard II', hint: '5,000 words memorized' },
-  { code: 'word_hoard_10k', name: 'Word hoard III', hint: '10,000 words memorized' },
+/** Every badge, in display order. Names and hints are looked up by code at
+ * display time (stats:badges), so the stored code never carries copy. */
+export const BADGE_CODES: readonly BadgeCode[] = [
+  'first_verse',
+  'first_chapter',
+  'first_book',
+  'perfect_speak',
+  'century_reviews',
+  'dawn_reciter',
+  'steady_30',
+  'steady_100',
+  'steady_365',
+  'word_hoard_1k',
+  'word_hoard_5k',
+  'word_hoard_10k',
 ];
+
+/** The badge's display name in the UI language. */
+export function badgeName(code: BadgeCode): string {
+  return t(`stats:badges.${code}.name`);
+}
+
+/** How to earn the badge, in the UI language. */
+export function badgeHint(code: BadgeCode): string {
+  return t(`stats:badges.${code}.hint`);
+}
 
 export async function earnedBadges(): Promise<Map<string, Date>> {
   const rows = await db.select().from(tables.badges);
