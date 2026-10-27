@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import { describeReminders, type ReminderStatus } from '@/services/notifications';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
@@ -11,6 +12,7 @@ import { useThemeColors, fonts, spacing } from '@/theme';
  */
 export function ReminderStatusList({ status }: { status: ReminderStatus }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('notifications');
   const lines = describeReminders(status, { now: new Date() });
   return (
     <View style={styles.list}>
@@ -26,7 +28,7 @@ export function ReminderStatusList({ status }: { status: ReminderStatus }) {
           <View
             key={line.kind}
             accessible
-            accessibilityLabel={`${line.title}. ${line.detail}`}
+            accessibilityLabel={t('status.lineLabel', { title: line.title, detail: line.detail })}
             style={styles.line}>
             <Text
               style={[styles.mark, { color: markColor, fontFamily: fonts?.ui }]}

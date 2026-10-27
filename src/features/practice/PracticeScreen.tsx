@@ -11,6 +11,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card } from '@/components/card';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
+import { t as translate } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage, getTranslation } from '@/services/bible';
@@ -42,7 +44,7 @@ import {
   REST_TIER,
   retryTier,
   startSession,
-  tierDef,
+  tierName,
   topTierStanding,
   type SessionState,
   type TopTierStanding,
@@ -108,6 +110,7 @@ export function PracticeScreen({
   chunkId?: string;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation(['practice', 'common']);
   // Extra-wide windows (iPhone Duo opened in its landscape pose, iPad): the
   // round keeps its reading column and a context rail sits beside it —
   // reference, chunk progress, ladder. Narrower windows keep one column so
@@ -135,7 +138,7 @@ export function PracticeScreen({
 
   const load = useCallback(async () => {
     const g = await getGoal(goalId);
-    if (!g) throw new Error('Goal not found');
+    if (!g) throw new Error(translate('practice:errors.goalNotFound'));
     const { plan, chunks } = await practicePlan(goalId);
     setTotalChunks(chunks.length);
     // A requested chunk is honoured only while it has something to do today.
@@ -147,7 +150,7 @@ export function PracticeScreen({
     const step = requested ?? plan.next;
     const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
     if (!step || !c) {
-      setPhase({ kind: 'error', message: 'Every chunk in this passage is memorized. Well done.' });
+      setPhase({ kind: 'error', message: translate('practice:errors.allMemorized') });
       setGoal(g);
       return;
     }
@@ -377,10 +380,8 @@ export function PracticeScreen({
   const forgiven =
     phase.kind === 'feedback' && phase.band === 'pass' && phase.accuracy < 1
       ? phase.slips === null
-        ? 'a slip forgiven'
-        : phase.slips === 1
-          ? 'one slip forgiven'
-          : `${phase.slips} slips forgiven`
+        ? t('feedback.slipForgiven')
+        : t('feedback.slipsForgiven', { count: phase.slips })
       : null;
 
   // The round itself; on extra-wide windows it shares the row with the rail.
@@ -400,7 +401,7 @@ export function PracticeScreen({
             accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
+            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
           </Pressable>
         </>
       )}
@@ -408,17 +409,16 @@ export function PracticeScreen({
       {phase.kind === 'sealsTomorrow' && (
         <>
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            {reference} is one day from sealed
+            {t('restingTitle', { reference })}
           </Text>
           <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            You have already cleared Speak today. Memorized takes a clean pass on two separate days,
-            so this one rests until tomorrow.
+            {t('restingBody', { tier: tierName(6) })}
           </Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
+            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
           </Pressable>
         </>
       )}
@@ -427,13 +427,13 @@ export function PracticeScreen({
         <>
           <LadderProgress progress={ladderProgress(session)} current />
           <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {reference} · {tierDef(session.tier).name}
+            {t('round.header', { reference, tier: tierName(session.tier) })}
           </Text>
           {/* Type seals as well as Speak (03 §1), so a session rebuilt one
               tier down still says so; lower than that it cannot. */}
           {sealing && session.tier >= 5 && (
             <Text style={[styles.sealNote, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Sealing {reference} · one clean pass makes it memorized
+              {t('round.sealingNote', { reference })}
             </Text>
           )}
           <RoundBody
@@ -454,7 +454,9 @@ export function PracticeScreen({
             current={false}
           />
           <Text
-            accessibilityLabel={`Accuracy ${Math.round(phase.accuracy * 100)} percent`}
+            accessibilityLabel={t('feedback.accuracyLabel', {
+              value: Math.round(phase.accuracy * 100),
+            })}
             style={[
               styles.accuracy,
               short && styles.accuracyShort,
@@ -471,7 +473,7 @@ export function PracticeScreen({
                 fontFamily: fonts?.scripture,
               },
             ]}>
-            {Math.round(phase.accuracy * 100)}%
+            {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
           </Text>
           {/* The dissolve marks a clean clear; an almost shows its slips. */}
           {phase.tierCleared && !almost && (
@@ -484,59 +486,55 @@ export function PracticeScreen({
           )}
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {phase.memorized
-              ? 'Memorized'
+              ? t('feedback.memorized')
               : almost
                 ? phase.needsCleanPass
-                  ? 'Almost — not a clean pass yet'
+                  ? t('feedback.almostNotClean')
                   : phase.result
-                    ? 'Almost — the slipped words are marked below'
-                    : 'Almost — close enough to move on'
+                    ? t('feedback.almostMarked')
+                    : t('feedback.almostMoveOn')
                 : phase.tierCleared
-                  ? `${tierDef(session.tier).name} cleared${forgiven ? `, ${forgiven}` : ''}`
+                  ? forgiven
+                    ? t('feedback.tierClearedForgiven', { tier: tierName(session.tier), forgiven })
+                    : t('feedback.tierCleared', { tier: tierName(session.tier) })
                   : phase.passed
                     ? forgiven
-                      ? `Passed, ${forgiven}`
-                      : 'Round passed'
+                      ? t('feedback.passedForgiven', { forgiven })
+                      : t('feedback.roundPassed')
                     : phase.result
-                      ? 'Not quite — the slipped words are marked below'
-                      : 'Not quite — try this round again'}
+                      ? t('feedback.notQuiteMarked')
+                      : t('feedback.notQuiteRetry')}
           </Text>
           {phase.result && (almost || !phase.tierCleared) && (
             <WordFeedback result={phase.result} tone={almost ? 'almost' : 'error'} />
           )}
           {phase.sealsTomorrow && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {almost
-                ? 'Your clean pass from earlier today is still banked.'
-                : 'That is today’s pass banked.'}{' '}
-              Memorized takes a clean pass on two separate days — come back tomorrow and this one is
-              sealed.
+              {almost ? t('feedback.sealsTomorrowAlmost') : t('feedback.sealsTomorrowPass')}
             </Text>
           )}
           {phase.needsCleanPass && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              That was close, but it does not count toward Memorized: sealing {reference} takes a
-              clean recitation on two separate days, and today’s is not banked yet. Try it again
-              now, or stop here and come back to it.
+              {t('feedback.needsCleanPass', { reference })}
             </Text>
           )}
           {almostAtType && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Close enough to move on to {tierDef(nextTier(session.tier)).name}. It does not count
-              toward Memorized, though — that takes a clean pass on two separate days.
+              {t('feedback.almostAtType', { tier: tierName(nextTier(session.tier)) })}
             </Text>
           )}
           {phase.restPoint && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              This is a good place to stop for today. {tierDef(REST_TIER + 1).name},{' '}
-              {tierDef(REST_TIER + 2).name} and {tierDef(REST_TIER + 3).name} will be waiting — or
-              keep going if you have the time.
+              {t('feedback.restPoint', {
+                first: tierName(REST_TIER + 1),
+                second: tierName(REST_TIER + 2),
+                third: tierName(REST_TIER + 3),
+              })}
             </Text>
           )}
           {phase.suggestDropTier && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Want to rebuild the foundation? Drop back a tier — no penalty, and{' '}
-              {tierDef(session.tier).name} will be waiting when you come back up.
+              {t('feedback.suggestDrop', { tier: tierName(session.tier) })}
             </Text>
           )}
           <Pressable
@@ -549,22 +547,22 @@ export function PracticeScreen({
             ]}>
             <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
               {phase.sealsTomorrow
-                ? 'Finish'
+                ? t('feedback.finish')
                 : phase.needsCleanPass
-                  ? 'Try again'
+                  ? t('common:retry')
                   : phase.restPoint
-                    ? 'Done for today'
+                    ? t('feedback.doneForToday')
                     : phase.tierCleared
-                      ? 'Continue'
+                      ? t('common:continue')
                       : phase.passed
-                        ? 'Next round'
-                        : 'Try again'}
+                        ? t('feedback.nextRound')
+                        : t('common:retry')}
             </Text>
           </Pressable>
           {phase.restPoint && (
             <Pressable
               accessibilityRole="button"
-              accessibilityHint={`Carries on to ${tierDef(REST_TIER + 1).name}`}
+              accessibilityHint={t('feedback.keepGoingHint', { tier: tierName(REST_TIER + 1) })}
               onPress={() => void continueSession()}
               style={styles.secondaryButton}>
               <Text
@@ -572,14 +570,14 @@ export function PracticeScreen({
                   styles.secondaryButtonText,
                   { color: colors.lapis, fontFamily: fonts?.ui },
                 ]}>
-                Keep going
+                {t('feedback.keepGoing')}
               </Text>
             </Pressable>
           )}
           {phase.needsCleanPass && (
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="Ends the session; Speak will be waiting next time"
+              accessibilityHint={t('feedback.stopForTodayHint', { tier: tierName(6) })}
               onPress={() => void finishSession()}
               style={styles.secondaryButton}>
               <Text
@@ -587,14 +585,14 @@ export function PracticeScreen({
                   styles.secondaryButtonText,
                   { color: colors.lapis, fontFamily: fonts?.ui },
                 ]}>
-                Stop for today
+                {t('feedback.stopForToday')}
               </Text>
             </Pressable>
           )}
           {phase.suggestDropTier && (
             <Pressable
               accessibilityRole="button"
-              accessibilityHint="Rebuilds this chunk one tier lower; your progress is kept"
+              accessibilityHint={t('feedback.rebuildHint')}
               onPress={() => void dropToLowerTier()}
               style={styles.secondaryButton}>
               <Text
@@ -602,7 +600,7 @@ export function PracticeScreen({
                   styles.secondaryButtonText,
                   { color: colors.lapis, fontFamily: fonts?.ui },
                 ]}>
-                Rebuild at {tierDef(Math.max(0, session.tier - 1)).name}
+                {t('feedback.rebuildAt', { tier: tierName(Math.max(0, session.tier - 1)) })}
               </Text>
             </Pressable>
           )}
@@ -629,13 +627,13 @@ export function PracticeScreen({
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       {/* Native bar: Close at the top of the vertical axis. Progress lives in
           the content, where a bar spanning the whole ladder has room. */}
-      <ScreenHeader backHidden title="Practice">
+      <ScreenHeader backHidden title={t('title')}>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon="xmark"
-            accessibilityLabel="Close practice (your progress is saved)"
+            accessibilityLabel={t('closeLabel')}
             onPress={() => router.back()}>
-            Close
+            {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
       </ScreenHeader>
@@ -775,6 +773,7 @@ function SessionSummary({
   showLadder: boolean;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation(['practice', 'common']);
   const steps = log.filter((r) => r.passed).length;
   const graded = log.filter((r) => r.accuracy !== null);
   const accuracy =
@@ -782,15 +781,17 @@ function SessionSummary({
       ? Math.round((graded.reduce((n, r) => n + (r.accuracy ?? 0), 0) / graded.length) * 100)
       : null;
   const stats: { label: string; value: string }[] = [
-    { label: steps === 1 ? 'Step done' : 'Steps done', value: String(steps) },
-    ...(accuracy === null ? [] : [{ label: 'Accuracy', value: `${accuracy}%` }]),
-    ...(streak > 0 ? [{ label: 'Day streak', value: String(streak) }] : []),
+    { label: t('summary.stepsDone', { count: steps }), value: String(steps) },
+    ...(accuracy === null
+      ? []
+      : [{ label: t('summary.accuracy'), value: t('common:percent', { value: accuracy }) }]),
+    ...(streak > 0 ? [{ label: t('summary.dayStreak'), value: String(streak) }] : []),
   ];
 
   return (
     <>
       <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        {memorized ? `${reference} is memorized` : 'Done for today'}
+        {memorized ? t('summary.memorized', { reference }) : t('feedback.doneForToday')}
       </Text>
       <View style={styles.summaryStats}>
         {stats.map((stat) => (
@@ -817,19 +818,19 @@ function SessionSummary({
       {!memorized && (
         <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {sealsTomorrow
-            ? 'Next: one clean recitation tomorrow seals it as memorized.'
+            ? t('summary.sealsTomorrow')
             : needsCleanPass
               ? // Every rung reads cleared, so say what is still missing: the
                 // almost moved the verse up, it did not count toward Memorized.
-                `Every step is done, but ${reference} is not sealed yet: the last recitation was close, not clean. Next time you pick up at ${tierDef(nextTier(standing)).name} — only a clean recitation counts toward Memorized.`
-              : `Next time you pick up at ${tierDef(nextTier(standing)).name}.`}
+                t('summary.needsCleanPass', { reference, tier: tierName(nextTier(standing)) })
+              : t('summary.pickUp', { tier: tierName(nextTier(standing)) })}
         </Text>
       )}
       <Pressable
         accessibilityRole="button"
         onPress={() => router.back()}
         style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>Done</Text>
+        <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
       </Pressable>
     </>
   );

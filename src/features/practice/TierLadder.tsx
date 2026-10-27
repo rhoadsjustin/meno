@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import { TIERS } from '@/services/practice';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
@@ -21,23 +22,24 @@ export function TierLadder({
   current?: number;
 }) {
   const colors = useThemeColors();
-  const summary = TIERS.map((t) =>
-    t.tier <= highestCleared
-      ? `${t.name} cleared`
-      : t.tier === current
-        ? `${t.name} in progress`
-        : `${t.name} ahead`,
+  const { t } = useTranslation('practice');
+  const summary = TIERS.map((d) =>
+    d.tier <= highestCleared
+      ? t('ladder.cleared', { tier: d.name })
+      : d.tier === current
+        ? t('ladder.inProgress', { tier: d.name })
+        : t('ladder.ahead', { tier: d.name }),
   ).join(', ');
 
   return (
     // One element: read rung by rung, VoiceOver would say the names and
     // drop which are cleared — the dots carry that, and they are silent.
-    <View accessible accessibilityLabel={`Ladder: ${summary}`} style={styles.ladder}>
-      {TIERS.map((t) => {
-        const cleared = t.tier <= highestCleared;
-        const active = !cleared && t.tier === current;
+    <View accessible accessibilityLabel={t('ladder.label', { summary })} style={styles.ladder}>
+      {TIERS.map((d) => {
+        const cleared = d.tier <= highestCleared;
+        const active = !cleared && d.tier === current;
         return (
-          <View key={t.tier} style={styles.rung}>
+          <View key={d.tier} style={styles.rung}>
             <View
               style={[
                 styles.dot,
@@ -57,7 +59,7 @@ export function TierLadder({
                   fontWeight: active ? '600' : '400',
                 },
               ]}>
-              {t.name}
+              {d.name}
             </Text>
           </View>
         );

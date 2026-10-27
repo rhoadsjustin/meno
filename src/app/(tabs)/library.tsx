@@ -7,6 +7,8 @@ import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
+import { t } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import { formatRange, getTranslation } from '@/services/bible';
 import { shareGoalChallenge } from '@/services/challenges';
 import {
@@ -26,6 +28,7 @@ type GoalWithChunks = { goal: Goal; chunks: Chunk[] };
 
 export default function LibraryScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['library', 'app']);
   // Wide windows (iPhone Duo opened, Split View) show both shelves side by
   // side — In progress on the left, Memorized on the right — instead of the
   // segmented control (HIG: show the next level of hierarchy when it fits).
@@ -73,12 +76,12 @@ export default function LibraryScreen() {
       void Haptics.selectionAsync();
       try {
         await showGoalOnWidgets(goal.id);
-        AccessibilityInfo.announceForAccessibility(`${goal.title} is now on your widgets.`);
+        AccessibilityInfo.announceForAccessibility(t('nowOnWidgets', { title: goal.title }));
       } finally {
         await load(() => false);
       }
     },
-    [load],
+    [load, t],
   );
 
   const active = items.filter(({ goal }) => goal.status === 'active');
@@ -107,14 +110,22 @@ export default function LibraryScreen() {
                 {goal.title}
               </Text>
               <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {getTranslation(goal.translationId).abbrev} ·{' '}
-                {chunks.filter((c) => c.status === 'memorized').length} of {chunks.length} chunks
-                memorized
+                {t('goal.summary', {
+                  translation: getTranslation(goal.translationId).abbrev,
+                  done: chunks.filter((c) => c.status === 'memorized').length,
+                  count: chunks.length,
+                })}
               </Text>
               <View
                 style={styles.heatmap}
                 accessible
-                accessibilityLabel={`Chunk progress for ${goal.title}: ${chunks.filter((c) => c.status === 'memorized').length} memorized, ${chunks.filter((c) => c.status === 'learning' || c.status === 'active').length} in progress, ${chunks.filter((c) => c.status === 'locked').length} not started`}>
+                accessibilityLabel={t('goal.heatmap', {
+                  title: goal.title,
+                  memorized: chunks.filter((c) => c.status === 'memorized').length,
+                  learning: chunks.filter((c) => c.status === 'learning' || c.status === 'active')
+                    .length,
+                  locked: chunks.filter((c) => c.status === 'locked').length,
+                })}>
                 {chunks.map((c) => (
                   <View
                     key={c.id}
@@ -132,12 +143,12 @@ export default function LibraryScreen() {
                       styles.practiceLinkText,
                       { color: colors.lapis, fontFamily: fonts?.ui },
                     ]}>
-                    Practice
+                    {t('goal.practice')}
                   </Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Share ${goal.title} as a challenge`}
+                  accessibilityLabel={t('goal.shareSpoken', { title: goal.title })}
                   onPress={() => shareGoalChallenge(goal).catch(() => {})}
                   style={[styles.practiceLink]}>
                   <Text
@@ -145,7 +156,7 @@ export default function LibraryScreen() {
                       styles.practiceLinkText,
                       { color: colors.lapis, fontFamily: fonts?.ui },
                     ]}>
-                    Share challenge
+                    {t('goal.share')}
                   </Text>
                 </Pressable>
                 {activeCount > 1 &&
@@ -156,12 +167,12 @@ export default function LibraryScreen() {
                         styles.focusNote,
                         { color: colors.inkFaint, fontFamily: fonts?.ui },
                       ]}>
-                      On your widgets
+                      {t('goal.onWidgets')}
                     </Text>
                   ) : (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`Show ${goal.title} on your widgets`}
+                      accessibilityLabel={t('goal.showOnWidgetsSpoken', { title: goal.title })}
                       onPress={() => void showOnWidgets(goal)}
                       style={[styles.practiceLink]}>
                       <Text
@@ -169,7 +180,7 @@ export default function LibraryScreen() {
                           styles.practiceLinkText,
                           { color: colors.lapis, fontFamily: fonts?.ui },
                         ]}>
-                        Show on widgets
+                        {t('goal.showOnWidgets')}
                       </Text>
                     </Pressable>
                   ))}
@@ -181,10 +192,10 @@ export default function LibraryScreen() {
       {loaded && active.length === 0 && (
         <Card>
           <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            No passages yet
+            {t('emptyInProgressTitle')}
           </Text>
           <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Your passages in progress will live here.
+            {t('emptyInProgressBody')}
           </Text>
         </Card>
       )}
@@ -194,7 +205,7 @@ export default function LibraryScreen() {
           onPress={() => router.push('/goal-wizard')}
           style={[styles.newGoal, { borderColor: colors.lapis }]}>
           <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {active.length > 0 ? '+ Practice another passage' : 'Choose a passage'}
+            {active.length > 0 ? t('practiceAnother') : t('choosePassage')}
           </Text>
         </Pressable>
       )}
@@ -232,8 +243,10 @@ export default function LibraryScreen() {
                     })}
                   </Text>
                   <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                    {getTranslation(goal.translationId).abbrev} ·{' '}
-                    {healthLabel(healthByChunk[chunk.id] ?? 'fresh')}
+                    {t('memorizedDetail', {
+                      translation: getTranslation(goal.translationId).abbrev,
+                      health: healthLabel(healthByChunk[chunk.id] ?? 'fresh'),
+                    })}
                   </Text>
                 </View>
               </View>
@@ -244,10 +257,10 @@ export default function LibraryScreen() {
       {loaded && memorizedChunks.length === 0 && (
         <Card>
           <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            Nothing memorized yet
+            {t('emptyMemorizedTitle')}
           </Text>
           <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Chunks you’ve fully hidden in your heart appear here, with their health.
+            {t('emptyMemorizedBody')}
           </Text>
         </Card>
       )}
@@ -255,15 +268,15 @@ export default function LibraryScreen() {
   );
 
   return (
-    <Screen title="Library" wide>
+    <Screen title={t('app:tabs.library')} wide>
       {isWide ? (
         <FoldAwareRow>
           <>
-            {header('In progress')}
+            {header(t('inProgress'))}
             {inProgress}
           </>
           <>
-            {header('Memorized')}
+            {header(t('memorized'))}
             {memorized}
           </>
         </FoldAwareRow>
@@ -272,8 +285,8 @@ export default function LibraryScreen() {
           <View style={[styles.segmented, { backgroundColor: colors.lapisWash }]}>
             {(
               [
-                ['inProgress', 'In progress'],
-                ['memorized', 'Memorized'],
+                ['inProgress', t('inProgress')],
+                ['memorized', t('memorized')],
               ] as const
             ).map(([value, label]) => {
               const selected = segment === value;
@@ -308,16 +321,20 @@ function healthColor(health: Health, colors: ThemeColors): string {
 }
 
 function healthLabel(health: Health): string {
-  return health === 'fresh' ? 'fresh' : health === 'fading' ? 'fading' : 'at risk';
+  return health === 'fresh'
+    ? t('library:health.fresh')
+    : health === 'fading'
+      ? t('library:health.fading')
+      : t('library:health.atRisk');
 }
 
 /** lapisWash → lapis by tier; gold when memorized (docs/07 §6). */
 function cellColor(chunk: Chunk, colors: ThemeColors): string {
   if (chunk.status === 'memorized') return colors.gold;
   if (chunk.status === 'locked') return colors.separator;
-  const t = Math.min(chunk.tier, 5) / 5;
+  const level = Math.min(chunk.tier, 5) / 5;
   // Blend lapisWash → lapis in 6 steps via opacity layering approximation.
-  return t < 0.2 ? colors.lapisWash : t < 0.6 ? `${colors.lapis}88` : colors.lapis;
+  return level < 0.2 ? colors.lapisWash : level < 0.6 ? `${colors.lapis}88` : colors.lapis;
 }
 
 const styles = StyleSheet.create({

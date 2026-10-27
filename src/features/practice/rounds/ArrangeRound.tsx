@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import { buildArrangeRound, gradeArrangement, isPlacementCorrect } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
@@ -20,6 +21,7 @@ export function ArrangeRound({
   onDone: (outcome: { accuracy: number; unitCount: number; missedWords: string[] }) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const round = useMemo(
     () => buildArrangeRound(text, chunkId, attemptNo),
     [text, chunkId, attemptNo]
@@ -52,15 +54,15 @@ export function ArrangeRound({
       <View style={[styles.answerArea, { borderColor: colors.separator }]}>
         {placed.length === 0 && (
           <Text style={[styles.placeholder, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Tap the phrases in order
+            {t('arrange.placeholder')}
           </Text>
         )}
         {placed.map((tile, i) => (
           <Pressable
             key={`${tile}-${i}`}
             accessibilityRole="button"
-            accessibilityLabel={`Position ${i + 1}: ${round.phrases[tile]}`}
-            accessibilityHint="Double-tap to remove this phrase"
+            accessibilityLabel={t('arrange.placed', { position: i + 1, phrase: round.phrases[tile] })}
+            accessibilityHint={t('arrange.placedHint')}
             onPress={() => unplace(i)}
             style={[styles.tile, { backgroundColor: colors.lapisWash, borderColor: colors.lapis }]}>
             <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>
@@ -75,8 +77,8 @@ export function ArrangeRound({
           <Pressable
             key={tile}
             accessibilityRole="button"
-            accessibilityLabel={`Phrase: ${round.phrases[tile]}`}
-            accessibilityHint="Double-tap to place this phrase next"
+            accessibilityLabel={t('arrange.phrase', { phrase: round.phrases[tile] })}
+            accessibilityHint={t('arrange.phraseHint')}
             onPress={() => place(tile)}
             style={[styles.tile, { backgroundColor: colors.surfaceRaised, borderColor: colors.separator }]}>
             <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>
@@ -91,7 +93,7 @@ export function ArrangeRound({
           accessibilityRole="button"
           onPress={submit}
           style={[styles.button, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Check order</Text>
+          <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('arrange.check')}</Text>
         </Pressable>
       )}
     </>

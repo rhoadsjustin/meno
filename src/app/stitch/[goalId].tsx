@@ -10,6 +10,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { ScreenHeader } from '@/components/screen-header';
+import { t as translate } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { getGoal } from '@/services/db/repos/goals';
@@ -36,6 +38,7 @@ type Phase =
 export default function StitchRoute() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
   const colors = useThemeColors();
+  const { t } = useTranslation(['stitch', 'common']);
   const { sides } = useContentLayout();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [data, setData] = useState<{
@@ -51,9 +54,9 @@ export default function StitchRoute() {
     void (async () => {
       try {
         const goal = await getGoal(goalId);
-        if (!goal) throw new Error('Goal not found');
+        if (!goal) throw new Error(translate('practice:errors.goalNotFound'));
         const plan = await stitchPlan(goalId);
-        if (plan.chunks.length < 2) throw new Error('Nothing to stitch yet');
+        if (plan.chunks.length < 2) throw new Error(translate('stitch:nothingYet'));
         const first = plan.chunks[0];
         const last = plan.chunks[plan.chunks.length - 1];
         const range = {
@@ -118,13 +121,13 @@ export default function StitchRoute() {
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       {/* Native bar: Close, titled Stitch. */}
-      <ScreenHeader backHidden title="Stitch">
+      <ScreenHeader backHidden title={t('title')}>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon="xmark"
-            accessibilityLabel="Close"
+            accessibilityLabel={t('common:close')}
             onPress={() => router.back()}>
-            Close
+            {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
       </ScreenHeader>
@@ -140,7 +143,7 @@ export default function StitchRoute() {
           {phase.kind === 'quiz' && data && (
             <>
               <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Stitch it together — recite everything you’ve learned so far as one passage.
+                {t('intro')}
               </Text>
               <SpeakRound
                 text={data.text}
@@ -165,7 +168,7 @@ export default function StitchRoute() {
                     fontFamily: fonts?.scripture,
                   },
                 ]}>
-                {Math.round(phase.accuracy * 100)}%
+                {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
               </Text>
               <Text
                 style={[
@@ -173,10 +176,10 @@ export default function StitchRoute() {
                   { color: phase.goalCompleted ? colors.gold : colors.ink, fontFamily: fonts?.ui },
                 ]}>
                 {phase.goalCompleted
-                  ? 'The whole passage is hidden in your heart.'
+                  ? t('goalCompleted')
                   : phase.passed
-                    ? 'Stitched — it holds together.'
-                    : 'A few seams slipped — they’re marked below.'}
+                    ? t('passed')
+                    : t('failed')}
               </Text>
               <WordFeedback result={phase.result} />
               <Pressable
@@ -184,13 +187,13 @@ export default function StitchRoute() {
                 onPress={() => (phase.passed ? router.back() : setPhase({ kind: 'quiz' }))}
                 style={[styles.primary, { backgroundColor: colors.lapis }]}>
                 <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                  {phase.passed ? 'Done' : 'Try again'}
+                  {phase.passed ? t('common:done') : t('common:retry')}
                 </Text>
               </Pressable>
               {!phase.passed && (
                 <Pressable accessibilityRole="button" onPress={() => router.back()}>
                   <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                    Later
+                    {t('later')}
                   </Text>
                 </Pressable>
               )}

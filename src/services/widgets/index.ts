@@ -11,8 +11,13 @@
  *
  * License rule (02 §5): verse text only ships to the widget for
  * translations whose license permits persisting text.
+ *
+ * The widget runtime can't load the i18n catalogs either, so its copy is
+ * rendered here in the UI language and shipped as props (`withCopy`).
  */
 import { Platform } from 'react-native';
+
+import { t } from '@/i18n';
 
 import { formatRange, getPassage, getTranslation, mayPersistText } from '@/services/bible';
 import { activeGoal, currentChunk, setFocusGoalId } from '@/services/db/repos/goals';
@@ -25,14 +30,35 @@ import { eq } from 'drizzle-orm';
 
 import type { MenoWidgetProps } from '@/widgets/MenoWidget';
 
-async function buildProps(): Promise<MenoWidgetProps> {
+type WidgetCopy =
+  | 'streakUnitLabel'
+  | 'streakCaption'
+  | 'dueBadge'
+  | 'referenceNote'
+  | 'emptyPrompt'
+  | 'dueLine';
+
+/** Fills in the widget's localized copy from the data fields. */
+function withCopy(props: Omit<MenoWidgetProps, WidgetCopy>): MenoWidgetProps {
+  return {
+    ...props,
+    streakUnitLabel: t('widgets:streakUnit', { count: props.streak }),
+    streakCaption: t('widgets:streakCaption', { count: props.streak }),
+    dueBadge: t('widgets:dueBadge', { count: props.dueCount }),
+    referenceNote: props.memorized ? t('widgets:memorizedNote') : t('widgets:fromMemoryNote'),
+    emptyPrompt: t('widgets:emptyPrompt'),
+    dueLine: props.dueRefs ? t('widgets:dueList', { refs: props.dueRefs }) : t('widgets:nothingDue'),
+  };
+}
+
+async function buildProps(): Promise<Omit<MenoWidgetProps, WidgetCopy>> {
   const [streak, dueCount, stats] = await Promise.all([
     currentStreakDisplay(),
     countDueReviews(),
     loadStats(1),
   ]);
 
-  const base: MenoWidgetProps = {
+  const base: Omit<MenoWidgetProps, WidgetCopy> = {
     ...emptyTextVariants(),
     verseRef: '',
     autoMode: 'full',
@@ -115,7 +141,7 @@ export async function publishWidgetSnapshot(): Promise<void> {
   publishing = true;
   try {
     const { default: MenoWidget } = await import('@/widgets/MenoWidget');
-    const props = await buildProps();
+    const props = withCopy(await buildProps());
     const midnight = new Date();
     midnight.setDate(midnight.getDate() + 1);
     midnight.setHours(0, 5, 0, 0);

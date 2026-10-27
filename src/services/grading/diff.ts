@@ -1,8 +1,10 @@
 /**
  * Token-level alignment and scoring (docs/03-memory-engine.md §3).
  * Levenshtein over word tokens; substitutions with high character similarity
- * count as typos at half weight.
+ * count as typos at half weight. Scoring is language-agnostic; only the
+ * VoiceOver summary below is UI copy.
  */
+import { t } from '@/i18n';
 
 export type WordTag = 'correct' | 'typo' | 'wrong' | 'missed';
 
@@ -72,7 +74,7 @@ const TYPO_WEIGHT = 0.5;
 export function gradeTokens(
   reference: string[],
   input: string[],
-  isEquivalent: (expected: string, said: string) => boolean = (e, s) => e === s
+  isEquivalent: (expected: string, said: string) => boolean = (e, s) => e === s,
 ): GradeResult {
   const m = reference.length;
   const n = input.length;
@@ -257,7 +259,7 @@ export function gradeBand(threshold: number, accuracy: number, unitCount: number
 export function gradeBandAtLine(
   passAccuracy: number,
   accuracy: number,
-  unitCount: number
+  unitCount: number,
 ): RoundBand {
   if (accuracy >= passAccuracy) return 'pass';
   return accuracy >= almostThresholdFor(passAccuracy, unitCount) - 1e-9 ? 'almost' : 'miss';
@@ -280,21 +282,24 @@ export function feedbackSummary(result: GradeResult): string {
   const missed = list('missed');
   const wrong = result.words
     .filter((w) => w.tag === 'wrong')
-    .map((w) => (w.said ? `${w.word}, you had ${w.said}` : w.word));
+    .map((w) =>
+      w.said ? t('practice:spokenFeedback.wrongSaid', { word: w.word, said: w.said }) : w.word,
+    );
   const typos = list('typo');
   const extras = result.insertions.map((i) => i.word);
-  if (missed.length > 0) parts.push(`Missed: ${missed.join(', ')}.`);
-  if (wrong.length > 0) parts.push(`Wrong: ${wrong.join('; ')}.`);
-  if (typos.length > 0) parts.push(`Close: ${typos.join(', ')}.`);
-  if (extras.length > 0) parts.push(`Added, not in the verse: ${extras.join(', ')}.`);
-  return parts.length > 0 ? parts.join(' ') : 'Every word correct.';
+  if (missed.length > 0)
+    parts.push(t('practice:spokenFeedback.missed', { words: missed.join(', ') }));
+  if (wrong.length > 0) parts.push(t('practice:spokenFeedback.wrong', { words: wrong.join('; ') }));
+  if (typos.length > 0) parts.push(t('practice:spokenFeedback.close', { words: typos.join(', ') }));
+  if (extras.length > 0)
+    parts.push(t('practice:spokenFeedback.added', { words: extras.join(', ') }));
+  return parts.length > 0 ? parts.join(' ') : t('practice:spokenFeedback.allCorrect');
 }
 
 /** One mark in the word-by-word feedback: a reference word with its tag, or
  * a word the user added that the verse does not have. */
 export type FeedbackToken =
-  | { kind: 'word'; word: GradedWord }
-  | { kind: 'extra'; word: string; key: string };
+  { kind: 'word'; word: GradedWord } | { kind: 'extra'; word: string; key: string };
 
 /**
  * The reference words and the user's extra words in the order they were

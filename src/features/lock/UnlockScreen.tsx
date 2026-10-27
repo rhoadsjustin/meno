@@ -9,6 +9,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { t as translate } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
 import { activeGoal, chunksForGoal, currentChunk, type Chunk } from '@/services/db/repos/goals';
 import { loadLockConfig, recordLockEvent } from '@/services/db/repos/lock';
@@ -31,6 +33,7 @@ type Phase =
 
 export function UnlockScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['lock', 'common']);
   const { insets, sides } = useContentLayout();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
 
@@ -48,7 +51,7 @@ export function UnlockScreen() {
       try {
         const config = await loadLockConfig();
         const goal = await activeGoal();
-        if (!goal) throw new Error('No active goal');
+        if (!goal) throw new Error(translate('lock:unlock.errorNoGoal'));
         // Verse source (04 §1.3): current chunk, or a random memorized one;
         // fall back to the current chunk when nothing is memorized (04 §7).
         let chunk: Chunk | null = null;
@@ -59,7 +62,7 @@ export function UnlockScreen() {
           }
         }
         chunk ??= (await currentChunk(goal.id)) ?? null;
-        if (!chunk) throw new Error('Nothing to recite yet');
+        if (!chunk) throw new Error(translate('lock:unlock.errorNothingToRecite'));
         const range = {
           start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
           end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
@@ -137,7 +140,7 @@ export function UnlockScreen() {
               {phase.message}
             </Text>
             <Pressable accessibilityRole="button" onPress={() => void override()} style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Unlock anyway</Text>
+              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('unlock.unlockAnyway')}</Text>
             </Pressable>
           </>
         )}
@@ -155,17 +158,17 @@ export function UnlockScreen() {
         {phase.kind === 'failed' && (
           <>
             <Text style={[styles.accuracy, { color: colors.error, fontFamily: fonts?.scripture }]}>
-              {Math.round(phase.accuracy * 100)}%
+              {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Close — a few words slipped. {phase.attempt === 1 ? 'One more go?' : ''}
+              {phase.attempt === 1 ? t('unlock.missedRetry') : t('unlock.missedFinal')}
             </Text>
             {phase.attempt === 1 ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setPhase({ kind: 'quiz', attempt: 2 })}
                 style={[styles.primary, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Try again</Text>
+                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:retry')}</Text>
               </Pressable>
             ) : (
               // After a second miss, Override is the prominent path —
@@ -174,13 +177,13 @@ export function UnlockScreen() {
                 accessibilityRole="button"
                 onPress={() => void override()}
                 style={[styles.primary, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>Unlock anyway</Text>
+                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('unlock.unlockAnyway')}</Text>
               </Pressable>
             )}
             {phase.attempt === 2 && (
               <Pressable accessibilityRole="button" onPress={() => setPhase({ kind: 'quiz', attempt: 3 })}>
                 <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                  Keep trying
+                  {t('unlock.keepTrying')}
                 </Text>
               </Pressable>
             )}
@@ -190,10 +193,10 @@ export function UnlockScreen() {
         {phase.kind === 'success' && (
           <>
             <Text style={[styles.accuracy, { color: colors.gold, fontFamily: fonts?.scripture }]}>
-              {Math.round(phase.accuracy * 100)}%
+              {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
             </Text>
             <Text style={[styles.body, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              The Word remains in you. Carry on.
+              {t('unlock.success')}
             </Text>
           </>
         )}
@@ -202,7 +205,7 @@ export function UnlockScreen() {
       {(phase.kind === 'quiz' || phase.kind === 'error') && (
         <Pressable accessibilityRole="button" onPress={() => void override()} style={styles.override}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Override
+            {t('unlock.override')}
           </Text>
         </Pressable>
       )}

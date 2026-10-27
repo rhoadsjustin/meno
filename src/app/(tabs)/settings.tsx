@@ -9,6 +9,8 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { TimeField } from '@/components/time-field';
 import { HelpGuide } from '@/features/help/HelpGuide';
+import { locale } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { availableTranslations } from '@/services/bible';
@@ -29,6 +31,7 @@ type Detail = 'guide' | 'reminders' | 'lock';
 
 export default function SettingsScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['settings', 'stats', 'app']);
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   // An over-the-air update waiting for a restart, and whether one is running.
   const update = useUpdateStatus();
@@ -101,15 +104,15 @@ export default function SettingsScreen() {
   // (ESV, when its key is configured) is never listed as public domain.
   const translations = availableTranslations();
   const publicDomain = translations
-    .filter((t) => t.licenseType === 'public_domain')
-    .map((t) => t.abbrev)
+    .filter((tr) => tr.licenseType === 'public_domain')
+    .map((tr) => tr.abbrev)
     .join(', ');
   // ESV carries its own line here; versions from the translation catalog
   // are credited where their text shows and named as a group.
   const licensed = translations.filter(
-    (t) => t.licenseType !== 'public_domain' && t.source !== 'youversion',
+    (tr) => tr.licenseType !== 'public_domain' && tr.source !== 'youversion',
   );
-  const catalogCount = translations.filter((t) => t.source === 'youversion').length;
+  const catalogCount = translations.filter((tr) => tr.source === 'youversion').length;
 
   const rows = (
     <>
@@ -117,16 +120,14 @@ export default function SettingsScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityState={isWide ? { selected: detail === 'guide' } : undefined}
-          accessibilityHint={
-            isWide ? 'Shows the guide beside this list' : 'Opens a step-by-step guide'
-          }
+          accessibilityHint={isWide ? t('guide.hintWide') : t('guide.hint')}
           onPress={() => (isWide ? setDetail('guide') : router.push('/help'))}
           style={styles.rowText}>
           <Text style={[styles.rowTitle, { color: titleColor('guide'), fontFamily: fonts?.ui }]}>
-            How to set up Meno
+            {t('guide.title')}
           </Text>
           <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Step by step: quizzes, widgets, speaking, and recite-to-unlock — plus common questions.
+            {t('guide.body')}
           </Text>
         </Pressable>
       </Card>
@@ -136,30 +137,29 @@ export default function SettingsScreen() {
           <Pressable
             accessibilityRole={isWide ? 'button' : undefined}
             accessibilityState={isWide ? { selected: detail === 'reminders' } : undefined}
-            accessibilityHint={isWide ? 'Shows how quizzes work beside this list' : undefined}
+            accessibilityHint={isWide ? t('reminders.hintWide') : undefined}
             disabled={!isWide}
             onPress={() => setDetail('reminders')}
             style={styles.rowText}>
             <Text
               style={[styles.rowTitle, { color: titleColor('reminders'), fontFamily: fonts?.ui }]}>
-              Reminders
+              {t('reminders.title')}
             </Text>
             <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              A daily nudge to practice, plus surprise pop quizzes on verses you’ve memorized. Never
-              more than two a day.
+              {t('reminders.body')}
             </Text>
           </Pressable>
           <Switch
             value={notifsOn}
             onValueChange={(v) => void toggleNotifications(v)}
             trackColor={{ true: colors.lapis }}
-            accessibilityLabel="Reminders"
+            accessibilityLabel={t('reminders.title')}
           />
         </View>
         {reminders && reminders.overall === 'off' && (
           <View style={[styles.subRow, { borderTopColor: colors.separator }]}>
             <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              Off. Meno won’t send you anything until you turn this on.
+              {t('reminders.off')}
             </Text>
           </View>
         )}
@@ -172,13 +172,13 @@ export default function SettingsScreen() {
           <>
             <View style={[styles.row, styles.subRow, { borderTopColor: colors.separator }]}>
               <Text style={[styles.rowLabel, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                Remind me at
+                {t('reminders.remindAt')}
               </Text>
               <TimeField
                 hour={remindAt.hour}
                 minute={remindAt.minute}
                 onChange={(time) => void changeReminderTime(time)}
-                accessibilityLabel="Daily reminder time"
+                accessibilityLabel={t('reminders.timeLabel')}
               />
             </View>
             <Text
@@ -187,8 +187,7 @@ export default function SettingsScreen() {
                 styles.footnote,
                 { color: colors.inkFaint, fontFamily: fonts?.ui },
               ]}>
-              A Focus or Scheduled Summary on your iPhone can still hold these back. Meno can’t see
-              either one.
+              {t('reminders.focusNote')}
             </Text>
           </>
         )}
@@ -199,10 +198,10 @@ export default function SettingsScreen() {
               onPress={() => void toggleNotifications(true)}
               style={[styles.subRow, { borderTopColor: colors.separator }]}>
               <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Your iPhone will ask if Meno can send notifications. Tap Allow.
+                {t('reminders.askNote')}
               </Text>
               <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                Allow notifications
+                {t('reminders.allow')}
               </Text>
             </Pressable>
           ) : (
@@ -211,10 +210,10 @@ export default function SettingsScreen() {
               onPress={() => void Linking.openSettings()}
               style={[styles.subRow, { borderTopColor: colors.separator }]}>
               <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Turn on Allow Notifications for Meno and they start by themselves.
+                {t('reminders.blockedNote')}
               </Text>
               <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                Open iPhone Settings
+                {t('reminders.openSettings')}
               </Text>
             </Pressable>
           ))}
@@ -224,24 +223,27 @@ export default function SettingsScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityState={isWide ? { selected: detail === 'lock' } : undefined}
-          accessibilityHint={isWide ? 'Shows the setup steps beside this list' : undefined}
+          accessibilityHint={isWide ? t('lock.hintWide') : undefined}
           onPress={() => (isWide ? setDetail('lock') : router.push('/lock-setup'))}
           style={styles.rowText}>
           <Text style={[styles.rowTitle, { color: titleColor('lock'), fontFamily: fonts?.ui }]}>
-            Recite to Unlock
+            {t('lock.title')}
           </Text>
           <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {isLockAvailable()
               ? lockEnabled
-                ? `On · this week: ${lockStats.recitations} ${lockStats.recitations === 1 ? 'recitation' : 'recitations'}, ${lockStats.overrides} ${lockStats.overrides === 1 ? 'override' : 'overrides'}`
-                : 'Ask for a verse before your distracting apps open.'
-              : 'Available on your iPhone (not in the simulator).'}
+                ? t('lock.onSummary', {
+                    recitations: t('stats:recitationCount', { count: lockStats.recitations }),
+                    overrides: t('stats:overrideCount', { count: lockStats.overrides }),
+                  })
+                : t('lock.offBody')
+              : t('lock.unavailable')}
           </Text>
         </Pressable>
         {lockEnabled && (
           <Pressable accessibilityRole="button" onPress={() => void disableLock()}>
             <Text style={[styles.killSwitch, { color: colors.error, fontFamily: fonts?.ui }]}>
-              Turn off and clear all shields now
+              {t('lock.killSwitch')}
             </Text>
           </Pressable>
         )}
@@ -251,18 +253,17 @@ export default function SettingsScreen() {
         <Card>
           <Pressable
             accessibilityRole="button"
-            accessibilityHint="Restarts Meno into the new version"
+            accessibilityHint={t('update.hint')}
             onPress={() => void restartIntoUpdate(scheme)}
             style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              Update ready
+              {t('update.title')}
             </Text>
             <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              It installs the next time Meno opens. Your verses and progress stay right where they
-              are.
+              {t('update.body')}
             </Text>
             <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Restart Meno now
+              {t('update.restart')}
             </Text>
           </Pressable>
         </Card>
@@ -270,21 +271,28 @@ export default function SettingsScreen() {
 
       <Card>
         <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          Meno {Constants.expoConfig?.version ?? ''}
-          {update.runningUpdateDate
-            ? `, updated ${update.runningUpdateDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-            : ''}{' '}
-          · Scripture: {publicDomain} — public domain. Recitation audio never leaves this device.
+          {t('footer', {
+            version: update.runningUpdateDate
+              ? t('updatedVersion', {
+                  version: Constants.expoConfig?.version ?? '',
+                  date: update.runningUpdateDate.toLocaleDateString(locale(), {
+                    month: 'short',
+                    day: 'numeric',
+                  }),
+                })
+              : (Constants.expoConfig?.version ?? ''),
+            translations: publicDomain,
+          })}
         </Text>
-        {licensed.map((t) => (
+        {licensed.map((tr) => (
           <Text
-            key={t.id}
+            key={tr.id}
             style={[
               styles.rowSub,
               styles.credit,
               { color: colors.inkFaint, fontFamily: fonts?.ui },
             ]}>
-            {t.attribution}
+            {tr.attribution}
           </Text>
         ))}
         {catalogCount > 0 && (
@@ -294,8 +302,7 @@ export default function SettingsScreen() {
               styles.credit,
               { color: colors.inkFaint, fontFamily: fonts?.ui },
             ]}>
-            Other translations are shown under license from their publishers, each with its own
-            copyright line, and aren’t stored on this device.
+            {t('catalogCredit')}
           </Text>
         )}
       </Card>
@@ -313,7 +320,7 @@ export default function SettingsScreen() {
     );
 
   return (
-    <Screen title="Settings" wide>
+    <Screen title={t('app:tabs.settings')} wide>
       {isWide ? (
         <FoldAwareRow>
           {rows}

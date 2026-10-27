@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { useTranslation } from '@/i18n/react';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { dismissReminderPrompt, reminderPromptDismissed } from '@/services/db/repos/appFlags';
 import { setNotificationsEnabled } from '@/services/notifications';
@@ -16,6 +17,7 @@ import { useThemeColors, fonts, spacing } from '@/theme';
  */
 export function ReminderPrompt({ eligible }: { eligible: boolean }) {
   const colors = useThemeColors();
+  const { t } = useTranslation(['notifications', 'common']);
   const status = useReminderStatus();
   // null until read, so the card never flashes for someone who closed it.
   const [dismissed, setDismissed] = useState<boolean | null>(null);
@@ -64,19 +66,19 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
   return (
     <Card>
       <Text accessibilityRole="header" style={[styles.title, text, { color: colors.ink }]}>
-        {blocked ? 'Reminders can’t reach you yet' : 'A nudge to come back?'}
+        {blocked ? t('prompt.titleBlocked') : t('prompt.titleOff')}
       </Text>
       <Text style={[styles.body, text, { color: colors.inkFaint }]}>
         {viaIphoneSettings
-          ? 'They’re on in Meno, but notifications are turned off for Meno on this iPhone. Turn on Allow Notifications and they start by themselves.'
+          ? t('prompt.bodyViaSettings')
           : blocked
-            ? 'They’re on in Meno, but your iPhone hasn’t been asked to allow them yet.'
-            : 'Reminders are off, so Meno won’t prompt you to practice. Turn them on for one a day, at a time you choose.'}
+            ? t('prompt.bodyBlocked')
+            : t('prompt.bodyOff')}
       </Text>
       <View style={styles.actions}>
         {viaIphoneSettings ? (
           <Pressable accessibilityRole="link" hitSlop={8} onPress={() => void Linking.openSettings()}>
-            <Text style={[styles.action, text, { color: colors.lapis }]}>Open iPhone Settings</Text>
+            <Text style={[styles.action, text, { color: colors.lapis }]}>{t('prompt.openSettings')}</Text>
           </Pressable>
         ) : (
           <Pressable
@@ -84,16 +86,16 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
             hitSlop={8}
             onPress={() => void setNotificationsEnabled(true)}>
             <Text style={[styles.action, text, { color: colors.lapis }]}>
-              {blocked ? 'Allow notifications' : 'Turn on reminders'}
+              {blocked ? t('prompt.allow') : t('prompt.turnOn')}
             </Text>
           </Pressable>
         )}
         <Pressable
           accessibilityRole="button"
-          accessibilityHint="Hides this for good. Reminders stay in Settings."
+          accessibilityHint={t('prompt.dismissHint')}
           hitSlop={8}
           onPress={dismiss}>
-          <Text style={[styles.action, text, { color: colors.inkFaint }]}>Not now</Text>
+          <Text style={[styles.action, text, { color: colors.inkFaint }]}>{t('common:notNow')}</Text>
         </Pressable>
       </View>
     </Card>

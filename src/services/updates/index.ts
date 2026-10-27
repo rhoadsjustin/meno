@@ -11,6 +11,7 @@ import * as Updates from 'expo-updates';
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { Alert, AppState } from 'react-native';
 
+import { t } from '@/i18n';
 import { palette, type ColorScheme } from '@/theme/tokens';
 
 import {
@@ -110,14 +111,10 @@ export function useUpdateLifecycle(scheme: ColorScheme): void {
     });
     if (!update || !offer) return;
     offered.current.add(updateKey(update));
-    Alert.alert(
-      'Meno has a fix ready',
-      'Restart now to get it. Your verses and progress stay right where they are.',
-      [
-        { text: 'Later', style: 'cancel' },
-        { text: 'Restart', onPress: () => void restartIntoUpdate(scheme) },
-      ],
-    );
+    Alert.alert(t('app:updateAlert.title'), t('app:updateAlert.body'), [
+      { text: t('app:updateAlert.later'), style: 'cancel' },
+      { text: t('app:updateAlert.restart'), onPress: () => void restartIntoUpdate(scheme) },
+    ]);
   }, [isUpdatePending, downloadedUpdate, runningEmbedded, segments, appState, scheme]);
 }
 
