@@ -11,8 +11,7 @@ export default {
       'Next, iOS will ask for Screen Time permission. Apple never tells Meno which apps you pick, and you can override or switch this off at any time.',
     authTitle: 'Screen Time permission',
     authBody: 'Meno uses Apple’s Screen Time to shield the apps you choose.',
-    authDenied:
-      'Permission was declined. You can grant it in Settings → Screen Time, or try again.',
+    authDenied: 'Permission was declined. You can grant it in Settings → Screen Time, or try again.',
     grantPermission: 'Grant permission',
     pickTitle: 'Choose apps to shield',
     pickBody: 'Pick the apps or categories that should ask for a verse first.',

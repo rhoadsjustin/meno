@@ -25,8 +25,7 @@ export default {
     modeFirstPickupDetail: 'Una sola recitación quita los bloqueos hasta mañana.',
     modeEveryPickup: 'Cada vez que uses el iPhone',
     modeEveryPickupDetail_one: 'Los bloqueos vuelven {{count}} minuto después de cada desbloqueo.',
-    modeEveryPickupDetail_other:
-      'Los bloqueos vuelven {{count}} minutos después de cada desbloqueo.',
+    modeEveryPickupDetail_other: 'Los bloqueos vuelven {{count}} minutos después de cada desbloqueo.',
     modeSchedule: 'Por la noche (9–11 p. m.)',
     modeScheduleDetail: 'Los bloqueos están activos durante el horario nocturno.',
     turnOn: 'Activar',

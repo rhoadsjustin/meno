@@ -66,11 +66,7 @@ export function UnlockScreen() {
         chunk ??= (await currentChunk(goal.id)) ?? null;
         if (!chunk) throw new Error(translate('lock:unlock.errorNothingToRecite'));
         const range = {
-          start: {
-            bookId: chunk.startBookId,
-            chapter: chunk.startChapter,
-            verse: chunk.startVerse,
-          },
+          start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
           end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
         };
         const verses = await getPassage(goal.translationId, range);
@@ -87,39 +83,36 @@ export function UnlockScreen() {
     })();
   }, []);
 
-  const unlock = useCallback(
-    async (accuracy: number) => {
-      const config = await loadLockConfig();
-      clearShields();
-      if (config.mode === 'everyPickup') {
-        await scheduleRelock(config.relockMinutes ?? 30);
-      }
-      await recordLockEvent({
-        type: 'reciteSuccess',
-        verseChunkId: verse?.chunk?.id,
+  const unlock = useCallback(async (accuracy: number) => {
+    const config = await loadLockConfig();
+    clearShields();
+    if (config.mode === 'everyPickup') {
+      await scheduleRelock(config.relockMinutes ?? 30);
+    }
+    await recordLockEvent({
+      type: 'reciteSuccess',
+      verseChunkId: verse?.chunk?.id,
+      accuracy,
+    });
+    if (verse?.chunk) {
+      await recordAttempt({
+        chunkId: verse.chunk.id,
+        mode: 'speak',
         accuracy,
+        durationMs: 0,
+        missedWords: [],
+        source: 'unlock',
       });
-      if (verse?.chunk) {
-        await recordAttempt({
-          chunkId: verse.chunk.id,
-          mode: 'speak',
-          accuracy,
-          durationMs: 0,
-          missedWords: [],
-          source: 'unlock',
-        });
-      }
-      // Recite-to-unlock counts toward the streak (04 §4).
-      if ((await secureToday()).daySecured) void rescheduleAll();
-      const { refreshBadges } = await import('@/services/db/repos/badges');
-      void refreshBadges();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setPhase({ kind: 'success', accuracy });
-      // Brief success (<1.5s), then out of the way (04 §4).
-      setTimeout(() => router.back(), 1400);
-    },
-    [verse],
-  );
+    }
+    // Recite-to-unlock counts toward the streak (04 §4).
+    if ((await secureToday()).daySecured) void rescheduleAll();
+    const { refreshBadges } = await import('@/services/db/repos/badges');
+    void refreshBadges();
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setPhase({ kind: 'success', accuracy });
+    // Brief success (<1.5s), then out of the way (04 §4).
+    setTimeout(() => router.back(), 1400);
+  }, [verse]);
 
   const override = useCallback(async () => {
     clearShields();
@@ -137,26 +130,19 @@ export function UnlockScreen() {
         setPhase({ kind: 'failed', attempt: phase.attempt, accuracy: outcome.accuracy });
       }
     },
-    [phase, unlock],
+    [phase, unlock]
   );
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, contentColumn]}
-        keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, contentColumn]} keyboardShouldPersistTaps="handled">
         {phase.kind === 'error' && (
           <>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {phase.message}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void override()}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                {t('unlock.unlockAnyway')}
-              </Text>
+            <Pressable accessibilityRole="button" onPress={() => void override()} style={[styles.primary, { backgroundColor: colors.lapis }]}>
+              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('unlock.unlockAnyway')}</Text>
             </Pressable>
           </>
         )}
@@ -184,9 +170,7 @@ export function UnlockScreen() {
                 accessibilityRole="button"
                 onPress={() => setPhase({ kind: 'quiz', attempt: 2 })}
                 style={[styles.primary, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                  {t('common:retry')}
-                </Text>
+                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:retry')}</Text>
               </Pressable>
             ) : (
               // After a second miss, Override is the prominent path —
@@ -195,15 +179,11 @@ export function UnlockScreen() {
                 accessibilityRole="button"
                 onPress={() => void override()}
                 style={[styles.primary, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                  {t('unlock.unlockAnyway')}
-                </Text>
+                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('unlock.unlockAnyway')}</Text>
               </Pressable>
             )}
             {phase.attempt === 2 && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setPhase({ kind: 'quiz', attempt: 3 })}>
+              <Pressable accessibilityRole="button" onPress={() => setPhase({ kind: 'quiz', attempt: 3 })}>
                 <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
                   {t('unlock.keepTrying')}
                 </Text>
@@ -225,10 +205,7 @@ export function UnlockScreen() {
       </ScrollView>
 
       {(phase.kind === 'quiz' || phase.kind === 'error') && (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void override()}
-          style={styles.override}>
+        <Pressable accessibilityRole="button" onPress={() => void override()} style={styles.override}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('unlock.override')}
           </Text>
