@@ -138,11 +138,20 @@ export async function createGoal(input: {
 }
 
 /**
+ * The `settings` row holding a goal's stitch progress (repos/stitch). It
+ * lives here so deleting or stopping a goal can clear it without this module
+ * and repos/stitch importing each other.
+ */
+export function stitchStateKey(goalId: string): string {
+  return `stitch_${goalId}`;
+}
+
+/**
  * Deletes a goal with its chunks, attempts and review items, then purges any
  * licensed text no remaining goal covers (02 §5). Nothing else in the
  * database is left pointing at it: a "Show on widgets" pick on it is
  * cleared, so the oldest active goal takes the focus (services/focus), and
- * so is a practice session left open on it.
+ * so are a practice session left open on it and its stitch progress.
  *
  * The days its attempts were made on are kept for the practice grid
  * (services/stats/practice-days); the streak and earned badges are stored on
@@ -174,6 +183,7 @@ export async function deleteGoal(goalId: string): Promise<void> {
     await db.delete(tables.settings).where(eq(tables.settings.key, FOCUS_KEY));
   }
   if ((await loadActiveSession())?.goalId === goalId) await clearActiveSession();
+  await db.delete(tables.settings).where(eq(tables.settings.key, stitchStateKey(goalId)));
 
   await purgeUnreferencedText();
 }
@@ -192,7 +202,8 @@ export async function deleteGoal(goalId: string): Promise<void> {
  *
  * As with `deleteGoal`, the days the removed attempts were made on are kept
  * for the practice grid, and a "Show on widgets" pick or a practice session
- * left open on the goal is cleared.
+ * left open on the goal is cleared. So is its stitch progress: a stopped
+ * goal is never stitched again (repos/stitch `stitchPlan`).
  *
  * Use features/goals `stopPassage` from screens: it checks the goal may be
  * stopped and refreshes the widgets, the shield and notifications.
@@ -222,6 +233,7 @@ export async function stopGoal(goalId: string): Promise<void> {
     await db.delete(tables.settings).where(eq(tables.settings.key, FOCUS_KEY));
   }
   if ((await loadActiveSession())?.goalId === goalId) await clearActiveSession();
+  await db.delete(tables.settings).where(eq(tables.settings.key, stitchStateKey(goalId)));
 
   await purgeUnreferencedText();
 }

@@ -7,7 +7,7 @@
 import { eq } from 'drizzle-orm';
 
 import { db, tables } from '@/services/db';
-import { chunksForGoal, getGoal, type Chunk } from '@/services/db/repos/goals';
+import { chunksForGoal, getGoal, stitchStateKey, type Chunk } from '@/services/db/repos/goals';
 
 export const STITCH_PASS = 0.9;
 const STITCH_INTERVAL = 5;
@@ -22,15 +22,11 @@ type StitchState = {
 
 const EMPTY: StitchState = { lastCount: 0, finalPassed: false, history: [] };
 
-function key(goalId: string): string {
-  return `stitch_${goalId}`;
-}
-
 export async function loadStitchState(goalId: string): Promise<StitchState> {
   const rows = await db
     .select()
     .from(tables.settings)
-    .where(eq(tables.settings.key, key(goalId)))
+    .where(eq(tables.settings.key, stitchStateKey(goalId)))
     .limit(1);
   if (!rows[0]) return { ...EMPTY };
   try {
@@ -44,7 +40,7 @@ async function saveStitchState(goalId: string, state: StitchState): Promise<void
   const value = JSON.stringify(state);
   await db
     .insert(tables.settings)
-    .values({ key: key(goalId), value })
+    .values({ key: stitchStateKey(goalId), value })
     .onConflictDoUpdate({ target: tables.settings.key, set: { value } });
 }
 
