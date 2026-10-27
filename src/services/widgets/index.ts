@@ -106,13 +106,33 @@ async function buildProps(): Promise<MenoWidgetProps> {
   return base;
 }
 
-let publishing = false;
+let publishing: Promise<void> | null = null;
+let publishAgain = false;
 
-/** Publishes the widget timeline; call on background + after state changes. */
+/**
+ * Publishes the widget timeline; call on background + after state changes.
+ * A call made while a publish is running waits for it and then publishes
+ * once more, since the running one may have read the state before the
+ * change (a deleted goal must not come back on the widget).
+ */
 export async function publishWidgetSnapshot(): Promise<void> {
   if (Platform.OS !== 'ios') return;
-  if (publishing) return;
-  publishing = true;
+  if (publishing) {
+    publishAgain = true;
+    return publishing;
+  }
+  publishing = (async () => {
+    do {
+      publishAgain = false;
+      await publishOnce();
+    } while (publishAgain);
+  })().finally(() => {
+    publishing = null;
+  });
+  return publishing;
+}
+
+async function publishOnce(): Promise<void> {
   try {
     const { default: MenoWidget } = await import('@/widgets/MenoWidget');
     const props = await buildProps();
@@ -127,8 +147,6 @@ export async function publishWidgetSnapshot(): Promise<void> {
   } catch {
     // Widget publishing is best-effort (module absent in dev builds without
     // the extension, simulator quirks, etc.).
-  } finally {
-    publishing = false;
   }
 }
 
