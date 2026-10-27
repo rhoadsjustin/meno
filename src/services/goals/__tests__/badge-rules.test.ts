@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  bookEndsToMeasure,
   chaptersToMeasure,
   countsAsWholePassage,
   memorizedFullChapter,
@@ -17,7 +18,7 @@ const goal = (
   bookId: string,
   startChapter: number,
   endChapter: number,
-  options: { startVerse?: number; translationId?: string } = {},
+  options: { startVerse?: number; endVerse?: number; translationId?: string } = {},
 ): BadgeGoal => ({
   id,
   status,
@@ -27,6 +28,7 @@ const goal = (
   startVerse: options.startVerse ?? 1,
   endBookId: bookId,
   endChapter,
+  endVerse: options.endVerse ?? 1,
 });
 
 /** A chunk of verses `from`–`to` in one chapter (chunks never cross one). */
@@ -52,9 +54,15 @@ const range = (from: number, to: number) =>
 
 /**
  * Chapter lengths as the WEB numbers them: Psalm 1 has 6 verses, Psalm 2 12,
- * Psalm 23 6 and John 3 36. Anything else is unknown.
+ * Psalm 23 6, John 3 36 and Philippians 4 23. Anything else is unknown.
  */
-const WEB: Record<string, number> = { 'Ps.1': 6, 'Ps.2': 12, 'Ps.23': 6, 'John.3': 36 };
+const WEB: Record<string, number> = {
+  'Ps.1': 6,
+  'Ps.2': 12,
+  'Ps.23': 6,
+  'John.3': 36,
+  'Phil.4': 23,
+};
 const versesIn: VersesIn = ({ translationId, bookId, chapter }) => {
   const last = translationId === 'web' ? WEB[`${bookId}.${chapter}`] : undefined;
   return last === undefined ? undefined : range(1, last);
@@ -246,30 +254,86 @@ describe('chaptersToMeasure', () => {
 describe('memorizedWholeBook', () => {
   const allOf = (goalId: string, status: string) =>
     [1, 2, 3, 4].map((c) => chunk(goalId, c, status, 'Phil'));
+  /** All of Philippians, 1:1–4:23. */
+  const philippians = (status = 'active', options: { translationId?: string } = {}) =>
+    goal('g', status, 'Phil', 1, 4, { endVerse: 23, ...options });
 
   it('is earned when a whole-book goal is fully memorized', () => {
-    const goals = [goal('g', 'active', 'Phil', 1, 4)];
-    expect(memorizedWholeBook(goals, allOf('g', 'memorized'), chaptersIn)).toBe(true);
+    expect(memorizedWholeBook([philippians()], allOf('g', 'memorized'), chaptersIn, versesIn)).toBe(
+      true,
+    );
+  });
+
+  it('is not earned by a goal that stops short of the book’s last verse', () => {
+    // Philippians 1:1–4:22, every chunk memorized and the goal completed.
+    const goals = [goal('g', 'completed', 'Phil', 1, 4, { endVerse: 22 })];
+    expect(memorizedWholeBook(goals, allOf('g', 'memorized'), chaptersIn, versesIn)).toBe(false);
+  });
+
+  it('takes the last verse from the goal’s translation', () => {
+    // 4:23 is the WEB's last verse; this translation numbers a 4:24.
+    const asked: ChapterRef[] = [];
+    const longer: VersesIn = (ref) => {
+      asked.push(ref);
+      return range(1, ref.translationId === 'other' ? 24 : 23);
+    };
+    const goals = [philippians('active', { translationId: 'other' })];
+    expect(memorizedWholeBook(goals, allOf('g', 'memorized'), chaptersIn, longer)).toBe(false);
+    expect(asked).toEqual([{ translationId: 'other', bookId: 'Phil', chapter: 4 }]);
+  });
+
+  it('does not count a book whose last chapter is unknown', () => {
+    const chunks = allOf('g', 'memorized');
+    expect(memorizedWholeBook([philippians()], chunks, chaptersIn, () => undefined)).toBe(false);
+    expect(memorizedWholeBook([philippians()], chunks, chaptersIn, () => [])).toBe(false);
   });
 
   it('is not earned for part of a book, or before every chunk is memorized', () => {
     expect(
       memorizedWholeBook(
-        [goal('g', 'active', 'Phil', 1, 3)],
+        [goal('g', 'active', 'Phil', 1, 3, { endVerse: 21 })],
         allOf('g', 'memorized').slice(0, 3),
         chaptersIn,
+        versesIn,
       ),
     ).toBe(false);
     const chunks = [...allOf('g', 'memorized').slice(0, 3), chunk('g', 4, 'learning', 'Phil')];
-    expect(memorizedWholeBook([goal('g', 'active', 'Phil', 1, 4)], chunks, chaptersIn)).toBe(false);
+    expect(memorizedWholeBook([philippians()], chunks, chaptersIn, versesIn)).toBe(false);
   });
 
   it('does not count a stopped whole-book goal, whatever chunks are left', () => {
-    const goals = [goal('g', 'stopped', 'Phil', 1, 4)];
-    expect(memorizedWholeBook(goals, allOf('g', 'memorized').slice(0, 2), chaptersIn)).toBe(false);
+    const chunks = allOf('g', 'memorized').slice(0, 2);
+    expect(memorizedWholeBook([philippians('stopped')], chunks, chaptersIn, versesIn)).toBe(false);
   });
 
   it('is not earned by a goal with no chunks', () => {
-    expect(memorizedWholeBook([goal('g', 'active', 'Phil', 1, 4)], [], chaptersIn)).toBe(false);
+    expect(memorizedWholeBook([philippians()], [], chaptersIn, versesIn)).toBe(false);
+  });
+});
+
+describe('bookEndsToMeasure', () => {
+  const allOf = (goalId: string, status: string) =>
+    [1, 2, 3, 4].map((c) => chunk(goalId, c, status, 'Phil'));
+
+  it('asks for the last chapter of a fully memorized whole-book goal, in its translation', () => {
+    const goals = [goal('g', 'completed', 'Phil', 1, 4, { endVerse: 23, translationId: 'kjv' })];
+    expect(bookEndsToMeasure(goals, allOf('g', 'memorized'), chaptersIn)).toEqual([
+      { translationId: 'kjv', bookId: 'Phil', chapter: 4 },
+    ]);
+  });
+
+  it('asks nothing while a chunk is unmemorized, for part of a book, or for a stopped goal', () => {
+    const learning = [...allOf('a', 'memorized').slice(0, 3), chunk('a', 4, 'learning', 'Phil')];
+    const goals = [
+      goal('a', 'active', 'Phil', 1, 4, { endVerse: 23 }),
+      goal('b', 'completed', 'Phil', 1, 3, { endVerse: 21 }),
+      goal('c', 'stopped', 'Phil', 1, 4, { endVerse: 23 }),
+    ];
+    const chunks = [
+      ...learning,
+      ...allOf('b', 'memorized').slice(0, 3),
+      ...allOf('c', 'memorized').slice(0, 2),
+    ];
+    expect(bookEndsToMeasure(goals, chunks, chaptersIn)).toEqual([]);
   });
 });

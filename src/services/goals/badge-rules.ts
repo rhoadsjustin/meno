@@ -1,8 +1,8 @@
 /**
  * The passage badges (docs/06 §4) that ask whether a whole stretch of
  * Scripture is memorized: `first_chapter` and `first_book`. Pure — repos/
- * badges loads the rows, reads chapter lengths through services/bible and
- * awards.
+ * badges loads the rows, reads the verse numbers of the chapters these ask
+ * about through services/bible (`versesIn`) and awards.
  *
  * Stopped goals never count here. Stopping removed the chunks that were not
  * memorized (services/goals `mayStopGoal`), so a stopped goal's chunks no
@@ -18,6 +18,7 @@ export type BadgeGoal = {
   startVerse: number;
   endBookId: string;
   endChapter: number;
+  endVerse: number;
 };
 
 export type BadgeChunk = {
@@ -144,20 +145,68 @@ export function memorizedFullChapter(
   );
 }
 
-/** `first_book`: every chunk memorized of a goal that spans a whole book. */
+/**
+ * Counted goals set for a whole book, start to end of the canon's chapters,
+ * with every chunk memorized — each with its book's last chapter in the
+ * goal's translation, which `memorizedWholeBook` still has to measure.
+ */
+function wholeBookCandidates(
+  goals: readonly BadgeGoal[],
+  chunks: readonly BadgeChunk[],
+  chaptersIn: (bookId: string) => number,
+): { goal: BadgeGoal; lastChapter: ChapterRef }[] {
+  return goals
+    .filter(countsAsWholePassage)
+    .filter((g) => {
+      const own = chunks.filter((c) => c.goalId === g.id);
+      return (
+        own.length > 0 &&
+        own.every(isMemorized) &&
+        g.startBookId === g.endBookId &&
+        g.startChapter === 1 &&
+        g.startVerse === 1 &&
+        g.endChapter === chaptersIn(g.startBookId)
+      );
+    })
+    .map((goal) => ({
+      goal,
+      lastChapter: {
+        translationId: goal.translationId,
+        bookId: goal.startBookId,
+        chapter: goal.endChapter,
+      },
+    }));
+}
+
+/** The chapters `memorizedWholeBook` asks `versesIn` about: each candidate book's last. */
+export function bookEndsToMeasure(
+  goals: readonly BadgeGoal[],
+  chunks: readonly BadgeChunk[],
+  chaptersIn: (bookId: string) => number,
+): ChapterRef[] {
+  const byKey = new Map<string, ChapterRef>();
+  for (const { lastChapter } of wholeBookCandidates(goals, chunks, chaptersIn)) {
+    byKey.set(chapterKey(lastChapter), lastChapter);
+  }
+  return [...byKey.values()];
+}
+
+/**
+ * `first_book`: every chunk memorized of a goal set for a whole book, from
+ * 1:1 through the last verse of the book's last chapter as the goal's
+ * translation numbers it (`versesIn`). A goal that stops short of that
+ * verse is part of a book. A last chapter whose verses are unknown does not
+ * count yet.
+ */
 export function memorizedWholeBook(
   goals: readonly BadgeGoal[],
   chunks: readonly BadgeChunk[],
   chaptersIn: (bookId: string) => number,
+  versesIn: VersesIn,
 ): boolean {
-  return goals.filter(countsAsWholePassage).some((g) => {
-    const goalChunks = chunks.filter((c) => c.goalId === g.id);
-    if (goalChunks.length === 0) return false;
-    const wholeBook =
-      g.startBookId === g.endBookId &&
-      g.startChapter === 1 &&
-      g.startVerse === 1 &&
-      g.endChapter === chaptersIn(g.startBookId);
-    return wholeBook && goalChunks.every(isMemorized);
+  return wholeBookCandidates(goals, chunks, chaptersIn).some(({ goal, lastChapter }) => {
+    const verses = versesIn(lastChapter);
+    if (verses === undefined || verses.length === 0) return false;
+    return goal.endVerse >= Math.max(...verses);
   });
 }
