@@ -72,7 +72,16 @@ export function buildQuery(params: Params): string {
   return q.toString();
 }
 
-async function request<T>(path: string, params: Params, options: RequestOptions = {}): Promise<T> {
+/**
+ * One call. Resolves to nothing for a reply with no body: the Platform
+ * answers 204 No Content, not an empty page, when a language has no version
+ * this key may read.
+ */
+async function request<T>(
+  path: string,
+  params: Params,
+  options: RequestOptions = {},
+): Promise<T | undefined> {
   const key = process.env.EXPO_PUBLIC_YOUVERSION_APP_KEY;
   if (!key) throw new YouVersionError('YouVersion app key not configured', 0);
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -82,7 +91,13 @@ async function request<T>(path: string, params: Params, options: RequestOptions 
   if (options.acceptLanguage) headers['Accept-Language'] = options.acceptLanguage;
   const res = await fetchImpl(url, { headers });
   if (!res.ok) throw await describeFailure(res);
-  return (await res.json()) as T;
+  const text = await res.text();
+  if (text.trim() === '') return undefined;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new YouVersionError(`Unreadable reply from YouVersion (${res.status})`, res.status);
+  }
 }
 
 /** The Platform's error codes (developers.youversion.com/error-codes) in plain words. */
@@ -132,6 +147,7 @@ async function fetchAllPages<T>(
       pageToken ? { ...params, page_token: pageToken } : params,
       options,
     );
+    if (!page) break;
     out.push(...(page.data ?? []));
     pageToken = page.next_page_token;
     if (!pageToken) break;
@@ -155,7 +171,7 @@ export async function fetchLanguages(locale: string, fetchImpl?: Fetch): Promise
       { bibles_available: 'true', page_size: '*', 'fields[]': fields },
       options,
     );
-    rows = page.data ?? [];
+    rows = page?.data ?? [];
   } catch (e) {
     if (!(e instanceof YouVersionError && (e.status === 400 || e.status === 422))) throw e;
     rows = await fetchAllPages<YvLanguage>(
@@ -205,6 +221,7 @@ export async function fetchBible(
     {},
     { fetchImpl, acceptLanguage: locale },
   );
+  if (!row) throw new YouVersionError('Not found on the YouVersion Platform', 404);
   return toTranslation(row);
 }
 
@@ -262,7 +279,7 @@ export async function fetchYouVersionChapter(
     { format: 'html' },
     { fetchImpl },
   );
-  const verses = parsePassageHtml(passage.content ?? '', { translationId, bookId, chapter });
+  const verses = parsePassageHtml(passage?.content ?? '', { translationId, bookId, chapter });
   if (verses.length === 0) {
     throw new YouVersionError(`No verse text in ${book.name} ${chapter}`, 0);
   }
