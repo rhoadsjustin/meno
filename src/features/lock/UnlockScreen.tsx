@@ -48,7 +48,9 @@ export function UnlockScreen() {
       try {
         const config = await loadLockConfig();
         const goal = await activeGoal();
-        if (!goal) throw new Error('No active goal');
+        // The last passage in progress was finished or deleted while the
+        // shield was up: say so, and leave unlocking one tap away (04 §6).
+        if (!goal) throw new Error('There’s no passage in progress to recite right now.');
         // Verse source (04 §1.3): current chunk, or a random memorized one;
         // fall back to the current chunk when nothing is memorized (04 §7).
         let chunk: Chunk | null = null;
