@@ -7,7 +7,7 @@
 import { eq } from 'drizzle-orm';
 
 import { db, tables } from '@/services/db';
-import { chunksForGoal, type Chunk } from '@/services/db/repos/goals';
+import { chunksForGoal, getGoal, stitchStateKey, type Chunk } from '@/services/db/repos/goals';
 
 export const STITCH_PASS = 0.9;
 const STITCH_INTERVAL = 5;
@@ -22,15 +22,11 @@ type StitchState = {
 
 const EMPTY: StitchState = { lastCount: 0, finalPassed: false, history: [] };
 
-function key(goalId: string): string {
-  return `stitch_${goalId}`;
-}
-
 export async function loadStitchState(goalId: string): Promise<StitchState> {
   const rows = await db
     .select()
     .from(tables.settings)
-    .where(eq(tables.settings.key, key(goalId)))
+    .where(eq(tables.settings.key, stitchStateKey(goalId)))
     .limit(1);
   if (!rows[0]) return { ...EMPTY };
   try {
@@ -44,7 +40,7 @@ async function saveStitchState(goalId: string, state: StitchState): Promise<void
   const value = JSON.stringify(state);
   await db
     .insert(tables.settings)
-    .values({ key: key(goalId), value })
+    .values({ key: stitchStateKey(goalId), value })
     .onConflictDoUpdate({ target: tables.settings.key, set: { value } });
 }
 
@@ -62,6 +58,11 @@ function stitchable(c: Chunk): boolean {
 }
 
 export async function stitchPlan(goalId: string): Promise<StitchPlan> {
+  // A stopped passage is never stitched: it has gaps where its unmemorized
+  // chunks were, and a passing stitch would mark it completed.
+  if ((await getGoal(goalId))?.status === 'stopped') {
+    return { due: false, chunks: [], isFinal: false };
+  }
   const chunks = await chunksForGoal(goalId);
   // Chunks unlock sequentially, so the stitchable set is a prefix.
   let count = 0;
@@ -85,7 +86,7 @@ export async function recordStitchResult(
   goalId: string,
   accuracy: number,
   chunkCount: number,
-  isFinal: boolean
+  isFinal: boolean,
 ): Promise<{ goalCompleted: boolean }> {
   const state = await loadStitchState(goalId);
   const passed = accuracy >= STITCH_PASS;
@@ -96,10 +97,10 @@ export async function recordStitchResult(
   };
   await saveStitchState(goalId, next);
 
-  let goalCompleted = false;
-  if (isFinal && passed) {
+  // Never completes a stopped goal: its remaining chunks are not the whole passage.
+  const goalCompleted = isFinal && passed && (await getGoal(goalId))?.status !== 'stopped';
+  if (goalCompleted) {
     await db.update(tables.goals).set({ status: 'completed' }).where(eq(tables.goals.id, goalId));
-    goalCompleted = true;
   }
   return { goalCompleted };
 }

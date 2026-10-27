@@ -6,10 +6,19 @@
 import { eq } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
-import { getPassage, getTranslation } from '@/services/bible';
+import { getBook, getChapter, getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { t } from '@/i18n';
 import { loadStreak } from '@/services/db/repos/streaks';
+import {
+  bookEndsToMeasure,
+  chapterKey,
+  chaptersToMeasure,
+  memorizedFullChapter,
+  memorizedWholeBook,
+  type ChapterRef,
+  type VersesIn,
+} from '@/services/goals/badge-rules';
 import { tokenize } from '@/services/grading';
 
 export type BadgeCode =
@@ -85,6 +94,30 @@ async function memorizedUniqueWordCount(): Promise<number> {
 }
 
 /**
+ * The verse numbers of each chapter in its translation, for `first_chapter`
+ * and `first_book`. A chapter out of reach (offline, or its translation is
+ * gone) is left unknown and gets its turn at a later refresh.
+ */
+async function lookUpVerses(refs: readonly ChapterRef[]): Promise<VersesIn> {
+  const verses = new Map<string, number[]>();
+  const tried = new Set<string>();
+  for (const ref of refs) {
+    if (tried.has(chapterKey(ref))) continue;
+    tried.add(chapterKey(ref));
+    try {
+      const rows = await getChapter(ref.translationId, ref.bookId, ref.chapter);
+      verses.set(
+        chapterKey(ref),
+        rows.map((r) => r.verse),
+      );
+    } catch {
+      // Unknown for now; memorizedFullChapter doesn't count it.
+    }
+  }
+  return (ref) => verses.get(chapterKey(ref));
+}
+
+/**
  * Recomputes all badge conditions and awards anything new.
  * Returns codes earned by this call (for the session-summary medallion).
  */
@@ -101,38 +134,23 @@ export async function refreshBadges(): Promise<BadgeCode[]> {
   const conditions = new Map<BadgeCode, boolean>();
   conditions.set('first_verse', memorized.length > 0);
 
-  // Full chapter memorized: every chunk of some (goal, chapter) memorized.
-  const byChapter = new Map<string, { total: number; done: number }>();
-  for (const c of chunks) {
-    const key = `${c.goalId}:${c.startBookId}:${c.startChapter}`;
-    const entry = byChapter.get(key) ?? { total: 0, done: 0 };
-    entry.total += 1;
-    if (c.status === 'memorized') entry.done += 1;
-    byChapter.set(key, entry);
-  }
-  conditions.set(
-    'first_chapter',
-    [...byChapter.values()].some((e) => e.total > 0 && e.done === e.total),
-  );
-
-  // Whole goal memorized where the goal spans an entire book.
+  // A whole chapter or book memorized; stopped goals don't count (badge-rules).
+  // Measuring a chapter can mean fetching it (ESV, YouVersion), so only for
+  // a badge still to earn.
   const goals = await db.select().from(tables.goals);
-  const { getBook } = await import('@/services/bible');
-  conditions.set(
-    'first_book',
-    goals.some((g) => {
-      const goalChunks = chunks.filter((c) => c.goalId === g.id);
-      if (goalChunks.length === 0) return false;
-      const allDone = goalChunks.every((c) => c.status === 'memorized');
-      const book = getBook(g.startBookId);
-      const wholeBook =
-        g.startBookId === g.endBookId &&
-        g.startChapter === 1 &&
-        g.startVerse === 1 &&
-        g.endChapter === book.chapters;
-      return allDone && wholeBook;
-    }),
-  );
+  const chaptersIn = (bookId: string) => getBook(bookId).chapters;
+  const chapterOpen = !earned.has('first_chapter');
+  const bookOpen = !earned.has('first_book');
+  const versesIn = await lookUpVerses([
+    ...(chapterOpen ? chaptersToMeasure(goals, chunks) : []),
+    ...(bookOpen ? bookEndsToMeasure(goals, chunks, chaptersIn) : []),
+  ]);
+  if (chapterOpen) {
+    conditions.set('first_chapter', memorizedFullChapter(goals, chunks, versesIn));
+  }
+  if (bookOpen) {
+    conditions.set('first_book', memorizedWholeBook(goals, chunks, chaptersIn, versesIn));
+  }
 
   conditions.set(
     'perfect_speak',

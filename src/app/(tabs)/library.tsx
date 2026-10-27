@@ -16,7 +16,7 @@ import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { DeleteGoalButton } from '@/features/goals/DeleteGoalButton';
-import { removeGoal } from '@/features/goals/remove-goal';
+import { removeGoal, stopPassage } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getTranslation } from '@/services/bible';
@@ -29,7 +29,7 @@ import {
   type Goal,
 } from '@/services/db/repos/goals';
 import { itemHealth, reviewItemForChunk } from '@/services/db/repos/reviews';
-import { deleteGoalPrompt, mayDeleteGoal } from '@/services/goals/deletion';
+import { deleteGoalPrompt, goalRemoval, stopGoalPrompt } from '@/services/goals/deletion';
 import type { Health } from '@/services/scheduler';
 import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, radius, spacing, type ThemeColors } from '@/theme';
@@ -115,17 +115,47 @@ export default function LibraryScreen() {
     [load, t],
   );
 
-  /** The trash button, only on a passage in progress with nothing memorized
-   * yet: memorized Scripture is never deleted (services/goals/deletion). */
-  const deleteButton = (goal: Goal, chunks: Chunk[]) =>
-    mayDeleteGoal(goal, chunks) ? (
-      <DeleteGoalButton
-        label={t('remove.delete.spoken', { title: goal.title })}
-        tint={colors.inkFaint}
-        prompt={deleteGoalPrompt(goal.title)}
-        onDelete={() => void remove(goal)}
-      />
-    ) : null;
+  const stop = useCallback(
+    async (goal: Goal) => {
+      try {
+        await stopPassage(goal.id);
+        AccessibilityInfo.announceForAccessibility(t('remove.stop.done', { title: goal.title }));
+      } catch {
+        Alert.alert(t('remove.stop.failed', { title: goal.title }), t('remove.tryAgain'));
+      } finally {
+        await load(() => false);
+      }
+    },
+    [load, t],
+  );
+
+  /** The trash button. Memorized Scripture is never deleted
+   * (services/goals/deletion): with nothing memorized yet it deletes the
+   * passage; partway through it stops it, keeping what is memorized. */
+  const removalButton = (goal: Goal, chunks: Chunk[]) => {
+    switch (goalRemoval(goal, chunks)) {
+      case 'delete':
+        return (
+          <DeleteGoalButton
+            label={t('remove.delete.spoken', { title: goal.title })}
+            tint={colors.inkFaint}
+            prompt={deleteGoalPrompt(goal.title)}
+            onConfirm={() => void remove(goal)}
+          />
+        );
+      case 'stop':
+        return (
+          <DeleteGoalButton
+            label={t('remove.stop.spoken', { title: goal.title })}
+            tint={colors.inkFaint}
+            prompt={stopGoalPrompt(goal.title)}
+            onConfirm={() => void stop(goal)}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   const active = items.filter(({ goal }) => goal.status === 'active');
   // Only offer a choice once there is more than one passage in progress.
@@ -158,7 +188,7 @@ export default function LibraryScreen() {
                   ]}>
                   {goal.title}
                 </Text>
-                {!buttonBelow && deleteButton(goal, chunks)}
+                {!buttonBelow && removalButton(goal, chunks)}
               </View>
               <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {t('goal.summary', {
@@ -235,8 +265,8 @@ export default function LibraryScreen() {
                       </Text>
                     </Pressable>
                   ))}
-                {buttonBelow && mayDeleteGoal(goal, chunks) && (
-                  <View style={styles.practiceLink}>{deleteButton(goal, chunks)}</View>
+                {buttonBelow && goalRemoval(goal, chunks) && (
+                  <View style={styles.practiceLink}>{removalButton(goal, chunks)}</View>
                 )}
               </View>
             </Card>

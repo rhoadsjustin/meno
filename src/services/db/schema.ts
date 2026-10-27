@@ -67,7 +67,12 @@ export const goals = sqliteTable('goals', {
   title: text('title').notNull(),
   createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
   targetDate: integer('targetDate', { mode: 'timestamp_ms' }),
-  status: text('status', { enum: ['active', 'completed', 'archived'] })
+  /**
+   * `stopped`: the user stopped the passage partway (services/goals
+   * `mayStopGoal`). Only its memorized chunks are left; they stay on the
+   * Memorized shelf and in reviews, and it is never practiced again.
+   */
+  status: text('status', { enum: ['active', 'completed', 'archived', 'stopped'] })
     .notNull()
     .default('active'),
   challengeId: text('challengeId'),

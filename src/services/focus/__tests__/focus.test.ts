@@ -29,6 +29,13 @@ describe('resolveFocusGoal', () => {
     expect(resolveFocusGoal(goals, 'c')?.id).toBe('a');
   });
 
+  it('skips a stopped goal, picked or not', () => {
+    const goals = [goal('stopped', 1, 'stopped'), goal('a', 3)];
+    expect(resolveFocusGoal(goals, 'stopped')?.id).toBe('a');
+    expect(resolveFocusGoal(goals, null)?.id).toBe('a');
+    expect(resolveFocusGoal([goal('x', 1, 'stopped')], 'x')).toBeUndefined();
+  });
+
   it('ignores a pick that no longer exists (deleted goal)', () => {
     const goals = [goal('a', 1), goal('b', 5)];
     expect(resolveFocusGoal(goals, 'gone')?.id).toBe('a');

@@ -10,9 +10,11 @@ import { chaptersInRange, esvKeyConfigured, fetchEsvChapter } from '@/services/b
 import { compareRefs, refInRange } from '@/services/bible/refs';
 import {
   chapterSlice,
+  CHUNK_RETAINING_GOAL_STATUS,
   coveredByRetained,
   PURGE_UNREFERENCED_SQL,
   retainedOnly,
+  retainedRangesOf,
   RETAINING_GOAL_STATUSES,
 } from '@/services/bible/retention';
 import {
@@ -234,7 +236,10 @@ async function getEsvPassage(range: RefRange): Promise<Verse[]> {
   return out;
 }
 
-/** Ranges of the goals that keep `translationId` text cached (see retention). */
+/**
+ * Ranges that keep `translationId` text cached (see retention): whole goals
+ * in progress or completed, and the memorized chunks of stopped goals.
+ */
 async function retainedRanges(translationId: string): Promise<RefRange[]> {
   const { db, tables } = await import('@/services/db');
   const { and, eq, inArray } = await import('drizzle-orm');
@@ -244,13 +249,20 @@ async function retainedRanges(translationId: string): Promise<RefRange[]> {
     .where(
       and(
         eq(tables.goals.translationId, translationId),
-        inArray(tables.goals.status, [...RETAINING_GOAL_STATUSES]),
+        inArray(tables.goals.status, [...RETAINING_GOAL_STATUSES, CHUNK_RETAINING_GOAL_STATUS]),
       ),
     );
-  return goals.map((g) => ({
-    start: { bookId: g.startBookId, chapter: g.startChapter, verse: g.startVerse },
-    end: { bookId: g.endBookId, chapter: g.endChapter, verse: g.endVerse },
-  }));
+  const stoppedIds = goals.filter((g) => g.status === CHUNK_RETAINING_GOAL_STATUS).map((g) => g.id);
+  const chunks =
+    stoppedIds.length > 0
+      ? await db.select().from(tables.chunks).where(inArray(tables.chunks.goalId, stoppedIds))
+      : [];
+  return goals.flatMap((g) =>
+    retainedRangesOf(
+      g,
+      chunks.filter((c) => c.goalId === g.id),
+    ),
+  );
 }
 
 /** Most chapters held in memory at once; a long reader session drops the oldest. */
@@ -352,7 +364,8 @@ export async function cachePassage(translationId: string, range: RefRange): Prom
 
 /**
  * Removes cached licensed text that no goal the user still has covers (02
- * §5). Run after a goal is deleted or archived, and once at launch to trim
+ * §5) — for a stopped goal, that its memorized chunks don't cover. Run after
+ * a goal is deleted, stopped or archived, and once at launch to trim
  * anything an earlier version left behind. Local and cheap: one DELETE over
  * a table that holds only goal text. Bundled translations are in another
  * database and are never touched.

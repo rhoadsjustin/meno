@@ -23,6 +23,7 @@ import { db, tables } from '@/services/db';
 import { clearActiveSession, loadActiveSession } from '@/services/db/repos/sessionStore';
 import { keepPracticeDaysOf } from '@/services/db/repos/stats';
 import { resolveFocusGoal } from '@/services/focus';
+import { chunksToDropOnStop } from '@/services/goals/deletion';
 import {
   daysAgo,
   planPractice,
@@ -137,11 +138,20 @@ export async function createGoal(input: {
 }
 
 /**
+ * The `settings` row holding a goal's stitch progress (repos/stitch). It
+ * lives here so deleting or stopping a goal can clear it without this module
+ * and repos/stitch importing each other.
+ */
+export function stitchStateKey(goalId: string): string {
+  return `stitch_${goalId}`;
+}
+
+/**
  * Deletes a goal with its chunks, attempts and review items, then purges any
  * licensed text no remaining goal covers (02 §5). Nothing else in the
  * database is left pointing at it: a "Show on widgets" pick on it is
  * cleared, so the oldest active goal takes the focus (services/focus), and
- * so is a practice session left open on it.
+ * so are a practice session left open on it and its stitch progress.
  *
  * The days its attempts were made on are kept for the practice grid
  * (services/stats/practice-days); the streak and earned badges are stored on
@@ -173,6 +183,57 @@ export async function deleteGoal(goalId: string): Promise<void> {
     await db.delete(tables.settings).where(eq(tables.settings.key, FOCUS_KEY));
   }
   if ((await loadActiveSession())?.goalId === goalId) await clearActiveSession();
+  await db.delete(tables.settings).where(eq(tables.settings.key, stitchStateKey(goalId)));
+
+  await purgeUnreferencedText();
+}
+
+/**
+ * Stops a passage partway (services/goals `mayStopGoal`): the goal becomes
+ * `stopped`, and its chunks not yet memorized go with their attempts and any
+ * review item. The memorized chunks stay — with their review items and
+ * attempts — so they remain on the Memorized shelf, in reviews and in
+ * "verses memorized". Licensed text outside them is purged (02 §5).
+ *
+ * The status changes first. From then on the goal is off every screen that
+ * practices, and retention keeps only its memorized chunks' verses, so a
+ * stop cut short by a crash leaves stray rows nothing shows rather than a
+ * half-stopped passage still in progress; calling this again finishes it.
+ *
+ * As with `deleteGoal`, the days the removed attempts were made on are kept
+ * for the practice grid, and a "Show on widgets" pick or a practice session
+ * left open on the goal is cleared. So is its stitch progress: a stopped
+ * goal is never stitched again (repos/stitch `stitchPlan`).
+ *
+ * Use features/goals `stopPassage` from screens: it checks the goal may be
+ * stopped and refreshes the widgets, the shield and notifications.
+ */
+export async function stopGoal(goalId: string): Promise<void> {
+  const goal = await getGoal(goalId);
+  // Stopping again finishes a stop that was cut short; anything else is left alone.
+  if (goal?.status !== 'active' && goal?.status !== 'stopped') return;
+  if (goal.status === 'active') {
+    await db.update(tables.goals).set({ status: 'stopped' }).where(eq(tables.goals.id, goalId));
+  }
+
+  const dropped = chunksToDropOnStop(await chunksForGoal(goalId)).map((c) => c.id);
+  if (dropped.length > 0) {
+    const attempted = await db
+      .select({ createdAt: tables.attempts.createdAt })
+      .from(tables.attempts)
+      .where(inArray(tables.attempts.chunkId, dropped));
+    await keepPracticeDaysOf(attempted.map((a) => a.createdAt));
+
+    await db.delete(tables.reviewItems).where(inArray(tables.reviewItems.chunkId, dropped));
+    await db.delete(tables.attempts).where(inArray(tables.attempts.chunkId, dropped));
+    await db.delete(tables.chunks).where(inArray(tables.chunks.id, dropped));
+  }
+
+  if ((await focusGoalId()) === goalId) {
+    await db.delete(tables.settings).where(eq(tables.settings.key, FOCUS_KEY));
+  }
+  if ((await loadActiveSession())?.goalId === goalId) await clearActiveSession();
+  await db.delete(tables.settings).where(eq(tables.settings.key, stitchStateKey(goalId)));
 
   await purgeUnreferencedText();
 }
@@ -225,12 +286,15 @@ export async function setGoalChallengeId(goalId: string, code: string): Promise<
   await db.update(tables.goals).set({ challengeId: code }).where(eq(tables.goals.id, goalId));
 }
 
-/** Join-time dedupe: has this device already joined the challenge? */
+/**
+ * Join-time dedupe: has this device already joined the challenge? A goal
+ * the user stopped no longer counts, so the link can start it again.
+ */
 export async function goalByChallengeId(code: string): Promise<Goal | undefined> {
   const rows = await db
     .select()
     .from(tables.goals)
-    .where(eq(tables.goals.challengeId, code))
+    .where(and(eq(tables.goals.challengeId, code), ne(tables.goals.status, 'stopped')))
     .limit(1);
   return rows[0] && withDisplayTitle(rows[0]);
 }

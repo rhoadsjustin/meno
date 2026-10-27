@@ -45,5 +45,14 @@ export default {
       done: 'Se eliminó {{title}}.',
       failed: 'No se pudo eliminar {{title}}',
     },
+    stop: {
+      spoken: 'Dejar {{title}}',
+      title: '¿Dejar {{title}}?',
+      message:
+        'Los versículos que memorizaste se quedan en tu estante Memorizados y en tus repasos. Se borra tu práctica del resto de este pasaje. No se puede deshacer.',
+      confirm: 'Dejar el pasaje',
+      done: 'Dejaste {{title}}. Sus versículos memorizados están en tu estante Memorizados.',
+      failed: 'No se pudo dejar {{title}}',
+    },
   },
 } satisfies Catalog<typeof en>;

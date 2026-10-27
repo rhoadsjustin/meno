@@ -44,5 +44,15 @@ export default {
       done: '{{title}} deleted.',
       failed: 'Couldn’t delete {{title}}',
     },
+    // A partly memorized passage: the memorized chunks stay (repos/goals stopGoal).
+    stop: {
+      spoken: 'Stop {{title}}',
+      title: 'Stop {{title}}?',
+      message:
+        'The verses you’ve memorized stay on your Memorized shelf and in your reviews. Your practice on the rest of this passage is deleted. You can’t undo this.',
+      confirm: 'Stop passage',
+      done: '{{title}} stopped. Its memorized verses are on your Memorized shelf.',
+      failed: 'Couldn’t stop {{title}}',
+    },
   },
 } as const;
