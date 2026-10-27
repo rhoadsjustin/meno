@@ -46,6 +46,15 @@ export function parseEsvPassage(passage: string, bookId: string, chapter: number
   return verses;
 }
 
+/**
+ * The ESV API query for one whole chapter. A book with one chapter is asked
+ * for by name alone: the API reads "Jude 1" as Jude 1:1, not chapter 1.
+ */
+export function esvChapterQuery(bookId: string, chapter: number): string {
+  const book = getBook(bookId);
+  return book.chapters === 1 ? book.name : `${book.name} ${chapter}`;
+}
+
 /** Fetches one whole chapter from the ESV API (well under the 500-verse
  * per-query limit). Throws offline or on HTTP errors. */
 export async function fetchEsvChapter(bookId: string, chapter: number): Promise<Verse[]> {
@@ -53,7 +62,7 @@ export async function fetchEsvChapter(bookId: string, chapter: number): Promise<
   if (!key) throw new Error('ESV API key not configured');
   const book = getBook(bookId);
   const params = new URLSearchParams({
-    q: `${book.name} ${chapter}`,
+    q: esvChapterQuery(bookId, chapter),
     'include-passage-references': 'false',
     'include-verse-numbers': 'true',
     'include-first-verse-numbers': 'true',
