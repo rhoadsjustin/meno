@@ -63,6 +63,23 @@ on a failing flow, keep the build:
 E2E_KEEP_BUILD=1 npm run e2e
 ```
 
+## After the merge
+
+The gate cleans its own derived data, but a merged PR still leaves its
+worktree behind (node_modules + Pods, ~1.6 GB; several more if
+`npx expo run:ios` built into `ios/build-*`), plus any Maestro debug output
+kept from a failed run. `npm run cleanup` removes those: worktrees of merged
+branches with a clean tree, build output nothing has written to for an hour,
+and stale Maestro output. It skips anything a live session is using (a
+device-warden lease, a running process, files touched in the last hour) and
+never touches simulators (it only reports their size). The gate runs it in
+the background as it exits, logging to `$TMPDIR/meno-cleanup.log`, so every
+validation run also clears the previous merge's leftovers. Preview with:
+
+```bash
+npm run cleanup -- --dry-run
+```
+
 ## On EAS
 
 `flows/` can also run on EAS Workflows (`.eas/workflows/e2e.yml`), on demand:

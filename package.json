@@ -69,6 +69,7 @@
     "test": "vitest run",
     "e2e": "bash scripts/e2e-local.sh",
     "ota": "tsx scripts/ota.ts",
+    "cleanup": "bash scripts/cleanup-validation.sh",
     "test:watch": "vitest",
     "build:bible": "tsx scripts/build-bible-db.ts",
     "db:generate": "drizzle-kit generate",
