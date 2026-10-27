@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import { firstLetters } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
 
@@ -13,25 +14,26 @@ export function FirstLettersRound({
   onResult: (selfPass: boolean) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const [revealed, setRevealed] = useState(false);
 
   return (
     <>
       <Text
-        accessibilityLabel="First letters of the passage"
+        accessibilityLabel={t('firstLetters.label')}
         style={[styles.cipher, { color: colors.ink, fontFamily: fonts?.mono }]}>
         {firstLetters(text)}
       </Text>
       {!revealed ? (
         <>
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Recite from the letters — aloud or in your head — then check yourself.
+            {t('firstLetters.hint')}
           </Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => setRevealed(true)}
             style={[styles.button, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Reveal</Text>
+            <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('firstLetters.reveal')}</Text>
           </Pressable>
         </>
       ) : (
@@ -40,7 +42,7 @@ export function FirstLettersRound({
             {text}
           </Text>
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            How did it go?
+            {t('firstLetters.howDidItGo')}
           </Text>
           <View style={styles.row}>
             <Pressable
@@ -48,14 +50,14 @@ export function FirstLettersRound({
               onPress={() => onResult(false)}
               style={[styles.secondary, { borderColor: colors.separator }]}>
               <Text style={[styles.secondaryText, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                Not yet
+                {t('firstLetters.notYet')}
               </Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={() => onResult(true)}
               style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Mostly got it</Text>
+              <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('firstLetters.mostly')}</Text>
             </Pressable>
           </View>
         </>

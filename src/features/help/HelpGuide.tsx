@@ -27,6 +27,8 @@ import {
 
 import { Card } from '@/components/card';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
+import { useTranslation } from '@/i18n/react';
+import { formatRef } from '@/services/bible';
 import { loadLockConfig } from '@/services/db/repos/lock';
 import { getAuthorizationStatus, isLockAvailable } from '@/services/lock';
 import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
@@ -47,21 +49,10 @@ export type SectionKey = 'quizzes' | 'homeWidget' | 'lockWidget' | 'speak' | 'lo
 type Status = 'ready' | 'notYet' | 'openSettings' | 'unavailable' | 'manual';
 type Statuses = Record<SectionKey, Status>;
 
-const SECTIONS: { key: SectionKey; title: string }[] = [
-  { key: 'quizzes', title: 'Reminders and quizzes' },
-  { key: 'homeWidget', title: 'Home Screen widget' },
-  { key: 'lockWidget', title: 'Lock Screen widget' },
-  { key: 'speak', title: 'Speaking your verse' },
-  { key: 'lock', title: 'Recite to unlock' },
-];
+const SECTIONS: SectionKey[] = ['quizzes', 'homeWidget', 'lockWidget', 'speak', 'lock'];
 
-const STATUS_LABEL: Record<Status, string> = {
-  ready: 'Ready',
-  notYet: 'Not set up yet',
-  openSettings: 'Needs permission in iPhone Settings',
-  unavailable: 'Needs a real iPhone',
-  manual: 'Add it yourself — steps below',
-};
+/** The verse the widget captures show. */
+const CAPTURE_REF = { bookId: 'Phil', chapter: 4, verse: 4 };
 
 const INITIAL: Statuses = {
   quizzes: 'notYet',
@@ -107,40 +98,17 @@ async function readStatuses(): Promise<Statuses> {
   };
 }
 
-const FAQ: { q: string; a: string }[] = [
-  {
-    q: 'Can I learn more than one passage at a time?',
-    a: 'Yes. Tap “+ Practice another passage” on Today (or in Library). Each passage keeps its own progress, and Today lists them all — the one on your widgets at the top.',
-  },
-  {
-    q: 'How do I choose which verse my widgets show?',
-    a: 'On Today or in Library, tap “Show on widgets” under the passage you want. Every Meno widget switches to it within a moment, and recite-to-unlock asks for that verse too.',
-  },
-  {
-    q: 'My widget shows an old verse.',
-    a: 'Widgets update when you leave Meno. Open Meno, then go back to your Home Screen. Your iPhone can take a few minutes to refresh it.',
-  },
-  {
-    q: 'My widget only shows the reference, not the words.',
-    a: 'That’s on purpose once you know a verse well — try reciting it from memory! To show more, touch and hold the widget, tap Edit Widget, and change “Show verse as.”',
-  },
-  {
-    q: 'I’m not getting any reminders or quizzes.',
-    a: 'Open Settings → Reminders. Each kind of reminder says when the next one comes, or why none will yet. The daily reminder comes at the time you set and skips a day you’ve already practiced. Quizzes start once a verse is memorized, and only come between 9am and 9pm. If everything there looks right, check your iPhone: a Focus like Sleep or Do Not Disturb holds notifications until it ends, and Scheduled Summary saves them for set times of day. Meno can’t see either one.',
-  },
-  {
-    q: 'An app is shielded and I need it right now.',
-    a: 'Tap Override on the shield — it always works. To switch recite-to-unlock off completely, open Meno’s Settings and tap “Turn off and clear all shields now.”',
-  },
-  {
-    q: 'Does Meno record my voice?',
-    a: 'No. When you speak a verse, your iPhone turns it into text right on the device. The audio is never saved or sent anywhere.',
-  },
-  {
-    q: 'What happens if I delete Meno?',
-    a: 'Your iPhone removes any shields Meno set. Meno doesn’t use an account — your verses and progress live on this iPhone — so deleting the app removes them too.',
-  },
-];
+/** Common questions, in order; each is `faq.<id>.q` / `faq.<id>.a` in the help catalog. */
+const FAQ = [
+  'multiple',
+  'widgetVerse',
+  'oldVerse',
+  'referenceOnly',
+  'noReminders',
+  'shielded',
+  'voice',
+  'deleteApp',
+] as const;
 
 export type HelpGuideProps = {
   /** Which sections to show; all by default. */
@@ -158,7 +126,7 @@ export type HelpGuideProps = {
 };
 
 export function HelpGuide({
-  sections = SECTIONS.map((s) => s.key),
+  sections = SECTIONS,
   overview = true,
   faq = true,
   scrollTo,
@@ -166,6 +134,7 @@ export function HelpGuide({
   reminderLines = true,
 }: HelpGuideProps) {
   const colors = useThemeColors();
+  const { t } = useTranslation('help');
   const rootY = useRef(0);
   const offsets = useRef<Partial<Record<SectionKey, number>>>({});
   const [rest, setStatuses] = useState<Statuses>(INITIAL);
@@ -176,7 +145,7 @@ export function HelpGuide({
   const statusLabel = (key: SectionKey) =>
     key === 'quizzes' && reminders
       ? reminderSummary(reminders, { now: new Date() })
-      : STATUS_LABEL[statuses[key]];
+      : t(`status.${statuses[key]}`);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const shown = new Set(sections);
 
@@ -246,12 +215,15 @@ export function HelpGuide({
     <View style={styles.guide} onLayout={(e) => (rootY.current = e.nativeEvent.layout.y)}>
       {overview && (
         <Card>
-          {SECTIONS.filter((s) => shown.has(s.key)).map(({ key, title }, i) => (
+          {SECTIONS.filter((key) => shown.has(key)).map((key, i) => (
             <Pressable
               key={key}
               accessibilityRole="button"
-              accessibilityLabel={`${title}: ${statusLabel(key)}`}
-              accessibilityHint="Shows the steps"
+              accessibilityLabel={t('overviewLabel', {
+                title: t(`sections.${key}`),
+                status: statusLabel(key),
+              })}
+              accessibilityHint={t('overviewHint')}
               onPress={() => jumpTo(key)}
               style={[
                 styles.overviewRow,
@@ -260,7 +232,7 @@ export function HelpGuide({
                   borderTopWidth: StyleSheet.hairlineWidth,
                 },
               ]}>
-              <Text style={[styles.overviewTitle, text]}>{title}</Text>
+              <Text style={[styles.overviewTitle, text]}>{t(`sections.${key}`)}</Text>
               <StatusText status={statuses[key]} label={statusLabel(key)} />
             </Pressable>
           ))}
@@ -270,50 +242,42 @@ export function HelpGuide({
       {shown.has('quizzes') && (
         <Section
           sectionKey="quizzes"
-          title="Reminders and quizzes"
+          title={t('sections.quizzes')}
           status={statuses.quizzes}
           statusLabel={statusLabel('quizzes')}
           onSectionLayout={recordOffset}>
-          <Text style={[styles.body, text]}>
-            A daily reminder to practice, at a time you choose, and short surprise quizzes on verses
-            you’ve memorized (between 9am and 9pm). Never more than two notifications a day.
-          </Text>
+          <Text style={[styles.body, text]}>{t('quizzes.body')}</Text>
           {reminders?.overall === 'blocked' && (
             <Text style={[styles.tip, { color: colors.error, fontFamily: fonts?.ui }]}>
-              Reminders are on in Meno, but your iPhone isn’t letting them through, so nothing
-              can arrive yet.
+              {t('quizzes.blocked')}
             </Text>
           )}
           {statuses.quizzes === 'openSettings' ? (
             <>
               <Steps
                 items={[
-                  'Tap Open iPhone Settings below.',
-                  'Tap Notifications.',
-                  'Turn on Allow Notifications.',
-                  'Come back to Meno — this page updates by itself.',
+                  t('steps.tapOpenSettings'),
+                  t('quizzes.tapNotifications'),
+                  t('quizzes.allowNotifications'),
+                  t('steps.comeBack'),
                 ]}
               />
-              <Action label="Open iPhone Settings" onPress={openIphoneSettings} />
+              <Action label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.quizzes === 'ready' ? (
             <>
               {reminderLines && reminders && <ReminderStatusList status={reminders} />}
-              <Text style={[styles.tip, faint]}>
-                Change the time or turn reminders off in Settings → Reminders. A Focus or
-                Scheduled Summary on your iPhone can still hold notifications back; Meno can’t
-                see either one.
-              </Text>
+              <Text style={[styles.tip, faint]}>{t('quizzes.readyTip')}</Text>
             </>
           ) : (
             <>
               <Text style={[styles.tip, faint]}>
-                {reminders?.overall === 'off'
-                  ? 'Reminders are off in Meno. If your iPhone asks whether Meno can send notifications, tap Allow.'
-                  : 'Your iPhone will ask if Meno can send notifications — tap Allow.'}
+                {reminders?.overall === 'off' ? t('quizzes.offTip') : t('quizzes.askTip')}
               </Text>
               <Action
-                label={reminders?.canAsk ? 'Allow notifications' : 'Turn on reminders'}
+                label={
+                  reminders?.canAsk ? t('actions.allowNotifications') : t('actions.turnOnReminders')
+                }
                 onPress={() => void turnOnQuizzes()}
               />
             </>
@@ -324,91 +288,69 @@ export function HelpGuide({
       {shown.has('homeWidget') && (
         <Section
           sectionKey="homeWidget"
-          title="Home Screen widget"
+          title={t('sections.homeWidget')}
           status={statuses.homeWidget}
           onSectionLayout={recordOffset}>
-          <Text style={[styles.body, text]}>
-            Shows your current verse on your Home Screen. As you learn it, words disappear — a
-            gentle nudge to fill them in from memory.
-          </Text>
-          <HomeWidgetShot accessibilityLabel="Example: the Meno widget on a Home Screen, showing Philippians 4:4 with some words blanked out" />
+          <Text style={[styles.body, text]}>{t('homeWidget.body')}</Text>
+          <HomeWidgetShot
+            accessibilityLabel={t('homeWidget.imageLabel', { ref: formatRef(CAPTURE_REF) })}
+          />
           <Steps
             items={[
-              'Go to your Home Screen. (Swipe up from the bottom edge to leave Meno.)',
-              'Touch and hold an empty spot until the apps start to wiggle.',
-              'Tap Edit in the top-left corner, then tap Add Widget.',
-              'Type “Meno” in the search box, then tap Meno.',
-              'Swipe left or right to pick a size, then tap Add Widget.',
-              'Tap Done in the top-right corner.',
+              t('homeWidget.steps.goHome'),
+              t('homeWidget.steps.holdEmpty'),
+              t('homeWidget.steps.tapEdit'),
+              t('homeWidget.steps.search'),
+              t('homeWidget.steps.pickSize'),
+              t('homeWidget.steps.tapDone'),
             ]}
           />
-          <Text style={[styles.tip, faint]}>
-            Tip: learning more than one passage? Tap “Show on widgets” under the one you want on
-            Today or in Library. To choose how much of the verse shows, touch and hold the widget
-            and tap Edit Widget.
-          </Text>
+          <Text style={[styles.tip, faint]}>{t('homeWidget.tip')}</Text>
         </Section>
       )}
 
       {shown.has('lockWidget') && (
         <Section
           sectionKey="lockWidget"
-          title="Lock Screen widget"
+          title={t('sections.lockWidget')}
           status={statuses.lockWidget}
           onSectionLayout={recordOffset}>
-          <Text style={[styles.body, text]}>
-            Puts your verse right under the clock, so you see it every time you pick up your phone.
-          </Text>
-          <LockScreenShot accessibilityLabel="Example: the Meno widget under the clock on a Lock Screen, showing Philippians 4:4" />
+          <Text style={[styles.body, text]}>{t('lockWidget.body')}</Text>
+          <LockScreenShot
+            accessibilityLabel={t('lockWidget.imageLabel', { ref: formatRef(CAPTURE_REF) })}
+          />
           <Steps
             items={[
-              'Press the side button to lock your iPhone, then tap the screen to wake it. Stay on the Lock Screen — don’t swipe up.',
-              'Touch and hold the Lock Screen until Customize appears at the bottom.',
-              'Tap Customize. If your iPhone asks, choose Lock Screen.',
-              'Tap the widget area (it may say Add Widgets).',
-              'Scroll to Meno, tap it, then tap the widget to add it.',
-              'Close the widget list, then tap Done.',
+              t('lockWidget.steps.wake'),
+              t('lockWidget.steps.hold'),
+              t('lockWidget.steps.customize'),
+              t('lockWidget.steps.widgetArea'),
+              t('lockWidget.steps.addMeno'),
+              t('lockWidget.steps.done'),
             ]}
           />
-          <Text style={[styles.tip, faint]}>
-            Tip: while customizing, drag the widget up to sit right under the clock, or tap it to
-            change how much of the verse shows.
-          </Text>
+          <Text style={[styles.tip, faint]}>{t('lockWidget.tip')}</Text>
         </Section>
       )}
 
       {shown.has('speak') && (
         <Section
           sectionKey="speak"
-          title="Speaking your verse"
+          title={t('sections.speak')}
           status={statuses.speak}
           onSectionLayout={recordOffset}>
-          <Text style={[styles.body, text]}>
-            In Speak rounds you say the verse out loud and Meno checks it. Your voice is handled on
-            this iPhone and never leaves it. You can always type instead.
-          </Text>
+          <Text style={[styles.body, text]}>{t('speak.body')}</Text>
           {statuses.speak === 'openSettings' ? (
             <>
-              <Steps
-                items={[
-                  'Tap Open iPhone Settings below.',
-                  'Turn on Microphone and Speech Recognition.',
-                  'Come back to Meno — this page updates by itself.',
-                ]}
-              />
-              <Action label="Open iPhone Settings" onPress={openIphoneSettings} />
+              <Steps items={[t('steps.tapOpenSettings'), t('speak.turnOn'), t('steps.comeBack')]} />
+              <Action label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.speak === 'ready' ? (
-            <Text style={[styles.tip, faint]}>
-              You’re all set — tap the mic in any Speak round.
-            </Text>
+            <Text style={[styles.tip, faint]}>{t('speak.readyTip')}</Text>
           ) : (
             <>
-              <Text style={[styles.tip, faint]}>
-                Your iPhone will ask about the microphone and speech recognition — tap Allow for
-                both.
-              </Text>
-              <Action label="Allow microphone" onPress={() => void allowMicrophone()} />
+              <Text style={[styles.tip, faint]}>{t('speak.askTip')}</Text>
+              <Action label={t('actions.allowMicrophone')} onPress={() => void allowMicrophone()} />
             </>
           )}
         </Section>
@@ -417,34 +359,25 @@ export function HelpGuide({
       {shown.has('lock') && (
         <Section
           sectionKey="lock"
-          title="Recite to unlock"
+          title={t('sections.lock')}
           status={statuses.lock}
           onSectionLayout={recordOffset}>
-          <Text style={[styles.body, text]}>
-            Optional. Pick the apps that eat your time; before one opens, Meno asks you to recite
-            your verse. Override is always one tap away, and you can switch it off anytime.
-          </Text>
+          <Text style={[styles.body, text]}>{t('lock.body')}</Text>
           {statuses.lock === 'unavailable' ? (
-            <Text style={[styles.tip, faint]}>
-              This uses Apple’s Screen Time, which only works on a real iPhone — not in the
-              simulator.
-            </Text>
+            <Text style={[styles.tip, faint]}>{t('lock.unavailable')}</Text>
           ) : statuses.lock === 'ready' ? (
-            <Text style={[styles.tip, faint]}>
-              It’s on. To turn it off completely, go to Settings → Turn off and clear all shields
-              now.
-            </Text>
+            <Text style={[styles.tip, faint]}>{t('lock.readyTip')}</Text>
           ) : (
             <>
               <Steps
                 items={[
-                  'Tap Set up recite-to-unlock below.',
-                  'When your iPhone asks about Screen Time, allow it (you may need Face ID or your passcode).',
-                  'Pick the apps that should ask for a verse first.',
-                  'Choose when Meno should ask, and finish setup.',
+                  t('lock.steps.tapSetUp'),
+                  t('lock.steps.allowScreenTime'),
+                  t('lock.steps.pickApps'),
+                  t('lock.steps.chooseWhen'),
                 ]}
               />
-              <Action label="Set up recite-to-unlock" onPress={openLockSetup} />
+              <Action label={t('actions.setUpLock')} onPress={openLockSetup} />
             </>
           )}
         </Section>
@@ -453,14 +386,14 @@ export function HelpGuide({
       {faq && (
         <>
           <Text accessibilityRole="header" style={[styles.sectionTitle, styles.faqHeading, text]}>
-            Common questions
+            {t('faqHeading')}
           </Text>
           <Card>
-            {FAQ.map(({ q, a }, i) => {
+            {FAQ.map((id, i) => {
               const open = openFaq === i;
               return (
                 <View
-                  key={q}
+                  key={id}
                   style={
                     i > 0 && {
                       borderTopColor: colors.separator,
@@ -472,7 +405,7 @@ export function HelpGuide({
                     accessibilityState={{ expanded: open }}
                     onPress={() => setOpenFaq(open ? null : i)}
                     style={styles.faqRow}>
-                    <Text style={[styles.faqQuestion, text]}>{q}</Text>
+                    <Text style={[styles.faqQuestion, text]}>{t(`faq.${id}.q`)}</Text>
                     <Text
                       importantForAccessibility="no"
                       accessibilityElementsHidden
@@ -480,7 +413,7 @@ export function HelpGuide({
                       {open ? '−' : '+'}
                     </Text>
                   </Pressable>
-                  {open && <Text style={[styles.faqAnswer, faint]}>{a}</Text>}
+                  {open && <Text style={[styles.faqAnswer, faint]}>{t(`faq.${id}.a`)}</Text>}
                 </View>
               );
             })}
@@ -528,6 +461,7 @@ function Section({
 /** Status is always spelled out, never color alone. */
 function StatusText({ status, label }: { status: Status; label?: string }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('help');
   const color =
     status === 'ready'
       ? colors.success
@@ -538,13 +472,14 @@ function StatusText({ status, label }: { status: Status; label?: string }) {
   return (
     <Text style={[styles.status, { color, fontFamily: fonts?.ui }]}>
       {mark}
-      {label ?? STATUS_LABEL[status]}
+      {label ?? t(`status.${status}`)}
     </Text>
   );
 }
 
 function Steps({ items }: { items: string[] }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('help');
   return (
     <View style={styles.steps}>
       {items.map((item, i) => (
@@ -552,7 +487,7 @@ function Steps({ items }: { items: string[] }) {
           key={item}
           style={styles.stepRow}
           accessible
-          accessibilityLabel={`Step ${i + 1}: ${item}`}>
+          accessibilityLabel={t('stepLabel', { number: i + 1, text: item })}>
           <Text style={[styles.stepNumber, { color: colors.lapis, fontFamily: fonts?.ui }]}>
             {i + 1}.
           </Text>

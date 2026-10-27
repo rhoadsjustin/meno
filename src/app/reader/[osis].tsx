@@ -9,8 +9,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { ScreenHeader } from '@/components/screen-header';
 import { BookSpread } from '@/features/reader/BookSpread';
+import { useTranslation } from '@/i18n/react';
 import {
   DEFAULT_TRANSLATION_ID,
+  bookName,
   getBook,
   getChapter,
   getTranslation,
@@ -22,6 +24,7 @@ import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@
 export default function ReaderRoute() {
   const { osis, translation } = useLocalSearchParams<{ osis: string; translation?: string }>();
   const colors = useThemeColors();
+  const { t } = useTranslation('reader');
   // Wide windows (iPhone Duo opened): a chapter sidebar beside the text.
   const { sides, isWide, foldAxis } = useContentLayout();
   // Book pose: the Duo half-open with the crease running top to bottom.
@@ -31,7 +34,8 @@ export default function ReaderRoute() {
 
   const translationId = translation ?? DEFAULT_TRANSLATION_ID;
   const [verses, setVerses] = useState<Verse[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  // The chapter that failed to load, if any; the message is worded at render.
+  const [failed, setFailed] = useState<string | null>(null);
 
   let ref;
   try {
@@ -40,17 +44,22 @@ export default function ReaderRoute() {
     ref = { bookId: 'John', chapter: 1, verse: 1 };
   }
   const bookInfo = getBook(ref.bookId);
+  const title = t('title', { book: bookName(ref.bookId), chapter: ref.chapter });
+  const error = failed === title ? t('loadFailed', { chapter: title }) : null;
 
   useEffect(() => {
     let cancelled = false;
+    const chapterTitle = t('title', { book: bookName(ref.bookId), chapter: ref.chapter });
     (async () => {
       const rows = await getChapter(translationId, ref.bookId, ref.chapter);
       if (!cancelled) setVerses(rows);
-    })().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    })().catch(() => {
+      if (!cancelled) setFailed(chapterTitle);
+    });
     return () => {
       cancelled = true;
     };
-  }, [translationId, ref.bookId, ref.chapter]);
+  }, [translationId, ref.bookId, ref.chapter, t]);
 
   const goToChapter = (chapter: number) => {
     router.setParams({ osis: `${ref.bookId}.${chapter}.1` });
@@ -66,21 +75,21 @@ export default function ReaderRoute() {
           The bar is clear and the pages run beneath it, so a turning sheet
           is not cut off where the bar begins. */}
       <Stack.Screen options={{ gestureEnabled: !book, headerTransparent: book }} />
-      <ScreenHeader title={`${bookInfo.name} ${ref.chapter}`} transparent={book}>
+      <ScreenHeader title={title} transparent={book}>
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
             icon="chevron.left"
-            accessibilityLabel="Previous chapter"
+            accessibilityLabel={t('previousChapter')}
             disabled={ref.chapter <= 1}
             onPress={() => goToChapter(ref.chapter - 1)}>
-            Previous chapter
+            {t('previousChapter')}
           </Stack.Toolbar.Button>
           <Stack.Toolbar.Button
             icon="chevron.right"
-            accessibilityLabel="Next chapter"
+            accessibilityLabel={t('nextChapter')}
             disabled={ref.chapter >= bookInfo.chapters}
             onPress={() => goToChapter(ref.chapter + 1)}>
-            Next chapter
+            {t('nextChapter')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
       </ScreenHeader>
@@ -113,7 +122,7 @@ export default function ReaderRoute() {
               contentContainerStyle={styles.sidebarContent}>
               <Text
                 style={[styles.sidebarTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {bookInfo.name}
+                {bookName(ref.bookId)}
               </Text>
               {chapters.map((n) => {
                 const selected = n === ref.chapter;
@@ -133,7 +142,7 @@ export default function ReaderRoute() {
                           fontWeight: selected ? '600' : '400',
                         },
                       ]}>
-                      Chapter {n}
+                      {t('chapter', { chapter: n })}
                     </Text>
                   </Pressable>
                 );

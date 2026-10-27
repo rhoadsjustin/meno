@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import type { LadderProgress as Progress } from '@/services/practice';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
@@ -11,10 +12,14 @@ import { useThemeColors, fonts, spacing } from '@/theme';
  */
 export function LadderProgress({ progress, current }: { progress: Progress; current: boolean }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const { done, total, pass } = progress;
+  const step = Math.min(done + 1, total);
   const caption = current
-    ? `Step ${Math.min(done + 1, total)} of ${total}${pass ? ` · pass ${pass.index} of ${pass.of}` : ''}`
-    : `${done} of ${total} steps done`;
+    ? pass
+      ? t('progress.stepPass', { step, total, index: pass.index, of: pass.of })
+      : t('progress.step', { step, total })
+    : t('progress.done', { done, total });
 
   return (
     <View

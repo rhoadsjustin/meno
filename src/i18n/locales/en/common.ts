@@ -1,0 +1,21 @@
+/** Strings shared across screens: buttons, generic states, units. */
+export default {
+  cancel: 'Cancel',
+  close: 'Close',
+  continue: 'Continue',
+  done: 'Done',
+  back: 'Back',
+  next: 'Next',
+  save: 'Save',
+  delete: 'Delete',
+  edit: 'Edit',
+  ok: 'OK',
+  retry: 'Try again',
+  loading: 'Loading…',
+  notNow: 'Not now',
+  verseCount_one: '{{count}} verse',
+  verseCount_other: '{{count}} verses',
+  dayCount_one: '{{count}} day',
+  dayCount_other: '{{count}} days',
+  percent: '{{value}}%',
+} as const;

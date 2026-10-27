@@ -11,6 +11,7 @@
  */
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import { feedbackSequence, feedbackSummary, type GradeResult } from '@/services/grading';
 import { useThemeColors, fonts, spacing } from '@/theme';
 
@@ -24,6 +25,7 @@ export function WordFeedback({
   tone?: 'error' | 'almost';
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const slip = tone === 'almost' ? colors.amber : colors.error;
   const slipWash = tone === 'almost' ? colors.amberWash : colors.errorWash;
   const tokens = feedbackSequence(result);
@@ -31,7 +33,7 @@ export function WordFeedback({
   return (
     // One VoiceOver element naming the slips (the marks are colour and
     // strikethrough, and a verse read word by word buries them).
-    <View accessible accessibilityLabel={`Word-by-word feedback. ${feedbackSummary(result)}`}>
+    <View accessible accessibilityLabel={t('wordFeedback.label', { summary: feedbackSummary(result) })}>
       <View style={styles.wrap}>
         {tokens.map((token) => {
           if (token.kind === 'extra') {
@@ -67,7 +69,7 @@ export function WordFeedback({
       </View>
       {hasExtras && (
         <Text style={[styles.legend, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          + marks a word you added that is not in the verse.
+          {t('wordFeedback.extraLegend')}
         </Text>
       )}
     </View>

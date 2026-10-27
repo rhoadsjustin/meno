@@ -8,7 +8,9 @@
  * reference only. `Match my progress` (the default) follows the tier ladder.
  * WidgetKit owns that choice, so services/widgets ships every rendering
  * precomputed and this layout selects one — the widget runtime is isolated:
- * no hooks, no app state, no module-scope constants.
+ * no hooks, no app state, no module-scope constants. That includes i18n: every
+ * word of copy arrives as a prop, rendered in the UI language by
+ * services/widgets (only the 'Meno' wordmark is literal).
  */
 import { HStack, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import { containerBackground, font, foregroundStyle, widgetURL } from '@expo/ui/swift-ui/modifiers';
@@ -36,6 +38,19 @@ export type MenoWidgetProps = WidgetTextVariants & {
   /** Up to 3 due review references, '·'-joined ('' when none). */
   dueRefs: string;
   hasGoal: boolean;
+  // Localized copy, rendered by services/widgets with `t`.
+  /** Under the streak count on the circular Lock Screen widget ('days'). */
+  streakUnitLabel: string;
+  /** Under the streak count on the small widget ('day streak'). */
+  streakCaption: string;
+  /** '3 due' — shown only when dueCount > 0. */
+  dueBadge: string;
+  /** Reference-only note: 'You know this one.' or 'From memory.' */
+  referenceNote: string;
+  /** No goal yet: 'Pick a passage to begin.' */
+  emptyPrompt: string;
+  /** Large widget footer: 'Due: …' or 'Nothing due — well kept.' */
+  dueLine: string;
 };
 
 const MenoWidgetComponent = (
@@ -78,7 +93,7 @@ const MenoWidgetComponent = (
         <Text modifiers={[font({ size: 20, weight: 'bold', design: 'serif' })]}>
           {String(props.streak)}
         </Text>
-        <Text modifiers={[font({ size: 9 })]}>days</Text>
+        <Text modifiers={[font({ size: 9 })]}>{props.streakUnitLabel}</Text>
       </VStack>
     );
   }
@@ -97,7 +112,7 @@ const MenoWidgetComponent = (
       <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>{props.verseRef}</Text>
         <Text modifiers={[font({ size: 11, design: mono ? 'monospaced' : 'default' })]}>
-          {referenceOnly ? (props.memorized ? 'You know this one.' : 'From memory.') : verseText}
+          {referenceOnly ? props.referenceNote : verseText}
         </Text>
       </VStack>
     );
@@ -113,11 +128,11 @@ const MenoWidgetComponent = (
           <Text modifiers={[font({ size: 15 })]}>{flame}</Text>
           <Spacer />
         </HStack>
-        <Text modifiers={[font({ size: 11 }), foregroundStyle(inkFaint)]}>day streak</Text>
+        <Text modifiers={[font({ size: 11 }), foregroundStyle(inkFaint)]}>{props.streakCaption}</Text>
         <Spacer />
         {props.dueCount > 0 ? (
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(lapis)]}>
-            {String(props.dueCount)} due
+            {props.dueBadge}
           </Text>
         ) : (
           <Text modifiers={[font({ size: 12 }), foregroundStyle(inkFaint)]}> </Text>
@@ -134,7 +149,7 @@ const MenoWidgetComponent = (
         {props.verseRef}
       </Text>
       <Text modifiers={[font({ size: 12 }), foregroundStyle(inkFaint)]}>
-        {props.memorized ? 'You know this one.' : 'From memory.'}
+        {props.referenceNote}
       </Text>
     </VStack>
   ) : (
@@ -163,7 +178,7 @@ const MenoWidgetComponent = (
         </HStack>
         {props.hasGoal ? verseBlock : (
           <Text modifiers={[font({ size: 14 }), foregroundStyle(inkFaint)]}>
-            Pick a passage to begin.
+            {props.emptyPrompt}
           </Text>
         )}
       </VStack>
@@ -188,20 +203,12 @@ const MenoWidgetComponent = (
       <Spacer />
       {props.hasGoal ? verseBlock : (
         <Text modifiers={[font({ size: 14 }), foregroundStyle(inkFaint)]}>
-          Pick a passage to begin.
+          {props.emptyPrompt}
         </Text>
       )}
       <Spacer />
       <Text modifiers={[font({ size: 12 }), foregroundStyle(lapis)]}>{gridRow}</Text>
-      {props.dueRefs.length > 0 ? (
-        <Text modifiers={[font({ size: 11 }), foregroundStyle(inkFaint)]}>
-          Due: {props.dueRefs}
-        </Text>
-      ) : (
-        <Text modifiers={[font({ size: 11 }), foregroundStyle(inkFaint)]}>
-          Nothing due — well kept.
-        </Text>
-      )}
+      <Text modifiers={[font({ size: 11 }), foregroundStyle(inkFaint)]}>{props.dueLine}</Text>
     </VStack>
   );
 };

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import { useRevealAboveKeyboard } from '@/components/keyboard-scroll';
 
 import { getTranslation } from '@/services/bible';
@@ -38,6 +39,7 @@ export function TypeRound({
   }) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const [input, setInput] = useState('');
   // A fixed box that scrolls inside, a little taller at large text sizes.
   // Left to grow with the text, the line being typed slid under the keyboard
@@ -83,7 +85,7 @@ export function TypeRound({
   return (
     <>
       <Text style={[styles.watermark, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {reference} · begins “{firstWord}…”
+        {t('type.watermark', { reference, word: firstWord })}
       </Text>
       <TextInput
         ref={editor}
@@ -94,9 +96,9 @@ export function TypeRound({
         spellCheck={false}
         value={input}
         onChangeText={setInput}
-        placeholder="Type the passage from memory"
+        placeholder={t('type.placeholder')}
         placeholderTextColor={colors.inkFaint}
-        accessibilityLabel="Type the passage from memory"
+        accessibilityLabel={t('type.placeholder')}
         style={[
           styles.editor,
           {
@@ -117,7 +119,7 @@ export function TypeRound({
           styles.button,
           { backgroundColor: colors.lapis, opacity: input.trim().length === 0 ? 0.5 : 1 },
         ]}>
-        <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Check</Text>
+        <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('type.check')}</Text>
       </Pressable>
     </>
   );

@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { applyLocale } from '@/i18n';
 
 import {
   challengeShareMessage,
   challengeTargetDate,
   ChallengeLinkError,
   encodeChallengeUrl,
+  formatRangeIn,
+  isPassageTitle,
   parseChallengeParams,
   parseChallengeUrl,
   toIsoDate,
@@ -126,5 +130,40 @@ describe('challenge codec', () => {
     expect(date?.getDate()).toBe(25);
     expect(toIsoDate(date!)).toBe('2026-12-25');
     expect(challengeTargetDate({ ...phil, targetDate: undefined })).toBeUndefined();
+  });
+});
+
+describe('language-neutral links', () => {
+  afterEach(() => applyLocale(['en-US']));
+
+  it('leaves a reference-only title off the link, so it reads in the receiver’s language', () => {
+    const untitled: Challenge = { ...phil, title: 'Philippians 4:4–9' };
+    const url = encodeChallengeUrl(untitled);
+    expect(url).not.toContain('n=');
+    expect(url).toContain('s=Phil.4.4');
+    applyLocale(['es-MX']);
+    expect(parseChallengeUrl(url).title).toBe('Filipenses 4:4–9');
+  });
+
+  it('recognizes a reference title made in any UI language', () => {
+    const range = phil.range;
+    expect(formatRangeIn(range, 'en')).toBe('Philippians 4:4–9');
+    expect(formatRangeIn(range, 'es')).toBe('Filipenses 4:4–9');
+    expect(isPassageTitle('Filipenses 4:4–9', range)).toBe(true);
+    expect(isPassageTitle('Philippians 4:4–9', range)).toBe(true);
+    expect(isPassageTitle('  ', range)).toBe(true);
+    expect(isPassageTitle('Peace by Advent', range)).toBe(false);
+    applyLocale(['es-MX']);
+    expect(isPassageTitle('Philippians 4:4–9', range)).toBe(true);
+    expect(encodeChallengeUrl({ ...phil, title: 'Filipenses 4:4–9' })).not.toContain('n=');
+  });
+
+  it('writes the share message in the UI language with a localized date', () => {
+    applyLocale(['es-MX']);
+    const message = challengeShareMessage(phil);
+    expect(message).toContain('“Peace by Advent”');
+    expect(message).toContain('Filipenses 4:4–9 (WEB)');
+    expect(message).toContain('25 de diciembre de 2026');
+    expect(message).toContain(encodeChallengeUrl(phil));
   });
 });

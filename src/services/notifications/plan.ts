@@ -1,6 +1,8 @@
 /**
  * What to schedule and when — the pure half of services/notifications
- * (docs/03 §7, 05 §2). No expo imports, so the rules are unit-tested:
+ * (docs/03 §7, 05 §2). No expo imports, so the rules are unit-tested; copy
+ * comes from the `notifications` catalog, rendered in the UI language each
+ * time a plan is made (every launch re-plans, so a language change lands):
  *
  * - A daily practice reminder at the user's chosen time, planned a week
  *   ahead so it keeps arriving when the app is not opened, and dropped for
@@ -10,6 +12,7 @@
  * - Never more than MAX_PER_DAY a day, the reminder included, and never two
  *   within three hours of each other.
  */
+import { t } from '@/i18n';
 
 export type ReminderTime = { hour: number; minute: number };
 
@@ -83,16 +86,16 @@ function clearOf(at: Date, others: PlannedNotification[]): boolean {
 function reminderCopy(input: PlanInput, isNext: boolean): { title: string; body: string } {
   if (isNext && input.streak > 0) {
     return {
-      title: `${input.streak}-day streak`,
+      title: t('notifications:plan.streakTitle', { count: input.streak }),
       body:
         input.dueCount > 0
-          ? `A quick review keeps it going — ${input.dueCount} ${input.dueCount === 1 ? 'verse is' : 'verses are'} ready.`
-          : 'A minute of practice keeps it going.',
+          ? t('notifications:plan.streakBodyDue', { count: input.dueCount })
+          : t('notifications:plan.streakBody'),
     };
   }
   return {
-    title: 'Time to practice',
-    body: 'Your verse is waiting. A few minutes is plenty.',
+    title: t('notifications:plan.practiceTitle'),
+    body: t('notifications:plan.practiceBody'),
   };
 }
 
@@ -133,8 +136,8 @@ export function planNotifications(input: PlanInput): PlannedNotification[] {
         id: `${POP_QUIZ_PREFIX}-${day}-${slot}`,
         kind: 'popQuiz',
         at,
-        title: 'Pop quiz',
-        body: 'A verse you’ve hidden is ready to shine. 30 seconds?',
+        title: t('notifications:plan.popQuizTitle'),
+        body: t('notifications:plan.popQuizBody'),
         url: '/review',
       });
       today++;

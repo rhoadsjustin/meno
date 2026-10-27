@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
 
+import { useTranslation } from '@/i18n/react';
 import { useThemeColors, fonts } from '@/theme';
 
 /**
@@ -31,6 +32,7 @@ export function ScreenHeader({
   children?: ReactNode;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   return (
     <>
       <Stack.Header
@@ -50,7 +52,7 @@ export function ScreenHeader({
       {backHidden ? (
         <Stack.Screen.BackButton hidden />
       ) : (
-        <Stack.Screen.BackButton displayMode="minimal">Back</Stack.Screen.BackButton>
+        <Stack.Screen.BackButton displayMode="minimal">{t('back')}</Stack.Screen.BackButton>
       )}
       {children}
     </>

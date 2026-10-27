@@ -10,6 +10,8 @@
  * not recomputed from attempts, and the days practiced are kept
  * (services/stats/practice-days), so the copy can promise they stay.
  */
+import { t } from '@/i18n';
+
 export type DeletionCandidate = { status: string };
 
 export function mayDeleteGoal(
@@ -28,9 +30,8 @@ export type DeletePrompt = {
 
 export function deleteGoalPrompt(goalTitle: string): DeletePrompt {
   return {
-    title: `Delete ${goalTitle}?`,
-    message:
-      'This deletes your practice history for this passage. Your streak and badges stay. You can’t undo this.',
-    confirm: 'Delete passage',
+    title: t('library:remove.delete.title', { title: goalTitle }),
+    message: t('library:remove.delete.message'),
+    confirm: t('library:remove.delete.confirm'),
   };
 }
