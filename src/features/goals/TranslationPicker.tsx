@@ -9,8 +9,9 @@
  * features/goals/translation-choice.
  */
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Pressable,
   SectionList,
@@ -83,7 +84,14 @@ export function TranslationPicker() {
   );
   const [attempt, setAttempt] = useState(0);
   const [browsing, setBrowsing] = useState<string | null>(null);
-  const [browseError, setBrowseError] = useState<string | null>(null);
+  // The last tapped language that failed to load, said inside its own row.
+  // (A language found empty is remembered by the catalog, and its row says
+  // so for good.)
+  const [failed, setFailed] = useState<{ languageId: string; message: string } | null>(null);
+  // A language just opened with versions, whose section is brought into
+  // view once the next render has it.
+  const reveal = useRef<string | null>(null);
+  const listRef = useRef<SectionList<Row, Section>>(null);
   // The registry and catalog cache are plain modules; bump to re-read them.
   const [tick, setTick] = useState(0);
   const bump = useCallback(() => setTick((n) => n + 1), []);
@@ -155,22 +163,61 @@ export function TranslationPicker() {
   const browse = useCallback(
     async (language: LanguageInfo) => {
       setBrowsing(language.id);
-      setBrowseError(null);
+      setFailed(null);
       try {
         const list = await ensureBibles(language.id, { locale, force: true });
-        if (list.length === 0) {
-          setBrowseError(t('picker.noVersionsFor', { language: language.name }));
-        }
+        if (list.length > 0) reveal.current = language.id;
+        else AccessibilityInfo.announceForAccessibility(t('picker.noVersions'));
       } catch (e) {
-        setBrowseError(
-          e instanceof Error ? e.message : t('picker.loadFailed', { language: language.name }),
-        );
+        const message =
+          e instanceof Error ? e.message : t('picker.loadFailed', { language: language.name });
+        setFailed({ languageId: language.id, message });
+        AccessibilityInfo.announceForAccessibility(message);
       } finally {
         setBrowsing(null);
         bump();
       }
     },
     [locale, bump, t],
+  );
+
+  // Once the sections include the opened language, its header goes to the
+  // top of the list so its versions are the next thing to read. The header
+  // is a new row the list has not laid out, so the first pass can only
+  // estimate where it is; the passes after the layout land on it exactly.
+  // Not animated: the jump from deep in the language list is far, and two
+  // animated passes would read as a stumble.
+  const pending = useRef<number | null>(null);
+  const scrollToSection = useCallback((sectionIndex: number) => {
+    listRef.current?.scrollToLocation({
+      sectionIndex,
+      itemIndex: 0,
+      viewPosition: 0,
+      animated: false,
+    });
+  }, []);
+  useEffect(() => {
+    const id = reveal.current;
+    if (!id) return;
+    reveal.current = null;
+    const sectionIndex = sections.findIndex((s) => s.key === id);
+    if (sectionIndex < 0) return;
+    pending.current = sectionIndex;
+    scrollToSection(sectionIndex);
+    const passes = [100, 400].map((ms) => setTimeout(() => scrollToSection(sectionIndex), ms));
+    return () => passes.forEach(clearTimeout);
+  }, [sections, scrollToSection]);
+  // A target the list has never rendered near: go to its estimate, then
+  // land once that part of the list exists.
+  const retryScroll = useCallback(
+    (info: { index: number; averageItemLength: number }) => {
+      listRef.current
+        ?.getScrollResponder()
+        ?.scrollTo({ y: info.averageItemLength * info.index, animated: false });
+      const sectionIndex = pending.current;
+      if (sectionIndex !== null) setTimeout(() => scrollToSection(sectionIndex), 250);
+    },
+    [scrollToSection],
   );
 
   const renderItem: SectionListRenderItem<Row, Section> = ({ item }) => {
@@ -206,11 +253,12 @@ export function TranslationPicker() {
     }
     const l = item.language;
     const loading = browsing === l.id;
-    const empty = browsedLanguageIds().has(l.id);
+    const failure = failed?.languageId === l.id ? failed.message : null;
+    const note = failure ?? (browsedLanguageIds().has(l.id) ? t('picker.noVersions') : null);
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={l.name}
+        accessibilityLabel={note ? `${l.name}. ${note}` : l.name}
         accessibilityHint={t('picker.languageHint')}
         accessibilityState={{ busy: loading }}
         disabled={loading}
@@ -220,9 +268,13 @@ export function TranslationPicker() {
           <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {l.name}
           </Text>
-          {empty && !loading && (
-            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t('picker.noVersions')}
+          {note && !loading && (
+            <Text
+              style={[
+                styles.rowSub,
+                { color: failure ? colors.error : colors.inkFaint, fontFamily: fonts?.ui },
+              ]}>
+              {note}
             </Text>
           )}
         </View>
@@ -248,8 +300,8 @@ export function TranslationPicker() {
         value={query}
         onChangeText={(text) => {
           setQuery(text);
-          // A note about one language is stale once the search moves on.
-          setBrowseError(null);
+          // A failure note on one language is stale once the search moves on.
+          setFailed(null);
         }}
         placeholder={t('picker.search')}
         placeholderTextColor={colors.inkFaint}
@@ -296,13 +348,6 @@ export function TranslationPicker() {
           </Pressable>
         </View>
       )}
-      {browseError && (
-        <Text
-          accessibilityRole="alert"
-          style={[styles.status, { color: colors.error, fontFamily: fonts?.ui }]}>
-          {browseError}
-        </Text>
-      )}
     </View>
   );
 
@@ -316,7 +361,9 @@ export function TranslationPicker() {
         </Pressable>
       </View>
       <SectionList
+        ref={listRef}
         sections={sections}
+        onScrollToIndexFailed={retryScroll}
         keyExtractor={(row) =>
           row.kind === 'translation' ? row.translation.id : `language:${row.language.id}`
         }

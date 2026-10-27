@@ -6,7 +6,6 @@ export default {
     savedForGoals: 'Saved for your goals',
     needsConnection: 'Needs a connection',
     moreLanguages: 'More languages',
-    noVersionsFor: 'No {{language}} versions are available to Meno yet.',
     loadFailed: 'Couldn’t load {{language}}.',
     languageHint: 'Loads this language’s translations',
     noVersions: 'No versions available to Meno yet',

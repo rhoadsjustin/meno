@@ -7,7 +7,6 @@ export default {
     savedForGoals: 'Guardada para tus metas',
     needsConnection: 'Necesita conexión',
     moreLanguages: 'Más idiomas',
-    noVersionsFor: 'Todavía no hay versiones en {{language}} disponibles para Meno.',
     loadFailed: 'No se pudo cargar {{language}}.',
     languageHint: 'Carga las traducciones de este idioma',
     noVersions: 'Todavía no hay versiones disponibles para Meno',

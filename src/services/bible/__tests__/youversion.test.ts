@@ -4,6 +4,7 @@ import {
   attributionLine,
   buildQuery,
   decodeEntities,
+  fetchBible,
   fetchBibles,
   fetchLanguages,
   fetchYouVersionChapter,
@@ -325,6 +326,30 @@ describe('requests', () => {
         text: 'For God so loved the world.',
       },
     ]);
+  });
+
+  it('reads an empty reply as a language with nothing to offer', async () => {
+    // The live catalog answers 204 No Content for a language this key has
+    // no version in; Hermes used to surface that as a JSON parse error.
+    const noContent = fake(() => new Response(null, { status: 204 }));
+    await expect(fetchBibles('zu', noContent)).resolves.toEqual([]);
+    await expect(fetchLanguages('en', noContent)).resolves.toEqual([]);
+    await expect(fetchBible(12, noContent)).rejects.toMatchObject({ status: 404 });
+    await expect(fetchYouVersionChapter('yv-12', 12, 'John', 3, noContent)).rejects.toThrow(
+      /No verse text/,
+    );
+  });
+
+  it('names an unreadable reply instead of leaking the parser', async () => {
+    await expect(
+      fetchBibles(
+        'en',
+        fake(() => new Response('<html>Service busy</html>', { status: 200 })),
+      ),
+    ).rejects.toMatchObject({
+      status: 200,
+      message: expect.stringContaining('Unreadable reply'),
+    } satisfies Partial<YouVersionError>);
   });
 
   it('explains failures in plain words, including rate limits and licensing', async () => {
