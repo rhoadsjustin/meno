@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/i18n/react';
 import { displayTokens, hashSeed, mulberry32, selectBlanks, shuffle } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
@@ -33,6 +34,7 @@ export function BlanksRound({
   onDone: (outcome: BlanksOutcome) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const tokens = useMemo(() => displayTokens(text), [text]);
   const blankIndices = useMemo(
     () => selectBlanks(text, density, chunkId, attemptNo),
@@ -48,7 +50,7 @@ export function BlanksRound({
   const choices = useMemo(() => {
     if (activeIndex === undefined) return [];
     const correct = tokens[activeIndex].word;
-    const pool = [...new Set(tokens.map((t) => t.word).filter((w) => w.toLowerCase() !== correct.toLowerCase()))];
+    const pool = [...new Set(tokens.map((tok) => tok.word).filter((w) => w.toLowerCase() !== correct.toLowerCase()))];
     const rand = mulberry32(hashSeed(chunkId, 'choices', attemptNo, activeIndex));
     const distractors = shuffle(pool, rand).slice(0, 2);
     return shuffle([correct, ...distractors], rand);
@@ -78,14 +80,14 @@ export function BlanksRound({
       {/* No label here: the words and blanks are read one by one, and a label
           on a container that is not itself an element is never spoken. */}
       <View style={styles.textWrap}>
-        {tokens.map((t, i) => {
+        {tokens.map((tok, i) => {
           const blankState = states[i];
           if (blankState === undefined) {
             return (
               <Text key={i} style={[styles.word, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                {t.prefix}
-                {t.word}
-                {t.suffix}{' '}
+                {tok.prefix}
+                {tok.word}
+                {tok.suffix}{' '}
               </Text>
             );
           }
@@ -105,14 +107,14 @@ export function BlanksRound({
               accessibilityRole={isActive ? 'button' : 'text'}
               accessibilityLabel={
                 resolved
-                  ? `${t.word}, ${blankState}`
+                  ? t(`blanks.${blankState as 'correct' | 'wrong' | 'missed'}`, { word: tok.word })
                   : isActive
-                    ? 'blank, answer with the choices below'
-                    : 'blank'
+                    ? t('blanks.active')
+                    : t('blanks.blank')
               }
               accessibilityHint={
                 isActive && !resolved
-                  ? 'Long-press to reveal the word — it will be counted as missed'
+                  ? t('blanks.revealHint')
                   : undefined
               }
               onLongPress={isActive ? () => settle('missed') : undefined}
@@ -129,7 +131,7 @@ export function BlanksRound({
                   { color: resolved ? pillColor : 'transparent', fontFamily: fonts?.scripture },
                   (blankState === 'wrong' || blankState === 'missed') && styles.pillTextError,
                 ]}>
-                {resolved ? t.word : t.word.replace(/./g, ' ')}
+                {resolved ? tok.word : tok.word.replace(/./g, ' ')}
               </Text>
             </Pressable>
           );
@@ -142,8 +144,8 @@ export function BlanksRound({
             <Pressable
               key={choice}
               accessibilityRole="button"
-              accessibilityLabel={`Choice: ${choice}`}
-              accessibilityHint="Double-tap to fill the current blank"
+              accessibilityLabel={t('blanks.choice', { choice })}
+              accessibilityHint={t('blanks.choiceHint')}
               onPress={() => settle(choice === tokens[activeIndex].word ? 'correct' : 'wrong')}
               style={[styles.chip, { borderColor: colors.lapis }]}>
               <Text style={[styles.chipText, { color: colors.lapis, fontFamily: fonts?.ui }]}>

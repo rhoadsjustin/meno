@@ -6,7 +6,9 @@
     "studio": "remotion studio",
     "render": "remotion render Promo out/meno-promo.mp4",
     "render:abide": "remotion render Abide out/meno-abide.mp4",
-    "music": "python3 scripts/music.py"
+    "music": "python3 scripts/music.py",
+    "render:duo": "remotion render Duo out/meno-duo.mp4",
+    "captures:duo": "bash scripts/duo-captures.sh"
   },
   "dependencies": {
     "@remotion/cli": "4.0.532",

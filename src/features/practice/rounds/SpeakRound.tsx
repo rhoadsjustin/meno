@@ -31,6 +31,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useTranslation } from '@/i18n/react';
 import { getTranslation } from '@/services/bible';
 import { gradeSpoken, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
@@ -73,6 +74,7 @@ export function SpeakRound({
   onDone: (outcome: SpeakOutcome) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('practice');
   const { height } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
 
@@ -150,16 +152,14 @@ export function SpeakRound({
   useSpeechRecognitionEvent('error', (event) => {
     setMicState('idle');
     if (event.error !== 'no-speech') {
-      setSpeechError(`Speech recognition hit a snag (${event.error}). You can type instead.`);
+      setSpeechError(t('speak.error', { error: event.error }));
     }
   });
 
   const toggleListening = useCallback(async () => {
     if (listening) {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      AccessibilityInfo.announceForAccessibility(
-        'Paused. Your words are kept — edit them or keep going.',
-      );
+      AccessibilityInfo.announceForAccessibility(t('speak.pausedAnnouncement'));
       setMicState('processing');
       ExpoSpeechRecognitionModule.stop();
       return;
@@ -172,7 +172,7 @@ export function SpeakRound({
     }
     setPermission('granted');
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    AccessibilityInfo.announceForAccessibility('Listening. Recite, then tap again to pause.');
+    AccessibilityInfo.announceForAccessibility(t('speak.listeningAnnouncement'));
     setInterim('');
     ExpoSpeechRecognitionModule.start({
       lang: getTranslation(translationId).languageCode,
@@ -182,7 +182,7 @@ export function SpeakRound({
       contextualStrings,
     });
     setMicState('listening');
-  }, [listening, translationId, contextualStrings, setInterim]);
+  }, [listening, translationId, contextualStrings, setInterim, t]);
 
   const submitTranscript = useCallback(() => {
     const result = gradeSpoken(text, committed, {
@@ -207,7 +207,7 @@ export function SpeakRound({
         />
         <Pressable accessibilityRole="button" onPress={() => setTypeMode(false)}>
           <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Speak instead
+            {t('speak.speakInstead')}
           </Text>
         </Pressable>
       </>
@@ -237,8 +237,7 @@ export function SpeakRound({
 
       {permission === 'denied' && (
         <Text style={[styles.error, { color: colors.error, fontFamily: fonts?.ui }]}>
-          Microphone or speech recognition permission is off. Enable it in Settings, or type instead
-          below.
+          {t('speak.permissionOff')}
         </Text>
       )}
       {speechError && (
@@ -256,7 +255,7 @@ export function SpeakRound({
             <Animated.Text
               key="ghost"
               entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
-              accessibilityLabel="Live transcript"
+              accessibilityLabel={t('speak.liveTranscript')}
               style={[styles.transcript, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {committed}
               {committed && interim ? ' ' : ''}
@@ -274,7 +273,7 @@ export function SpeakRound({
                 spellCheck={false}
                 value={committed}
                 onChangeText={setCommitted}
-                accessibilityLabel="Your recitation — tap to edit"
+                accessibilityLabel={t('speak.editLabel')}
                 style={[
                   styles.transcript,
                   styles.transcriptInput,
@@ -282,13 +281,13 @@ export function SpeakRound({
                 ]}
               />
               <Text style={[styles.editHint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                Tap the words to fix them, or keep reciting.
+                {t('speak.editHint')}
               </Text>
             </Animated.View>
           )
         ) : (
           <Text style={[styles.placeholder, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Recite from memory — your words appear here.
+            {t('speak.placeholder')}
           </Text>
         )}
       </View>
@@ -301,7 +300,7 @@ export function SpeakRound({
               accessibilityRole="button"
               onPress={submitTranscript}
               style={[styles.button, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>Check recitation</Text>
+              <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('speak.check')}</Text>
             </Pressable>
           </Animated.View>
         )}
@@ -310,10 +309,8 @@ export function SpeakRound({
           <Animated.View pointerEvents="none" style={[styles.pulseRing, ringStyle]} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={listening ? 'Pause reciting' : 'Start reciting'}
-            accessibilityHint={
-              listening ? 'Your words are kept when you pause' : 'Adds to what you have said so far'
-            }
+            accessibilityLabel={listening ? t('speak.pause') : t('speak.start')}
+            accessibilityHint={listening ? t('speak.pauseHint') : t('speak.startHint')}
             onPressIn={() => pressed.set(withTiming(1, { duration: 100, easing: EASE_OUT }))}
             onPressOut={() => pressed.set(withTiming(0, { duration: 150, easing: EASE_OUT }))}
             onPress={() => void toggleListening()}
@@ -328,16 +325,16 @@ export function SpeakRound({
             exiting={FadeOut.duration(100).reduceMotion(ReduceMotion.System)}
             style={[styles.micLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {listening
-              ? 'Listening — tap to pause'
+              ? t('speak.micListening')
               : hasWords
-                ? 'Tap to keep going'
-                : 'Tap to recite'}
+                ? t('speak.micMore')
+                : t('speak.micStart')}
           </Animated.Text>
         </View>
 
         <Pressable accessibilityRole="button" onPress={() => setTypeMode(true)}>
           <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Type instead
+            {t('speak.typeInstead')}
           </Text>
         </Pressable>
       </View>

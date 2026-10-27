@@ -9,6 +9,8 @@ export default defineConfig({
   },
   test: {
     // Pure services only (no React Native imports) — see docs/02 §2.2.
-    include: ['src/services/**/__tests__/**/*.test.ts', 'scripts/**/__tests__/**/*.test.ts'],
+    include: [
+      'src/services/**/__tests__/**/*.test.ts',
+      'src/i18n/**/__tests__/**/*.test.ts', 'scripts/**/__tests__/**/*.test.ts'],
   },
 });

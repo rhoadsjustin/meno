@@ -142,3 +142,17 @@ Public-domain English translations shipped as a prebuilt SQLite database (~4–5
 - Quiz interactions grade in < 16ms (pure functions; no async in grading path).
 - Widget timeline updates: on every app close (publish snapshot) + scheduled refresh policy after midnight (new day/streak state).
 - Full test coverage for `services/grading`, `services/scheduler`, `services/chunking`.
+
+## 9. Localization
+
+UI languages: **English** (source) and **Spanish** (`es`, neutral Latin-American, "tú"). Scripture text is not localized by the UI — a goal's verses stay in its translation's language, and today every bundled or licensed translation is English. Spanish translations arrive with the translation-catalog work (YouVersion / public-domain Reina-Valera 1909).
+
+- **UI copy**: `src/i18n/` — i18next with one namespace per feature (`locales/<lang>/<ns>.ts`). Spanish files use `satisfies Catalog<typeof en>`, so a missing key is a type error; `src/i18n/__tests__/catalogs.test.ts` also checks placeholders. Components use `useTranslation` from `@/i18n/react`; services call `t` from `@/i18n` at call time (never at module scope).
+- **Language choice**: the device's preferred languages (`expo-localization`), applied once in the root layout before anything renders. iOS relaunches the app when the user changes its language (Settings → Meno → Language), so the launch-time `rescheduleAll()` and widget snapshot re-render notification and widget text in the new language.
+- **Formatting**: dates, times and numbers use `locale()` (the full device tag, e.g. `es-MX`). Book names follow the UI language through `bookName` / `formatRef`; `Book.name` stays English because translation APIs are queried with it.
+- **Language-neutral data**: refs are OSIS everywhere (challenge links, routes, storage), so a link made in Spanish opens in English and vice versa.
+- **Engine is tied to the text, not the UI**: grading (normalization, Metaphone homophones) and speech recognition's locale follow the verse text's language. Non-English Scripture will need a per-language normalizer and recognizer locale.
+- **Native strings**: permission prompts per language in `locales/<lang>.json` (Expo `locales`); `CFBundleLocalizations` in app.config. App Store listings per locale in `store.config.json` (`es-MX`, `es-ES`).
+- **Widget extension strings**: expo-widgets turns the widget's description and Edit Widget sheet labels in app.config into Swift `LocalizedStringKey` / `LocalizedStringResource` literals, which iOS looks up in the extension's `Localizable.strings`. `plugins/withWidgetLocalizations` ships that table per language from `locales/widget/<lang>.json` (English string → translation), so a string changed in app.config must change there too. The widget's own content is rendered by JS with `t`.
+- **Feature captures**: the onboarding / setup-guide widget and Lock Screen images (`assets/images/onboarding/`) are real simulator captures, one set per language (`-es` suffix), picked in `src/components/feature-captures.tsx`.
+- **Not yet localized**: the vendored Screen Time extensions' fallback text.

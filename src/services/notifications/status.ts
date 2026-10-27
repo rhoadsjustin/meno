@@ -12,6 +12,7 @@
  * What iOS holds back on its own (a Focus, Scheduled Summary) is invisible
  * to apps, so nothing here claims to know about it; the help text says so.
  */
+import { locale, t } from '@/i18n';
 import {
   POP_QUIZ_PREFIX,
   PRACTICE_PREFIX,
@@ -147,16 +148,19 @@ export type DescribeOptions = {
   formatTime?: (at: Date) => string;
 };
 
-const TITLES: Record<ReminderKind, string> = {
-  practice: 'Daily reminder',
-  popQuiz: 'Pop quizzes',
-  streak: 'Streak reminder',
-};
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function titleOf(kind: ReminderKind): string {
+  switch (kind) {
+    case 'practice':
+      return t('notifications:status.titlePractice');
+    case 'popQuiz':
+      return t('notifications:status.titlePopQuiz');
+    case 'streak':
+      return t('notifications:status.titleStreak');
+  }
+}
 
 function deviceTime(at: Date): string {
-  return at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return at.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
 }
 
 function hourLabel(hour: number, formatTime: (at: Date) => string): string {
@@ -168,23 +172,24 @@ function hourLabel(hour: number, formatTime: (at: Date) => string): string {
 export function dayPhrase(at: Date, now: Date): string {
   const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOf(at) - startOf(now)) / (24 * 60 * 60 * 1000));
-  if (days <= 0) return 'today';
-  if (days === 1) return 'tomorrow';
-  return `on ${WEEKDAYS[at.getDay()]}`;
+  if (days <= 0) return t('notifications:status.dayToday');
+  if (days === 1) return t('notifications:status.dayTomorrow');
+  const weekday = new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(at);
+  return t('notifications:status.dayOn', { weekday });
 }
 
 function waitingDetail(kind: ReminderKind, reason: WaitingReason): string {
   switch (reason) {
     case 'nothingMemorized':
-      return 'Starts once you’ve memorized a verse. There’s nothing to quiz you on yet.';
+      return t('notifications:status.waitingNothingMemorized');
     case 'noStreak':
-      return 'No streak yet. Practice today to start one, and the daily reminder will carry it.';
+      return t('notifications:status.waitingNoStreak');
     case 'nothingToPractice':
       return kind === 'streak'
-        ? 'Nothing is in progress, so there’s no reminder to carry your streak. Start a passage and it returns.'
-        : 'No passage in progress, so there’s nothing to be reminded of. Start one and it begins.';
+        ? t('notifications:status.waitingNothingToPracticeStreak')
+        : t('notifications:status.waitingNothingToPractice');
     case 'notScheduled':
-      return 'Nothing is scheduled right now. Open Meno again and it will set the next one.';
+      return t('notifications:status.waitingNotScheduled');
   }
 }
 
@@ -195,18 +200,18 @@ export function describeReminder(
 ): ReminderLine {
   const formatTime = options.formatTime ?? deviceTime;
   const entry = status[kind];
-  const title = TITLES[kind];
+  const title = titleOf(kind);
 
   switch (entry.state) {
     case 'off':
-      return { kind, title, detail: 'Off. Reminders are switched off in Meno.', tone: 'muted' };
+      return { kind, title, detail: t('notifications:status.off'), tone: 'muted' };
     case 'blocked':
       return {
         kind,
         title,
         detail: entry.canAsk
-          ? 'Can’t arrive yet. Your iPhone hasn’t been asked to allow notifications for Meno.'
-          : 'Can’t arrive. Notifications are turned off for Meno in iPhone Settings.',
+          ? t('notifications:status.blockedCanAsk')
+          : t('notifications:status.blocked'),
         tone: 'problem',
       };
     case 'waiting':
@@ -220,23 +225,23 @@ export function describeReminder(
         return {
           kind,
           title,
-          detail: `Next quiz ${day}, at a surprise time between ${from} and ${to}.`,
+          detail: t('notifications:status.nextQuiz', { day, from, to }),
           tone: 'ok',
         };
       }
-      const when = `${day} at ${formatTime(entry.at)}`;
+      const time = formatTime(entry.at);
       if (kind === 'streak') {
-        const count = `${status.streakCount}-day streak`;
+        const vars = { count: status.streakCount, day, time };
         return {
           kind,
           title,
           detail: status.practicedToday
-            ? `Your ${count} is safe for today. The next reminder, ${when}, will mention it.`
-            : `Your ${count} is mentioned in the next reminder, ${when}.`,
+            ? t('notifications:status.streakSafe', vars)
+            : t('notifications:status.streakNext', vars),
           tone: 'ok',
         };
       }
-      return { kind, title, detail: `Next reminder ${when}.`, tone: 'ok' };
+      return { kind, title, detail: t('notifications:status.nextReminder', { day, time }), tone: 'ok' };
     }
   }
 }
@@ -250,10 +255,10 @@ export function describeReminders(status: ReminderStatus, options: DescribeOptio
     return [
       {
         kind: 'practice',
-        title: 'None of these can arrive yet',
+        title: t('notifications:status.allBlockedTitle'),
         detail: status.canAsk
-          ? 'The daily reminder, pop quizzes and the streak reminder are on in Meno, but your iPhone hasn’t been asked to allow notifications for Meno.'
-          : 'The daily reminder, pop quizzes and the streak reminder are on in Meno, but notifications are turned off for Meno in iPhone Settings.',
+          ? t('notifications:status.allBlockedCanAsk')
+          : t('notifications:status.allBlocked'),
         tone: 'problem',
       },
     ];
@@ -263,18 +268,21 @@ export function describeReminders(status: ReminderStatus, options: DescribeOptio
 
 /** One line for the whole feature, for the guide's checklist. */
 export function reminderSummary(status: ReminderStatus, options: DescribeOptions): string {
-  if (status.overall === 'off') return 'Off';
+  if (status.overall === 'off') return t('notifications:status.summaryOff');
   if (status.overall === 'blocked') {
-    return status.canAsk ? 'Needs your permission' : 'Needs permission in iPhone Settings';
+    return status.canAsk
+      ? t('notifications:status.summaryNeedsPermission')
+      : t('notifications:status.summaryNeedsSettings');
   }
   const formatTime = options.formatTime ?? deviceTime;
   const next = [status.practice, status.popQuiz]
     .flatMap((s) => (s.state === 'scheduled' ? [s.at] : []))
     .sort((a, b) => a.getTime() - b.getTime())[0];
-  if (!next) return 'On, nothing to send yet';
+  if (!next) return t('notifications:status.summaryNothing');
   // A quiz's exact time stays a surprise.
   const isPractice = status.practice.state === 'scheduled' && status.practice.at === next;
+  const day = dayPhrase(next, options.now);
   return isPractice
-    ? `On, next ${dayPhrase(next, options.now)} at ${formatTime(next)}`
-    : `On, next ${dayPhrase(next, options.now)}`;
+    ? t('notifications:status.summaryNextAt', { day, time: formatTime(next) })
+    : t('notifications:status.summaryNext', { day });
 }

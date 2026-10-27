@@ -25,6 +25,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
+import { t as translate } from '@/i18n';
+import { useTranslation } from '@/i18n/react';
 import {
   availableTranslations,
   browsedLanguageIds,
@@ -51,19 +53,20 @@ type Section = { key: string; title: string; data: Row[] };
 type CatalogStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 /** Plain words for where a translation's text lives. */
-function availabilityLabel(t: Translation): string {
-  switch (t.source) {
+function availabilityLabel(tr: Translation): string {
+  switch (tr.source) {
     case 'bundled':
-      return 'On this device';
+      return translate('goals:picker.onDevice');
     case 'esv_api':
-      return 'Saved for your goals';
+      return translate('goals:picker.savedForGoals');
     default:
-      return 'Needs a connection';
+      return translate('goals:picker.needsConnection');
   }
 }
 
 export function TranslationPicker() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['goals', 'common']);
   // Insets are this modal's own (the route wraps it in ModalSafeArea). In a
   // sheet the top one is zero; shown full-screen it is the status bar's.
   // Side insets matter on iPhone Duo's cover panel, where the status bar is
@@ -133,13 +136,13 @@ export function TranslationPicker() {
       if (more.length > 0) {
         out.push({
           key: 'more',
-          title: 'More languages',
+          title: t('picker.moreLanguages'),
           data: more.map((language) => ({ kind: 'language' as const, language })),
         });
       }
     }
     return out;
-  }, [tick, query, preferred, platform]);
+  }, [tick, query, preferred, platform, t]);
 
   const pick = useCallback(
     (id: string) => {
@@ -156,28 +159,30 @@ export function TranslationPicker() {
       try {
         const list = await ensureBibles(language.id, { locale, force: true });
         if (list.length === 0) {
-          setBrowseError(`No ${language.name} versions are available to Meno yet.`);
+          setBrowseError(t('picker.noVersionsFor', { language: language.name }));
         }
       } catch (e) {
-        setBrowseError(e instanceof Error ? e.message : `Couldn’t load ${language.name}.`);
+        setBrowseError(
+          e instanceof Error ? e.message : t('picker.loadFailed', { language: language.name }),
+        );
       } finally {
         setBrowsing(null);
         bump();
       }
     },
-    [locale, bump],
+    [locale, bump, t],
   );
 
   const renderItem: SectionListRenderItem<Row, Section> = ({ item }) => {
     if (item.kind === 'translation') {
-      const t = item.translation;
-      const isSelected = t.id === selected;
+      const tr = item.translation;
+      const isSelected = tr.id === selected;
       return (
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected: isSelected }}
-          accessibilityLabel={`${t.name}, ${t.abbrev}. ${availabilityLabel(t)}`}
-          onPress={() => pick(t.id)}
+          accessibilityLabel={`${tr.name}, ${tr.abbrev}. ${availabilityLabel(tr)}`}
+          onPress={() => pick(tr.id)}
           style={[styles.row, { borderBottomColor: colors.separator }]}>
           <View style={styles.rowText}>
             <Text
@@ -185,10 +190,10 @@ export function TranslationPicker() {
                 styles.rowTitle,
                 { color: isSelected ? colors.lapis : colors.ink, fontFamily: fonts?.ui },
               ]}>
-              {t.name}
+              {tr.name}
             </Text>
             <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t.abbrev} · {availabilityLabel(t)}
+              {tr.abbrev} · {availabilityLabel(tr)}
             </Text>
           </View>
           {isSelected && (
@@ -206,7 +211,7 @@ export function TranslationPicker() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={l.name}
-        accessibilityHint="Loads this language’s translations"
+        accessibilityHint={t('picker.languageHint')}
         accessibilityState={{ busy: loading }}
         disabled={loading}
         onPress={() => void browse(l)}
@@ -217,7 +222,7 @@ export function TranslationPicker() {
           </Text>
           {empty && !loading && (
             <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              No versions available to Meno yet
+              {t('picker.noVersions')}
             </Text>
           )}
         </View>
@@ -237,7 +242,7 @@ export function TranslationPicker() {
       <Text
         accessibilityRole="header"
         style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        Translation
+        {t('passage.translation')}
       </Text>
       <TextInput
         value={query}
@@ -246,13 +251,13 @@ export function TranslationPicker() {
           // A note about one language is stale once the search moves on.
           setBrowseError(null);
         }}
-        placeholder="Search translations and languages"
+        placeholder={t('picker.search')}
         placeholderTextColor={colors.inkFaint}
         autoCorrect={false}
         autoCapitalize="none"
         clearButtonMode="while-editing"
         returnKeyType="search"
-        accessibilityLabel="Search translations and languages"
+        accessibilityLabel={t('picker.search')}
         style={[
           styles.search,
           {
@@ -264,10 +269,10 @@ export function TranslationPicker() {
         ]}
       />
       {status === 'loading' && (
-        <View style={styles.statusRow} accessible accessibilityLabel="Loading languages">
+        <View style={styles.statusRow} accessible accessibilityLabel={t('picker.loading')}>
           <ActivityIndicator color={colors.inkFaint} />
           <Text style={[styles.status, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            Loading languages…
+            {t('picker.loading')}
           </Text>
         </View>
       )}
@@ -276,7 +281,7 @@ export function TranslationPicker() {
           <Text
             accessibilityRole="alert"
             style={[styles.status, { color: colors.error, fontFamily: fonts?.ui }]}>
-            Couldn’t reach the translation catalog.
+            {t('picker.catalogFailed')}
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -286,7 +291,7 @@ export function TranslationPicker() {
             }}
             style={styles.textButton}>
             <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              Try again
+              {t('common:retry')}
             </Text>
           </Pressable>
         </View>
@@ -306,7 +311,7 @@ export function TranslationPicker() {
       <View style={[styles.topBar, { paddingTop: top + spacing.lg }]}>
         <Pressable accessibilityRole="button" hitSlop={12} onPress={closeModal}>
           <Text style={[styles.cancel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            Cancel
+            {t('common:cancel')}
           </Text>
         </Pressable>
       </View>
@@ -332,7 +337,7 @@ export function TranslationPicker() {
               styles.empty,
               { color: colors.inkFaint, fontFamily: fonts?.ui },
             ]}>
-            {query ? `Nothing matches “${query}”.` : 'No translations available.'}
+            {query ? t('picker.noMatches', { query }) : t('picker.empty')}
           </Text>
         }
         contentContainerStyle={[

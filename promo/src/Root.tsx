@@ -2,6 +2,7 @@ import React from 'react';
 import { Composition } from 'remotion';
 
 import { Abide, ABIDE_FRAMES } from './Abide';
+import { Duo, DUO_FRAMES } from './Duo';
 import { Promo, TOTAL_FRAMES } from './Promo';
 import './theme';
 
@@ -11,6 +12,14 @@ export const RemotionRoot: React.FC = () => (
       id="Promo"
       component={Promo}
       durationInFrames={TOTAL_FRAMES}
+      fps={30}
+      width={1080}
+      height={1350}
+    />
+    <Composition
+      id="Duo"
+      component={Duo}
+      durationInFrames={DUO_FRAMES}
       fps={30}
       width={1080}
       height={1350}

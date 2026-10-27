@@ -12,6 +12,7 @@ import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
 import { HelpGuide } from '@/features/help/HelpGuide';
+import { useTranslation } from '@/i18n/react';
 import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 export default function HelpRoute() {
@@ -24,6 +25,7 @@ export default function HelpRoute() {
 
 function Help() {
   const colors = useThemeColors();
+  const { t } = useTranslation(['help', 'common']);
   // Insets are this modal's own (ModalSafeArea). In a sheet the top one is
   // zero; shown full-screen it is the status bar's, which Done must clear.
   // The side insets matter on iPhone Duo's cover panel, where the status bar
@@ -45,7 +47,9 @@ function Help() {
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       <View style={[styles.topBar, { paddingTop: top + spacing.lg }]}>
         <Pressable accessibilityRole="button" hitSlop={12} onPress={closeModal}>
-          <Text style={[styles.done, { color: colors.lapis, fontFamily: fonts?.ui }]}>Done</Text>
+          <Text style={[styles.done, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+            {t('common:done')}
+          </Text>
         </Pressable>
       </View>
       <ScrollView
@@ -56,12 +60,9 @@ function Help() {
           { paddingBottom: insets.bottom + spacing.xxxl },
         ]}>
         <Text accessibilityRole="header" style={[styles.title, text]}>
-          How to set up Meno
+          {t('title')}
         </Text>
-        <Text style={[styles.body, faint]}>
-          Meno works best with a few things turned on. Each one takes about a minute. Tap any item
-          to jump to its steps.
-        </Text>
+        <Text style={[styles.body, faint]}>{t('intro')}</Text>
         <HelpGuide scrollTo={scrollTo} onBeforeNavigate={closeModal} />
       </ScrollView>
     </View>
