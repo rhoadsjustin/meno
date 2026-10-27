@@ -59,46 +59,60 @@ function covers(chunk: BadgeChunk, bookId: string, chapter: number, verse: numbe
   return afterStart && beforeEnd;
 }
 
-/** Each counted goal with its memorized chunks. */
-function memorizedByGoal(
+/** True when `chunk` takes in any verse of `bookId` `chapter`. */
+function touches(chunk: BadgeChunk, bookId: string, chapter: number): boolean {
+  return (
+    chunk.startBookId === bookId && chunk.startChapter <= chapter && chunk.endChapter >= chapter
+  );
+}
+
+/** Each counted goal that has something memorized, with its chunks. */
+function countedGoals(
   goals: readonly BadgeGoal[],
   chunks: readonly BadgeChunk[],
-): { goal: BadgeGoal; memorized: BadgeChunk[] }[] {
+): { goal: BadgeGoal; chunks: BadgeChunk[]; memorized: BadgeChunk[] }[] {
   return goals
     .filter(countsAsWholePassage)
-    .map((goal) => ({
-      goal,
-      memorized: chunks.filter((c) => c.goalId === goal.id && isMemorized(c)),
-    }))
+    .map((goal) => {
+      const own = chunks.filter((c) => c.goalId === goal.id);
+      return { goal, chunks: own, memorized: own.filter(isMemorized) };
+    })
     .filter((g) => g.memorized.length > 0);
 }
 
-/** The chapters where `memorized` (one goal's chunks) take in verse 1. */
-function chaptersFromVerseOne(goal: BadgeGoal, memorized: readonly BadgeChunk[]): ChapterRef[] {
+/**
+ * The chapters that may be whole in one goal: its memorized chunks take in
+ * verse 1, and none of its chunks there is still to memorize. Only these are
+ * measured, so memorizing John 3:16 alone, or the start of the chapter a
+ * goal is working through, fetches nothing.
+ */
+function candidateChapters(
+  goal: BadgeGoal,
+  chunks: readonly BadgeChunk[],
+  memorized: readonly BadgeChunk[],
+): ChapterRef[] {
   const out: ChapterRef[] = [];
   for (const c of memorized) {
     for (let chapter = c.startChapter; chapter <= c.endChapter; chapter++) {
-      if (covers(c, c.startBookId, chapter, 1)) {
-        out.push({ translationId: goal.translationId, bookId: c.startBookId, chapter });
-      }
+      const bookId = c.startBookId;
+      if (!covers(c, bookId, chapter, 1)) continue;
+      if (chunks.some((other) => !isMemorized(other) && touches(other, bookId, chapter))) continue;
+      out.push({ translationId: goal.translationId, bookId, chapter });
     }
   }
   return out;
 }
 
-/**
- * The chapters `memorizedFullChapter` asks `versesIn` about: those where a
- * counted goal's memorized chunks start at verse 1. Anything else cannot be
- * a whole chapter, so its length is never looked up — memorizing John 3:16
- * alone fetches nothing.
- */
+/** The chapters `memorizedFullChapter` asks `versesIn` about. */
 export function chaptersToMeasure(
   goals: readonly BadgeGoal[],
   chunks: readonly BadgeChunk[],
 ): ChapterRef[] {
   const byKey = new Map<string, ChapterRef>();
-  for (const { goal, memorized } of memorizedByGoal(goals, chunks)) {
-    for (const ref of chaptersFromVerseOne(goal, memorized)) byKey.set(chapterKey(ref), ref);
+  for (const g of countedGoals(goals, chunks)) {
+    for (const ref of candidateChapters(g.goal, g.chunks, g.memorized)) {
+      byKey.set(chapterKey(ref), ref);
+    }
   }
   return [...byKey.values()];
 }
@@ -118,8 +132,8 @@ export function memorizedFullChapter(
   chunks: readonly BadgeChunk[],
   versesIn: VersesIn,
 ): boolean {
-  return memorizedByGoal(goals, chunks).some(({ goal, memorized }) =>
-    chaptersFromVerseOne(goal, memorized).some((ref) => {
+  return countedGoals(goals, chunks).some(({ goal, chunks: own, memorized }) =>
+    candidateChapters(goal, own, memorized).some((ref) => {
       const verses = versesIn(ref);
       return (
         verses !== undefined &&

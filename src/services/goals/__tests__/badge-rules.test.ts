@@ -118,11 +118,10 @@ describe('memorizedFullChapter', () => {
     expect(memorizedFullChapter(goals, chunks, versesIn)).toBe(false);
   });
 
-  it('is not earned with a gap in the middle of the chapter', () => {
-    const goals = [goal('g', 'active', 'Ps', 23, 23)];
+  it('is not earned while verses in the middle are in no memorized chunk', () => {
+    const goals = [goal('g', 'completed', 'Ps', 23, 23)];
     const chunks = [
       chunk('g', 23, 'memorized', 'Ps', 1, 2),
-      chunk('g', 23, 'learning', 'Ps', 3, 4),
       chunk('g', 23, 'memorized', 'Ps', 5, 6),
     ];
     expect(memorizedFullChapter(goals, chunks, versesIn)).toBe(false);
@@ -213,6 +212,16 @@ describe('chaptersToMeasure', () => {
     expect(chaptersToMeasure(goals, chunks)).toEqual([
       { translationId: 'web', bookId: 'Ps', chapter: 1 },
     ]);
+  });
+
+  it('asks nothing for the chapter a goal is still working through', () => {
+    const goals = [goal('g', 'active', 'Ps', 23, 23)];
+    const chunks = [
+      chunk('g', 23, 'memorized', 'Ps', 1, 3),
+      chunk('g', 23, 'learning', 'Ps', 4, 5),
+      chunk('g', 23, 'locked', 'Ps', 6, 6),
+    ];
+    expect(chaptersToMeasure(goals, chunks)).toEqual([]);
   });
 
   it('asks once per chapter and translation', () => {
