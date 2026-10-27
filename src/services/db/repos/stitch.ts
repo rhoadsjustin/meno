@@ -4,7 +4,7 @@
  * A goal is Memorized when all chunks are memorized AND a full-passage
  * stitch passes ≥90%.
  */
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 import { db, tables } from '@/services/db';
 import { chunksForGoal, getGoal, type Chunk } from '@/services/db/repos/goals';
@@ -62,9 +62,9 @@ function stitchable(c: Chunk): boolean {
 }
 
 export async function stitchPlan(goalId: string): Promise<StitchPlan> {
-  // Only a passage in progress is stitched. A stopped one has gaps where its
-  // unmemorized chunks were, and passing a stitch would mark it completed.
-  if ((await getGoal(goalId))?.status !== 'active') {
+  // A stopped passage is never stitched: it has gaps where its unmemorized
+  // chunks were, and a passing stitch would mark it completed.
+  if ((await getGoal(goalId))?.status === 'stopped') {
     return { due: false, chunks: [], isFinal: false };
   }
   const chunks = await chunksForGoal(goalId);
@@ -101,14 +101,10 @@ export async function recordStitchResult(
   };
   await saveStitchState(goalId, next);
 
-  let goalCompleted = false;
-  if (isFinal && passed) {
-    const completed = await db
-      .update(tables.goals)
-      .set({ status: 'completed' })
-      .where(and(eq(tables.goals.id, goalId), eq(tables.goals.status, 'active')))
-      .returning({ id: tables.goals.id });
-    goalCompleted = completed.length > 0;
+  // Never completes a stopped goal: its remaining chunks are not the whole passage.
+  const goalCompleted = isFinal && passed && (await getGoal(goalId))?.status !== 'stopped';
+  if (goalCompleted) {
+    await db.update(tables.goals).set({ status: 'completed' }).where(eq(tables.goals.id, goalId));
   }
   return { goalCompleted };
 }
