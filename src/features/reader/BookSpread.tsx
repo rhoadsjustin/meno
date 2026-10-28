@@ -15,7 +15,12 @@ import {
   type TextLayoutEvent,
   type ViewInstance,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  GestureDetector,
+  useCompetingGestures,
+  usePanGesture,
+  useTapGesture,
+} from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -208,21 +213,25 @@ export function BookSpread({
   );
 
   // With Reduce Motion on, a swipe or an edge tap changes the spread at once.
+  // The callbacks are worklets (Babel marks a gesture hook's config) and run
+  // on the UI thread, so a turn is handed back to React with scheduleOnRN.
   const width = geo?.width ?? 0;
-  const pan = Gesture.Pan()
-    .activeOffsetX([-12, 12])
-    .failOffsetY([-18, 18])
-    .onEnd((e) => {
+  const pan = usePanGesture({
+    activeOffsetX: [-12, 12],
+    failOffsetY: [-18, 18],
+    onDeactivate: (e) => {
       const to = e.translationX < 0 ? forward : backward;
       if (to && Math.abs(e.translationX) > 40) scheduleOnRN(jump, to);
-    });
-  const tap = Gesture.Tap()
-    .maxDuration(250)
-    .onEnd((e, success) => {
+    },
+  });
+  const tap = useTapGesture({
+    maxDuration: 250,
+    onDeactivate: (e) => {
       const to = e.x > width * 0.72 ? forward : e.x < width * 0.28 ? backward : null;
-      if (success && to) scheduleOnRN(jump, to);
-    });
-  const gesture = Gesture.Race(pan, tap);
+      if (!e.canceled && to) scheduleOnRN(jump, to);
+    },
+  });
+  const gesture = useCompetingGestures(pan, tap);
 
   const attribution = getTranslation(translationId).attribution;
 
