@@ -19,7 +19,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { useHeaderHeight } from 'expo-router/build/react-navigation/elements';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 
 import { PageCurlView } from '@modules/page-curl';
 import { useContentLayout } from '@/components/content-layout';
