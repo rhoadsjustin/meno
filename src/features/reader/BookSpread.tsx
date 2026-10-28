@@ -104,12 +104,6 @@ export function BookSpread({
   // page while a page turn that crossed chapters keeps its own position.
   const [pos, dispatch] = useReducer(reduce, { chapter, anchor: 0, from: chapter });
   if (pos.from !== chapter) dispatch({ type: 'sync', chapter });
-  useEffect(() => {
-    if (pos.chapter !== chapter) onChapterChange(pos.chapter);
-    // Only a turn that crossed chapters reports back; `chapter` catching up
-    // is the route's answer, not a new event.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pos.chapter]);
 
   // Window frame of the spread, to map the fold (window points) onto it.
   const ref = useRef<ViewInstance>(null);
@@ -191,7 +185,12 @@ export function BookSpread({
   const forward = target(1);
   const backward = target(-1);
 
-  const jump = (to: Target) => dispatch({ type: 'jump', to });
+  // A turn that crossed chapters reports back from the turn itself, and the
+  // route's `chapter` catching up is its answer, not a new event.
+  const jump = (to: Target) => {
+    dispatch({ type: 'jump', to });
+    if (to.chapter !== pos.chapter) onChapterChange(to.chapter);
+  };
 
   // The turn itself belongs to UIKit's page curl: the sheet bends from where
   // it is grabbed and follows the finger over the crease. It is handed the
