@@ -87,15 +87,17 @@ Fallback if collision: "Meno: Hide the Word".)
 
 ## URLs (live)
 
-- Privacy Policy URL: **https://rhoadsjustin.github.io/meno/privacy-policy.html**
-  (the old `/ship/...` path is dead since Pages moved to the orphan branch)
+- Privacy Policy URL: **https://meno-scripture.org/privacy-policy.html** (since
+  2026-10-28; the 1.0 listing still names
+  `https://rhoadsjustin.github.io/meno/privacy-policy.html`, which GitHub Pages
+  redirects to the new domain, so it keeps working until the next push)
 - Support URL: **https://github.com/rhoadsjustin/meno/issues**
-- Marketing URL: **https://rhoadsjustin.github.io/meno/** — in `store.config.json` as
-  `marketingUrl` since 2026-10-25 but NOT yet on the live listing: Apple's
+- Marketing URL: **https://meno-scripture.org/** — in `store.config.json` as
+  `marketingUrl` but NOT yet on the live listing: Apple's
   [editable-properties table](https://developer.apple.com/help/app-store-connect/reference/app-information/required-localizable-and-editable-properties)
   marks Marketing URL and Support URL as not editable on a released version, so it
-  lands with the next version. When 1.1 exists in ASC, set `apple.version` to `1.1`
-  and run `eas metadata:push`. Do not push while `apple.version` is a version that is
+  lands with the next version (1.5.0). Set `apple.version` to that version and run
+  `eas metadata:push`. Do not push while `apple.version` is a version that is
   already live — eas-cli tries to create that version again and the push fails.
 
 ## Age rating questionnaire

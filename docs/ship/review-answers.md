@@ -2,7 +2,7 @@
 
 Paste these into the Resolution Center reply (or App Review Information → Notes).
 Every claim below matches the shipped build and the privacy policy at
-https://rhoadsjustin.github.io/meno/privacy-policy.html. Items 2–6 are the
+https://meno-scripture.org/privacy-policy.html. Items 2–6 are the
 reviewer's numbered questions; item 1 describes the attached recording.
 
 ## Short version (fits the 4,000-character Resolution Center field)

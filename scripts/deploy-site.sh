@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Publish site/ to the orphan gh-pages branch, which GitHub Pages serves at
-# https://rhoadsjustin.github.io/meno/ (Settings -> Pages -> branch gh-pages, root).
+# https://meno-scripture.org/ (Settings -> Pages -> branch gh-pages, root; the
+# domain comes from site/CNAME, and rhoadsjustin.github.io/meno/ redirects to it).
 #
 #   scripts/deploy-site.sh --dry-run   # list what would be published
 #   scripts/deploy-site.sh             # build an orphan commit and force-push it
 #
 # The branch is a build artifact: every deploy replaces its history. Sources live
 # in site/ (site/privacy-policy.html is a symlink to docs/ship/privacy-policy.html,
-# dereferenced here). Regenerate images with scripts/site-images.py. To attach a
-# custom domain later, add it to site/CNAME and point DNS at GitHub Pages.
+# dereferenced here). Regenerate images with scripts/site-images.py. site/CNAME
+# must stay in the tree: every deploy replaces the branch, and a deploy without
+# it detaches the custom domain. DNS and Pages setup: docs/ship/domain-options.md.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,4 +39,4 @@ git init -q -b "$BRANCH"
 git add -A
 git -c user.name="$NAME" -c user.email="$EMAIL" commit -q -m "Publish site from $SHA"
 git push --force "$URL" "$BRANCH:$BRANCH"
-echo "Published $SHA to $BRANCH -> https://rhoadsjustin.github.io/meno/ (Pages rebuilds in about a minute)"
+echo "Published $SHA to $BRANCH -> https://$(tr -d '[:space:]' < "$ROOT/site/CNAME")/ (Pages rebuilds in about a minute)"

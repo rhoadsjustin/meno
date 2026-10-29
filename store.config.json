@@ -30,9 +30,9 @@
           "widget",
           "memorization"
         ],
-        "privacyPolicyUrl": "https://rhoadsjustin.github.io/meno/privacy-policy.html",
+        "privacyPolicyUrl": "https://meno-scripture.org/privacy-policy.html",
         "supportUrl": "https://github.com/rhoadsjustin/meno/issues",
-        "marketingUrl": "https://rhoadsjustin.github.io/meno/"
+        "marketingUrl": "https://meno-scripture.org/"
       },
       "es-MX": {
         "title": "Meno — Memoriza la Biblia",
@@ -53,7 +53,7 @@
           "esv",
           "inglés"
         ],
-        "privacyPolicyUrl": "https://rhoadsjustin.github.io/meno/privacy-policy.html",
+        "privacyPolicyUrl": "https://meno-scripture.org/privacy-policy.html",
         "supportUrl": "https://github.com/rhoadsjustin/meno/issues"
       },
       "es-ES": {
@@ -75,7 +75,7 @@
           "esv",
           "inglés"
         ],
-        "privacyPolicyUrl": "https://rhoadsjustin.github.io/meno/privacy-policy.html",
+        "privacyPolicyUrl": "https://meno-scripture.org/privacy-policy.html",
         "supportUrl": "https://github.com/rhoadsjustin/meno/issues"
       }
     },
