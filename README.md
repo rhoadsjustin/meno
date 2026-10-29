@@ -32,7 +32,7 @@ Unit tests cover the pure services (`src/services/*`) and validate the built Scr
 
 ## Website
 
-`site/` is the marketing site served by GitHub Pages at https://rhoadsjustin.github.io/meno/
+`site/` is the marketing site served by GitHub Pages at https://meno-scripture.org/
 (the privacy policy page is a symlink to `docs/ship/privacy-policy.html`). Preview it with
 `python3 -m http.server 8787 --directory site`, rebuild the images from the store and promo
 captures with `python3 scripts/site-images.py`, and publish with `scripts/deploy-site.sh`.

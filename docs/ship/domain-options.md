@@ -1,8 +1,10 @@
 # Domain options for the Meno website (checked 2026-10-25)
 
-The site is served by GitHub Pages from the `gh-pages` branch at
-https://rhoadsjustin.github.io/meno/ (source: `site/`, publish with
-`scripts/deploy-site.sh`). This note records what a custom domain would take.
+**Decision (2026-10-28): meno-scripture.org**, registered by the owner at
+Squarespace Domains (renews 2028-10-29). GitHub Pages serves the `gh-pages`
+branch there (source: `site/`, publish with `scripts/deploy-site.sh`, domain in
+`site/CNAME`); https://rhoadsjustin.github.io/meno/ redirects to it. The rest of
+this note is the survey that preceded the purchase.
 Status was read from the registries' RDAP/WHOIS services on 2026-10-25; it changes
 daily, so re-check before buying.
 
@@ -62,8 +64,16 @@ to whichever domain is chosen.
 
 1. Buy the domain (the owner does this; it is a purchase).
 2. DNS: for the apex, four `A` records to GitHub Pages (185.199.108.153,
-   185.199.109.153, 185.199.110.153, 185.199.111.153) plus `AAAA` records if the
-   registrar supports them; for `www`, a `CNAME` to `rhoadsjustin.github.io`.
+   185.199.109.153, 185.199.110.153, 185.199.111.153) plus four `AAAA` records
+   (2606:50c0:8000::153, 2606:50c0:8001::153, 2606:50c0:8002::153,
+   2606:50c0:8003::153); for `www`, a `CNAME` to `rhoadsjustin.github.io`.
+   Squarespace Domains starts a new domain with a "Squarespace Defaults" preset
+   (four `A` records to 198.185.159.144/145 and 198.49.23.144/145, `www` →
+   `ext-sq.squarespace.com`): delete that preset first, or Pages cannot issue a
+   certificate. Keep its `v=spf1 -all` TXT record (the domain sends no mail).
+   Do not attach the domain to Pages before these records resolve: GitHub
+   redirects the github.io address to the custom domain at once, so the live
+   listing's privacy policy link would break in between.
 3. Add the domain to `site/CNAME` (one line), deploy, then in the repo's
    Settings → Pages set the custom domain and tick Enforce HTTPS once the
    certificate is issued. Verify the domain under the account's Pages settings

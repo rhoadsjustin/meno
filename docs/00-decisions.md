@@ -11,4 +11,4 @@ Answers to the open questions in `08-roadmap.md` §"Open questions for the human
 
 ### Still open
 - Per-version license review before any Platform version becomes cacheable, including whether Blanks and First Letters count as modifying the text.
-- Universal-link / challenge domain (currently `applinks:meno.app` as scaffold in app.config.ts — confirm or replace before M8). 2026-10-25: meno.app and meno.com are both taken by operating businesses; meno.bible is available. Findings and the custom-domain steps are in `docs/ship/domain-options.md`.
+- Universal-link / challenge domain (currently `applinks:meno.app` as scaffold in app.config.ts — confirm or replace before M8). 2026-10-25: meno.app and meno.com are both taken by operating businesses; meno.bible is available. Findings and the custom-domain steps are in `docs/ship/domain-options.md`. **2026-10-28: the owner bought meno-scripture.org** (Squarespace Domains); the website and privacy policy move there, and it is the natural home for universal links and challenge links at M8.
