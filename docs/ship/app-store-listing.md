@@ -96,9 +96,19 @@ Fallback if collision: "Meno: Hide the Word".)
   `marketingUrl` but NOT yet on the live listing: Apple's
   [editable-properties table](https://developer.apple.com/help/app-store-connect/reference/app-information/required-localizable-and-editable-properties)
   marks Marketing URL and Support URL as not editable on a released version, so it
-  lands with the next version (1.5.0). Set `apple.version` to that version and run
-  `eas metadata:push`. Do not push while `apple.version` is a version that is
-  already live — eas-cli tries to create that version again and the push fails.
+  lands with the next version. Pushed with 1.5.0 on 2026-10-29. For each release,
+  set `apple.version` to the new version and run `eas metadata:push`. Do not push
+  while `apple.version` is a version that is already live — eas-cli tries to
+  create that version again and the push fails.
+- EAS Metadata quirks seen on the 1.5.0 push (eas-cli 27.2.0):
+  - A locale that is new to a version (es-MX, es-ES on 1.5.0) is created empty;
+    a second `eas metadata:push` fills its description, keywords, promo text,
+    release notes and support URL. Check with `eas metadata:pull` in a scratch
+    project.
+  - The age rating step fails with "You must provide a value for the attribute
+    'socialMedia'": Apple added that question and eas-cli's `advisory` schema
+    has no field for it. Everything before that step is saved. Answer it in App
+    Store Connect (App Information → Age Rating) until eas-cli supports it.
 
 ## Age rating questionnaire
 
