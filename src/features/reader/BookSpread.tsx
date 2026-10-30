@@ -11,14 +11,20 @@ import {
   Text,
   useWindowDimensions,
   View,
-  type NativeSyntheticEvent,
-  type TextLayoutEventData,
+  type AccessibilityActionInfo,
+  type TextLayoutEvent,
+  type ViewInstance,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  GestureDetector,
+  useCompetingGestures,
+  usePanGesture,
+  useTapGesture,
+} from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { useHeaderHeight } from 'expo-router/build/react-navigation/elements';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 
 import { PageCurlView } from '@modules/page-curl';
 import { useContentLayout } from '@/components/content-layout';
@@ -59,6 +65,8 @@ const NO_CHAPTERS: Record<number, never> = {};
 // The footer is furniture: it grows with Dynamic Type, but only so far, so
 // the largest sizes spend the page on Scripture and the attribution fits.
 const FOOTER_MAX_SCALE = 1.4;
+// The one custom action a page number offers: VoiceOver's double-tap turns the page.
+const ACTIVATE: AccessibilityActionInfo[] = [{ name: 'activate' }];
 
 function reduce(state: Position, action: Action): Position {
   switch (action.type) {
@@ -96,15 +104,9 @@ export function BookSpread({
   // page while a page turn that crossed chapters keeps its own position.
   const [pos, dispatch] = useReducer(reduce, { chapter, anchor: 0, from: chapter });
   if (pos.from !== chapter) dispatch({ type: 'sync', chapter });
-  useEffect(() => {
-    if (pos.chapter !== chapter) onChapterChange(pos.chapter);
-    // Only a turn that crossed chapters reports back; `chapter` catching up
-    // is the route's answer, not a new event.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pos.chapter]);
 
   // Window frame of the spread, to map the fold (window points) onto it.
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const [frame, setFrame] = useState<{
     x: number;
     y: number;
@@ -183,7 +185,12 @@ export function BookSpread({
   const forward = target(1);
   const backward = target(-1);
 
-  const jump = (to: Target) => dispatch({ type: 'jump', to });
+  // A turn that crossed chapters reports back from the turn itself, and the
+  // route's `chapter` catching up is its answer, not a new event.
+  const jump = (to: Target) => {
+    dispatch({ type: 'jump', to });
+    if (to.chapter !== pos.chapter) onChapterChange(to.chapter);
+  };
 
   // The turn itself belongs to UIKit's page curl: the sheet bends from where
   // it is grabbed and follows the finger over the crease. It is handed the
@@ -205,21 +212,25 @@ export function BookSpread({
   );
 
   // With Reduce Motion on, a swipe or an edge tap changes the spread at once.
+  // The callbacks are worklets (Babel marks a gesture hook's config) and run
+  // on the UI thread, so a turn is handed back to React with scheduleOnRN.
   const width = geo?.width ?? 0;
-  const pan = Gesture.Pan()
-    .activeOffsetX([-12, 12])
-    .failOffsetY([-18, 18])
-    .onEnd((e) => {
+  const pan = usePanGesture({
+    activeOffsetX: [-12, 12],
+    failOffsetY: [-18, 18],
+    onDeactivate: (e) => {
       const to = e.translationX < 0 ? forward : backward;
       if (to && Math.abs(e.translationX) > 40) scheduleOnRN(jump, to);
-    });
-  const tap = Gesture.Tap()
-    .maxDuration(250)
-    .onEnd((e, success) => {
+    },
+  });
+  const tap = useTapGesture({
+    maxDuration: 250,
+    onDeactivate: (e) => {
       const to = e.x > width * 0.72 ? forward : e.x < width * 0.28 ? backward : null;
-      if (success && to) scheduleOnRN(jump, to);
-    });
-  const gesture = Gesture.Race(pan, tap);
+      if (!e.canceled && to) scheduleOnRN(jump, to);
+    },
+  });
+  const gesture = useCompetingGestures(pan, tap);
 
   const attribution = getTranslation(translationId).attribution;
 
@@ -327,7 +338,7 @@ function Measurer({
   onPaged: (result: Paged) => void;
 }) {
   const flow = useMemo(() => buildFlow(verses), [verses]);
-  const onTextLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) =>
+  const onTextLayout = (e: TextLayoutEvent) =>
     onPaged({ flow, pages: paginate(flow.text, e.nativeEvent.lines, geo.pageHeight) });
   return (
     <View
@@ -377,7 +388,10 @@ function PageContent({
             : t('nextPage')
           : t('page', { page: face.number })
       }
-      onAccessibilityTap={onTurn}
+      // VoiceOver's double-tap: the standard "activate" action replaces the
+      // onAccessibilityTap prop React Native 0.88 removed.
+      accessibilityActions={onTurn ? ACTIVATE : undefined}
+      onAccessibilityAction={onTurn}
       maxFontSizeMultiplier={FOOTER_MAX_SCALE}
       style={[styles.footerText, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
       {face.number}

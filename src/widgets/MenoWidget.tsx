@@ -89,7 +89,7 @@ const MenoWidgetComponent = (
 
   if (family === 'accessoryCircular') {
     return (
-      <VStack modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
+      <VStack spacing={0} modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 20, weight: 'bold', design: 'serif' })]}>
           {String(props.streak)}
         </Text>
@@ -109,7 +109,7 @@ const MenoWidgetComponent = (
 
   if (family === 'accessoryRectangular') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
+      <VStack spacing={0} alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>{props.verseRef}</Text>
         <Text modifiers={[font({ size: 11, design: mono ? 'monospaced' : 'default' })]}>
           {referenceOnly ? props.referenceNote : verseText}
@@ -120,8 +120,8 @@ const MenoWidgetComponent = (
 
   if (family === 'systemSmall') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
-        <HStack>
+      <VStack spacing={0} alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
+        <HStack spacing={0}>
           <Text modifiers={[font({ size: 26, weight: 'bold', design: 'serif' })]}>
             {String(props.streak)}
           </Text>
@@ -144,7 +144,7 @@ const MenoWidgetComponent = (
 
   // systemMedium / systemLarge: the verse, at the chosen level of exposure.
   const verseBlock = referenceOnly ? (
-    <VStack alignment="leading">
+    <VStack spacing={0} alignment="leading">
       <Text modifiers={[font({ size: 20, design: 'serif' }), foregroundStyle(gold)]}>
         {props.verseRef}
       </Text>
@@ -153,7 +153,7 @@ const MenoWidgetComponent = (
       </Text>
     </VStack>
   ) : (
-    <VStack alignment="leading">
+    <VStack spacing={0} alignment="leading">
       <Text
         modifiers={[
           font(mono ? { size: 13, design: 'monospaced' } : { size: 15, design: 'serif' }),
@@ -168,8 +168,8 @@ const MenoWidgetComponent = (
 
   if (family === 'systemMedium') {
     return (
-      <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
-        <HStack>
+      <VStack spacing={0} alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
+        <HStack spacing={0}>
           <Spacer />
           <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(lapis)]}>
             {String(props.streak)}
@@ -191,8 +191,8 @@ const MenoWidgetComponent = (
     .map((c) => (c === '1' ? '■' : '□'))
     .join(' ');
   return (
-    <VStack alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
-      <HStack>
+    <VStack spacing={0} alignment="leading" modifiers={[widgetURL('meno:///'), containerBackground(bg, 'widget')]}>
+      <HStack spacing={0}>
         <Text modifiers={[font({ size: 13, weight: 'semibold' })]}>Meno</Text>
         <Spacer />
         <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle(lapis)]}>

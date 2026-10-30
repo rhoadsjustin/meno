@@ -4,7 +4,7 @@
  * the same guide in its detail pane instead, so this route is the phone path.
  */
 import { useCallback, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,7 +33,7 @@ function Help() {
   const { insets, sides } = useContentLayout();
   const { top } = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   const scrollTo = useCallback(
     (y: number) => scrollRef.current?.scrollTo({ y, animated: !reduceMotion }),

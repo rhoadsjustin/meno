@@ -10,7 +10,8 @@ import {
   Text,
   TextInput,
   useWindowDimensions,
-  View,
+  type TextInputInstance,
+  type ViewInstance,
 } from 'react-native';
 
 import { useTranslation } from '@/i18n/react';
@@ -51,8 +52,8 @@ export function TypeRound({
   const { height, fontScale } = useWindowDimensions();
   const short = height < layout.shortHeight;
   const editorHeight = EDITOR_HEIGHT * Math.min(fontScale, 1.3);
-  const editor = useRef<TextInput>(null);
-  const check = useRef<View>(null);
+  const editor = useRef<TextInputInstance>(null);
+  const check = useRef<ViewInstance>(null);
   const reveal = useRevealAboveKeyboard();
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;

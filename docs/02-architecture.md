@@ -4,7 +4,7 @@
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Expo SDK 56+, React Native, TypeScript strict | CNG/prebuild; custom dev client (no Expo Go — widgets/device-activity/speech need dev builds) |
+| Framework | Expo SDK 58+, React Native, TypeScript strict | CNG/prebuild; custom dev client (no Expo Go — widgets/device-activity/speech need dev builds) |
 | Routing | Expo Router | File-based; typed routes on |
 | UI | `@expo/ui` (universal) + `@expo/ui/swift-ui` for iOS polish | Stable since SDK 56. Real SwiftUI/Compose primitives — this is what delivers the "feels iOS on iOS, Android on Android" requirement |
 | State | Zustand (client), TanStack Query (server, Phase 2) | Keep stores small and feature-scoped |

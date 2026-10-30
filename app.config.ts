@@ -40,7 +40,7 @@ const updatesChannel = process.env.MENO_UPDATES_CHANNEL;
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
-  version: '1.5.0',
+  version: '1.6.0',
   runtimeVersion: { policy: 'appVersion' },
   updates: {
     url: 'https://u.expo.dev/6473c486-4b56-4c2c-9365-2ca7eeef6729',
@@ -114,18 +114,6 @@ const config: ExpoConfig = {
     favicon: './assets/images/favicon.png',
   },
   plugins: [
-    [
-      'expo-build-properties',
-      {
-        ios: {
-          // iOS 27 SDK builds must use the UIKit scene-based life cycle or
-          // they fail to launch (Apple TN3187); SDK 57 makes it opt-in. The
-          // iOS 27.1 SDK is also what gives iPhone Duo its full-screen
-          // layout, so this pairs with the Xcode 27.1 image in eas.json.
-          enableSceneSupport: true,
-        },
-      },
-    ],
     // Fixes the TestFlight dyld crash: guarantees ExpoModulesJSI.framework
     // is embedded when CocoaPods' fresh-checkout classification misses it.
     './plugins/withEmbedJsiFramework',
