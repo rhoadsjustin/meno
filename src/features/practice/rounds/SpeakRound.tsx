@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -91,6 +92,8 @@ export function SpeakRound({
   }, []);
   const [permission, setPermission] = useState<'unknown' | 'granted' | 'denied'>('unknown');
   const [speechError, setSpeechError] = useState<string | null>(null);
+  // Android only: the offline speech pack for the verse's language is missing.
+  const [pack, setPack] = useState<'ok' | 'missing' | 'downloading'>('ok');
 
   // Bias on-device recognition toward the verse's vocabulary (02 §7).
   const contextualStrings = useMemo(() => [...new Set(displayWords(text))], [text]);
@@ -151,10 +154,38 @@ export function SpeakRound({
 
   useSpeechRecognitionEvent('error', (event) => {
     setMicState('idle');
-    if (event.error !== 'no-speech') {
-      setSpeechError(t('speak.error', { error: event.error }));
+    switch (event.error) {
+      case 'no-speech':
+      case 'speech-timeout':
+        return;
+      case 'not-allowed':
+      case 'service-not-allowed':
+        setPermission('denied');
+        return;
+      case 'audio-capture':
+      case 'busy':
+        setSpeechError(t('speak.micBusy'));
+        return;
+      case 'language-not-supported':
+        if (Platform.OS === 'android') {
+          setPack('missing');
+          return;
+        }
     }
+    setSpeechError(t('speak.error', { error: event.error }));
   });
+
+  const downloadPack = useCallback(async () => {
+    try {
+      await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({
+        locale: getTranslation(translationId).languageCode,
+      });
+      setPack('downloading');
+    } catch {
+      setPack('ok');
+      setSpeechError(t('speak.offlineUnsupported'));
+    }
+  }, [translationId, t]);
 
   const toggleListening = useCallback(async () => {
     if (listening) {
@@ -171,13 +202,35 @@ export function SpeakRound({
       return;
     }
     setPermission('granted');
+    const lang = getTranslation(translationId).languageCode;
+    // Recitation audio never leaves the phone, so there is no cloud
+    // fallback: an Android phone needs on-device recognition and the
+    // offline pack for the verse's language.
+    if (Platform.OS === 'android') {
+      if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
+        setSpeechError(t('speak.offlineUnsupported'));
+        return;
+      }
+      const installed = await ExpoSpeechRecognitionModule.getSupportedLocales({})
+        .then((r) => r.installedLocales)
+        .catch(() => [] as string[]);
+      // An empty list means the service can't say; try, and let the error tell.
+      const base = lang.split('-')[0].toLowerCase();
+      if (installed.length > 0 && !installed.some((l) => l.toLowerCase().startsWith(base))) {
+        setPack('missing');
+        return;
+      }
+      setPack('ok');
+    }
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     AccessibilityInfo.announceForAccessibility(t('speak.listeningAnnouncement'));
     setInterim('');
     ExpoSpeechRecognitionModule.start({
-      lang: getTranslation(translationId).languageCode,
+      lang,
       interimResults: true,
       requiresOnDeviceRecognition: true,
+      // Android ends a take at the first pause; a verse has many.
+      continuous: Platform.OS === 'android',
       addsPunctuation: false,
       contextualStrings,
     });
@@ -239,6 +292,20 @@ export function SpeakRound({
         <Text style={[styles.error, { color: colors.error, fontFamily: fonts?.ui }]}>
           {t('speak.permissionOff')}
         </Text>
+      )}
+      {pack !== 'ok' && (
+        <View style={styles.packArea}>
+          <Text style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            {t(pack === 'missing' ? 'speak.packMissing' : 'speak.packDownloading')}
+          </Text>
+          {pack === 'missing' && (
+            <Pressable accessibilityRole="button" onPress={() => void downloadPack()}>
+              <Text style={[styles.packButton, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+                {t('speak.packDownload')}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       )}
       {speechError && (
         <Animated.Text
@@ -346,6 +413,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   prompt: { fontSize: 28, marginTop: spacing.md, textAlign: 'center' },
   error: { fontSize: 14, lineHeight: 19, marginTop: spacing.md, textAlign: 'center' },
+  packArea: { alignItems: 'center' },
+  packButton: { fontSize: 15, fontWeight: '600', marginTop: spacing.sm, padding: spacing.sm },
   transcriptArea: { flexGrow: 1, marginTop: spacing.xl },
   transcript: { fontSize: 19, lineHeight: 30 },
   transcriptInput: { padding: 0, textAlignVertical: 'top' },

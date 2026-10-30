@@ -18,11 +18,12 @@ import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from
 import {
   AppState,
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
-  View,
   type LayoutChangeEvent,
+  View,
 } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -110,6 +111,23 @@ const FAQ = [
   'deleteApp',
 ] as const;
 
+/**
+ * What Android can show: no Meno widget yet and no Screen Time, so those
+ * sections and the questions about them stay out, even when a link asks
+ * for one.
+ */
+const ANDROID_HIDDEN = new Set<SectionKey | (typeof FAQ)[number]>([
+  'homeWidget',
+  'lockWidget',
+  'lock',
+  'widgetVerse',
+  'oldVerse',
+  'referenceOnly',
+  'shielded',
+]);
+const onPlatform = (key: SectionKey | (typeof FAQ)[number]) =>
+  Platform.OS === 'ios' || !ANDROID_HIDDEN.has(key);
+
 export type HelpGuideProps = {
   /** Which sections to show; all by default. */
   sections?: SectionKey[];
@@ -147,7 +165,7 @@ export function HelpGuide({
       ? reminderSummary(reminders, { now: new Date() })
       : t(`status.${statuses[key]}`);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const shown = new Set(sections);
+  const shown = new Set(sections.filter(onPlatform));
 
   const refresh = useCallback(async () => {
     try {
@@ -389,7 +407,7 @@ export function HelpGuide({
             {t('faqHeading')}
           </Text>
           <Card>
-            {FAQ.map((id, i) => {
+            {FAQ.filter(onPlatform).map((id, i) => {
               const open = openFaq === i;
               return (
                 <View

@@ -10,6 +10,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
+import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
@@ -51,6 +52,7 @@ type Phase =
 export function ReviewSession() {
   const colors = useThemeColors();
   const { t } = useTranslation(['review', 'practice', 'common']);
+  const closeIcon = useBarIcon('xmark', 'close');
   const { sides } = useContentLayout();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
@@ -173,7 +175,7 @@ export function ReviewSession() {
         }>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
-            icon="xmark"
+            icon={closeIcon}
             accessibilityLabel={t('closeLabel')}
             onPress={() => router.back()}>
             {t('common:close')}

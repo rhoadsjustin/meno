@@ -5,8 +5,17 @@
  * a first verse. Skippable at every step, never guilt (06 §6).
  */
 import { router } from 'expo-router';
-import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  BackHandler,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
 import { closeModal } from '@/components/close-modal';
@@ -25,6 +34,22 @@ import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
 /** `notificationsBlocked`: said yes in Meno, then no to the iOS prompt. */
 type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'lock';
+
+/**
+ * Android has no Meno widget yet and no Screen Time, so it skips the widget
+ * tour, and the last step keeps only its "start a passage" choices.
+ */
+const onIos = Platform.OS === 'ios';
+const afterNotifications: Step = onIos ? 'widget' : 'lock';
+
+/** Where the Android back button goes from each step. */
+const previous: Record<Step, Step | null> = {
+  welcome: null,
+  notifications: 'welcome',
+  notificationsBlocked: 'notifications',
+  widget: 'notifications',
+  lock: onIos ? 'widget' : 'notifications',
+};
 
 /**
  * A full-screen modal takes the root view out of the window, and with it the
@@ -66,7 +91,22 @@ function Onboarding() {
   // say on the blocked step, so carry on.
   const reminders = useReminderStatus();
   const step: Step =
-    chosenStep === 'notificationsBlocked' && reminders?.overall === 'on' ? 'widget' : chosenStep;
+    chosenStep === 'notificationsBlocked' && reminders?.overall === 'on'
+      ? afterNotifications
+      : chosenStep;
+
+  // Android's back button walks back through the steps (the modal can't be
+  // swiped away on iOS either). From the first step it leaves the app rather
+  // than closing onboarding, which Today would only open again.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const back = previous[step];
+      if (back) setStep(back);
+      else BackHandler.exitApp();
+      return true;
+    });
+    return () => sub.remove();
+  }, [step]);
 
   const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
     await markOnboardingDone();
@@ -99,7 +139,7 @@ function Onboarding() {
   // would leave onboarding believing reminders are coming.
   const optIn = useCallback(async () => {
     const delivered = await setNotificationsEnabled(true);
-    setStep(delivered ? 'widget' : 'notificationsBlocked');
+    setStep(delivered ? afterNotifications : 'notificationsBlocked');
   }, []);
 
   const welcome = {
@@ -151,7 +191,7 @@ function Onboarding() {
             {t('notifications.optIn')}
           </Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
+        <Pressable accessibilityRole="button" onPress={() => setStep(afterNotifications)}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('notifications.later')}
           </Text>
@@ -188,7 +228,7 @@ function Onboarding() {
             {t('notificationsBlocked.openSettings')}
           </Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setStep('widget')}>
+        <Pressable accessibilityRole="button" onPress={() => setStep(afterNotifications)}>
           <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('common:notNow')}
           </Text>
@@ -238,17 +278,17 @@ function Onboarding() {
         {t('lock.title')}
       </Text>
     ),
-    visual: (
+    visual: onIos ? (
       <View accessible accessibilityLabel={t('lock.previewLabel')}>
         <ShieldMock />
       </View>
-    ),
+    ) : null,
     copy: (
       <>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {t('lock.body')}
         </Text>
-        {!isLockAvailable() && (
+        {onIos && !isLockAvailable() && (
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('lock.simulatorHint')}
           </Text>

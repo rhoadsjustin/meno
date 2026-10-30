@@ -14,6 +14,7 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { t as translate } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
+import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
@@ -111,6 +112,7 @@ export function PracticeScreen({
 }) {
   const colors = useThemeColors();
   const { t } = useTranslation(['practice', 'common']);
+  const closeIcon = useBarIcon('xmark', 'close');
   // Extra-wide windows (iPhone Duo opened in its landscape pose, iPad): the
   // round keeps its reading column and a context rail sits beside it —
   // reference, chunk progress, ladder. Narrower windows keep one column so
@@ -630,7 +632,7 @@ export function PracticeScreen({
       <ScreenHeader backHidden title={t('title')}>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
-            icon="xmark"
+            icon={closeIcon}
             accessibilityLabel={t('closeLabel')}
             onPress={() => router.back()}>
             {t('common:close')}
