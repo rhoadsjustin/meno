@@ -191,7 +191,7 @@ layout (cards + share pane around the crease), universal-link files.
 The Maestro flow covers the fresh-install "not yet" state
 (`.maestro/manual/10-wrapped-not-yet.yml`); the full card path can't be
 seeded from a flow, so it is checked by hand with `scripts/seed-wrapped.py`.
-Still open: persona sign-off (D5), App Store campaign token, Split View
+Still open: App Store campaign token, Split View
 by hand in Device Hub, physical-iPhone pass, site deploy before merge,
 then the PR and the 1.7.0 store build.
 
@@ -232,7 +232,7 @@ live rather than shipping without share images — sharing is the point.
 | D2 | Direct "Share to Instagram Stories" button? | No — system share sheet only in v1. Revisit in 1.8. |
 | D3 | Universal links so challenge links work without the app? | **Yes** — see §10.1. |
 | D4 | Season window | Dec 1 – Jan 31 |
-| D5 | Persona names + verses (§3), English and Spanish | Claude drafts in week 1; owner approves before copy freeze. |
+| D5 | Persona names + verses (§3), English and Spanish | Approved 2026-10-31, with Midday Pause on Ps 55:17 and up to two "also" personas. |
 | D6 | Tier B anonymous `wrapped.shared` counter | No, not this release. |
 | D7 | Name | "Year in the Word" |
 

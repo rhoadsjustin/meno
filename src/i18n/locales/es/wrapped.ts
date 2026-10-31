@@ -1,7 +1,7 @@
 import type { Catalog } from '@/i18n/catalog';
 import type en from '@/i18n/locales/en/wrapped';
 
-/** BORRADOR: nombres y frases de los perfiles pendientes de revisión (docs/10 D5). */
+/** Nombres y frases de los perfiles aprobados el 2026-10-31 (docs/10 D5). */
 export default {
   title: 'Mi año en la Palabra',
   cover: 'Tu {{year}} en la Palabra',

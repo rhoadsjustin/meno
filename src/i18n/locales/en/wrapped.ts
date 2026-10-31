@@ -1,6 +1,6 @@
 /**
- * Year in the Word recap (docs/10). DRAFT copy: persona names and lines
- * await the owner's review (docs/10 D5) before the copy freeze.
+ * Year in the Word recap (docs/10). Persona names, lines and verses were
+ * approved by the owner on 2026-10-31 (docs/10 D5).
  *
  * Big numerals are printed by the card itself (locale-formatted); labels
  * here pick their plural from `count` and print the number as `{{value}}`.
