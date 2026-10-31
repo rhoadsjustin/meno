@@ -210,6 +210,31 @@ else
   done
 fi
 
+echo "==> Shared dependency store (scripts/worktree.sh)"
+# A store entry is one clean install per package-lock.json. Checkouts hold APFS
+# clones of it, not links, so removing an entry never breaks a checkout; keep
+# the ones some checkout's lockfile still names, and anything used recently.
+DEPS_STORE="${MENO_DEPS_STORE:-$HOME/.cache/meno-deps}"
+if [ -d "$DEPS_STORE" ]; then
+  node_major=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo "?")
+  WANTED_KEYS="$(while IFS=$'\t' read -r w _; do
+      [ -f "$w/package-lock.json" ] && echo "$(shasum -a 256 "$w/package-lock.json" | cut -c1-16)-node$node_major"
+    done < <(list_worktrees) | sort -u)"
+  for d in "$DEPS_STORE"/*; do
+    [ -d "$d" ] || continue
+    key=$(basename "$d")
+    case "$key" in
+      *.lock|*.partial)
+        # Leftovers of an interrupted install.
+        [ -n "$(/usr/bin/find "$d" -maxdepth 0 -mmin +120 2>/dev/null)" ] && remove "$d" "deps store $key" ;;
+      *)
+        if printf '%s\n' "$WANTED_KEYS" | grep -qx -- "$key"; then echo "    keep $key (a checkout's lockfile)"; continue; fi
+        if [ -n "$(/usr/bin/find "$d/.ready" -mmin "-$IDLE_MINUTES" 2>/dev/null)" ]; then echo "    keep $key (used recently)"; continue; fi
+        remove "$d" "deps store $key" ;;
+    esac
+  done
+fi
+
 FREE_AFTER=$(df -k / | awk 'NR==2 {print $4}')
 echo "==> Not touched: simulators use $(size "$HOME/Library/Developer/CoreSimulator/Devices") in CoreSimulator/Devices" \
      "(erase an idle one with: xcrun simctl erase <udid>)"
