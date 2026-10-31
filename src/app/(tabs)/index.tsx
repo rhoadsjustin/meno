@@ -19,6 +19,7 @@ import { useTranslation } from '@/i18n/react';
 import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
+import { RecapTodayCard, useRecapOffer } from '@/features/wrapped/RecapEntry';
 import {
   formatRange,
   getPassage,
@@ -139,6 +140,8 @@ export default function TodayScreen() {
   // must not tell someone with memorized verses that they have none.
   const [hasFinished, setHasFinished] = useState(false);
   const startBusy = useRef(false);
+  // Year in the Word, in season (docs/10 §5.5).
+  const recapOffer = useRecapOffer();
 
   // Reads everything this screen shows; `isCancelled` guards a blurred screen.
   const load = useCallback(async (isCancelled: () => boolean) => {
@@ -624,11 +627,14 @@ export default function TodayScreen() {
     </Card>
   );
 
+  const recapCard = <RecapTodayCard offer={recapOffer} />;
+
   return (
     <Screen title={t('app:tabs.today')} accessory={ember || undefined} wide>
       {isWide ? (
         <FoldAwareRow>
           <>
+            {recapCard}
             {emptyIntro}
             {emptyActions}
             {hero}
@@ -643,6 +649,7 @@ export default function TodayScreen() {
         </FoldAwareRow>
       ) : (
         <>
+          {recapCard}
           {emptyIntro}
           {stackedStarters && emptyActions}
           {emptyDeck}

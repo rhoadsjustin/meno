@@ -40,7 +40,7 @@ const updatesChannel = process.env.MENO_UPDATES_CHANNEL;
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
-  version: '1.6.0',
+  version: '1.7.0',
   runtimeVersion: { policy: 'appVersion' },
   updates: {
     url: 'https://u.expo.dev/6473c486-4b56-4c2c-9365-2ca7eeef6729',
@@ -74,12 +74,13 @@ const config: ExpoConfig = {
       CFBundleDevelopmentRegion: 'en',
       CFBundleLocalizations: ['en', 'es'],
       // ITMS-90683: a bundled image framework references the Photos APIs,
-      // so Apple requires these strings even though Meno never reads or
-      // saves photos. Keep them honest.
+      // so Apple requires the read string even though Meno never reads
+      // photos. The add string is real since 1.7: "Save Image" on a Year in
+      // the Word share (docs/10 §1) shows it. Keep them honest.
       NSPhotoLibraryUsageDescription:
         'Meno does not access your photo library. This notice is required by a bundled image framework.',
       NSPhotoLibraryAddUsageDescription:
-        'Meno does not save to your photo library. This notice is required by a bundled image framework.',
+        'Meno saves an image to your photo library only when you choose Save Image while sharing.',
     },
     // App-level privacy manifest (ship checklist, docs/08): no tracking, no
     // data collection; UserDefaults use (app group) declared with CA92.1.

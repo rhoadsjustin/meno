@@ -16,6 +16,7 @@ const KNOWN_ROOTS = new Set([
   'library',
   'stats',
   'settings',
+  'wrapped',
 ]);
 
 /** Universal-link hosts (docs/10 §10.1); their paths are app routes. */

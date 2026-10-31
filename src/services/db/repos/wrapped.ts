@@ -103,3 +103,18 @@ async function countWords(translationId: string, c: ChunkRange): Promise<number 
     return null;
   }
 }
+
+/** Distinct local days with practice in `year`: enough to decide eligibility cheaply. */
+export async function activeDaysIn(year: number, clock: LocalClock = deviceClock): Promise<number> {
+  const [rows, kept] = await Promise.all([
+    db.select({ createdAt: tables.attempts.createdAt }).from(tables.attempts),
+    keptPracticeDays(),
+  ]);
+  const prefix = `${year}-`;
+  const days = new Set(kept.filter((d) => d.startsWith(prefix)));
+  for (const r of rows) {
+    const day = clock.dayOf(r.createdAt);
+    if (day.startsWith(prefix)) days.add(day);
+  }
+  return days.size;
+}
