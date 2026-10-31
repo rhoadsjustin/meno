@@ -19,6 +19,7 @@ import lock from './lock';
 import notifications from './notifications';
 import widgets from './widgets';
 import app from './app';
+import wrapped from './wrapped';
 
 export default {
   common,
@@ -39,4 +40,5 @@ export default {
   notifications,
   widgets,
   app,
+  wrapped,
 } satisfies Catalog<typeof en>;

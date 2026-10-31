@@ -43,6 +43,7 @@ export {
   DEFAULT_TRANSLATION_ID,
   getTranslation,
   mayPersistText,
+  mayShareVerseText,
   registerTranslations,
   translationHasBook,
   youversionBibleId,
