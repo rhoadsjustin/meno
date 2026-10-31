@@ -19,7 +19,9 @@ export function FoldAwareRow({
   fill = false,
   style,
 }: {
-  /** Exactly two panes. */
+  /** Two panes — or one: a second pane of `null` or `false` leaves the first
+   * alone at full width and in the same place in the tree, so a screen can
+   * show its second pane only on wide windows without remounting the first. */
   children: [ReactNode, ReactNode];
   /** Fill the parent's height and stretch the panes (for scrolling panes). */
   fill?: boolean;
@@ -35,13 +37,16 @@ export function FoldAwareRow({
     ref.current?.measureInWindow((x, _y, width) => setFrame({ x, width }));
   }, []);
 
+  const [left, right] = children;
+  // One pane: nothing to keep off the crease, so the fold is left alone.
+  const single = right == null || right === false;
   const vertical =
+    !single &&
     fold &&
     frame &&
     fold.height > fold.width &&
     fold.x > frame.x &&
     fold.x + fold.width < frame.x + frame.width;
-  const [left, right] = children;
 
   // Panes are sized by flex weight, never by an explicit width: a width set
   // while folded stuck to the native view after the fold cleared, and the
@@ -56,11 +61,13 @@ export function FoldAwareRow({
     : [1, 1];
   const spacer = vertical ? fold.width + spacing.md * 2 : spacing.xl;
 
+  // The first pane is always the row's first child, so React keeps it (and
+  // its state) in place when the second pane comes or goes.
   return (
     <View ref={ref} onLayout={onLayout} style={[styles.row, fill && styles.fill, style]}>
       <View style={[styles.pane, { flexGrow: weights[0] }]}>{left}</View>
-      <View style={{ width: spacer }} />
-      <View style={[styles.pane, { flexGrow: weights[1] }]}>{right}</View>
+      {!single && <View style={{ width: spacer }} />}
+      {!single && <View style={[styles.pane, { flexGrow: weights[1] }]}>{right}</View>}
     </View>
   );
 }
