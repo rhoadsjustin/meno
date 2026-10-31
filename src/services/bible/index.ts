@@ -60,6 +60,8 @@ export {
   fillPlaceholders,
   languagesById,
   loadCatalog,
+  versionsStale,
+  type CatalogRefresh,
 } from '@/services/bible/youversion-catalog';
 export { youversionKeyConfigured, YouVersionError } from '@/services/bible/youversion';
 export { DEFAULT_STARTER, STARTER_VERSES, trimUnbalancedQuotes } from '@/services/bible/starters';
