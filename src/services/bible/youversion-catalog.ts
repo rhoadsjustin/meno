@@ -221,14 +221,21 @@ let catalogLoading: Promise<void> | null = null;
  * from the cache when fetched within the week (and in this locale), else
  * from the Platform. The picker lists only languages that have a version,
  * so nobody taps a language to find it empty.
+ *
+ * `versionsMaxAge` refetches the version list sooner than the week: the
+ * picker passes a few minutes, so a license accepted in the portal shows up
+ * the next time someone opens it. The language names stay weekly.
  */
-export function ensureCatalog(locale: string, options: { force?: boolean } = {}): Promise<void> {
+export function ensureCatalog(
+  locale: string,
+  options: { force?: boolean; versionsMaxAge?: number } = {},
+): Promise<void> {
   catalogLoading ??= (async () => {
     await loadCatalog();
     if (!youversionKeyConfigured()) return;
-    const fresh = Date.now() - catalogFetchedAt < STALE_MS;
+    const fresh = Date.now() - catalogFetchedAt < (options.versionsMaxAge ?? STALE_MS);
     const sameLocale = languagesLocale === locale;
-    await ensureLanguages(locale, options);
+    await ensureLanguages(locale, { force: options.force });
     if (!options.force && fresh && sameLocale) return;
     const list = await fetchAllBibles(undefined, locale);
     await storeTranslations(list);
