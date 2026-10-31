@@ -218,7 +218,8 @@ DEPS_STORE="${MENO_DEPS_STORE:-$HOME/.cache/meno-deps}"
 if [ -d "$DEPS_STORE" ]; then
   node_major=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo "?")
   WANTED_KEYS="$(while IFS=$'\t' read -r w _; do
-      [ -f "$w/package-lock.json" ] && echo "$(shasum -a 256 "$w/package-lock.json" | cut -c1-16)-node$node_major"
+      # Same key as scripts/worktree.sh deps_key: lockfile + patches.
+      [ -f "$w/package-lock.json" ] && echo "$( { cat "$w/package-lock.json"; cat "$w"/patches/*.patch 2>/dev/null || true; } | shasum -a 256 | cut -c1-16)-node$node_major"
     done < <(list_worktrees) | sort -u)"
   for d in "$DEPS_STORE"/*; do
     [ -d "$d" ] || continue
