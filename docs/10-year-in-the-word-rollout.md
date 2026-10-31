@@ -177,6 +177,18 @@ December; we want to be live when people are already in the mood.
 | — | **Tue Dec 1** | Season opens on its own (date gate). Today card + notification. |
 | — | Dec 1 – Jan 31 | OTA copy fixes as needed. Jan 1 snapshot. Season closes Jan 31. |
 
+**Progress (2026-10-31): weeks 1–3 built and checked, ahead of schedule.**
+Done: rollup, personas, season gate, snapshot, December notice (planner,
+unit-tested), recap screen, Stories + 4:5 share images, Today/Stats entry
+points, tester preview (`meno:///wrapped?preview=1`), seed script, Duo
+layout (cards + share pane around the crease), universal-link files.
+The Maestro flow covers the fresh-install "not yet" state
+(`.maestro/manual/10-wrapped-not-yet.yml`); the full card path can't be
+seeded from a flow, so it is checked by hand with `scripts/seed-wrapped.py`.
+Still open: persona sign-off (D5), App Store campaign token, Split View
+by hand in Device Hub, physical-iPhone pass, site deploy before merge,
+then the PR and the 1.7.0 store build.
+
 If 1.7.0 slips past ~Nov 27, open the season on the first day the build is
 live rather than shipping without share images — sharing is the point.
 
