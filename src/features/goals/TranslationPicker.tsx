@@ -13,7 +13,7 @@
  * features/goals/translation-choice.
  */
 import { Stack, router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { SectionList, StyleSheet, View, type SectionListRenderItem } from 'react-native';
 
 import { useBarIcon } from '@/components/bar-icon';
@@ -50,10 +50,6 @@ export function TranslationPicker() {
   const load = useTranslationCatalog((s) => s.load);
   const { sections, featured } = useCatalogSections(selected);
   const [query, setQuery] = useState('');
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const close = useCallback(() => closePicker(navigation), [navigation]);
   const pick = useCallback(

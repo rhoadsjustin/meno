@@ -30,8 +30,15 @@ type CatalogStatus = 'loading' | 'ready' | 'error';
 type CatalogState = {
   status: CatalogStatus;
   version: number;
-  load: (options?: { force?: boolean }) => Promise<void>;
+  load: (options?: { force?: boolean; versionsMaxAge?: number }) => Promise<void>;
 };
+
+/**
+ * How old the version list may be when the picker opens. Short, so a version
+ * licensed in the portal appears on the next open rather than a week later;
+ * not zero, so closing and reopening the picker doesn't refetch every time.
+ */
+export const PICKER_VERSIONS_MAX_AGE = 5 * 60 * 1000;
 
 export const useTranslationCatalog = create<CatalogState>((set) => ({
   status: youversionKeyConfigured() && !catalogFetched() ? 'loading' : 'ready',
