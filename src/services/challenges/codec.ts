@@ -3,7 +3,10 @@
  * carries references only — never verse text — so links are license-safe
  * for every translation (02 §5). Pure: no React Native or database imports.
  *
- * Link shape: meno://challenge?v=1&c=CODE&t=web&s=Phil.4.4&e=Phil.4.9&n=Title&d=2026-12-25
+ * Link shape: https://meno-scripture.org/challenge?v=1&c=CODE&t=web&s=Phil.4.4&e=Phil.4.9&n=Title&d=2026-12-25
+ * A universal link (docs/10 §10.1): it opens Meno when installed, and
+ * site/challenge/ otherwise. Older `meno://challenge?…` links still parse —
+ * only the part after `?` is read.
  * The `c` code is the shared identifier both participants' goals store in
  * `goals.challengeId`, so M8's server sync can join them later.
  */
@@ -28,7 +31,7 @@ export type Challenge = {
 };
 
 export const CHALLENGE_VERSION = 1;
-export const CHALLENGE_URL_ROOT = 'meno://challenge';
+export const CHALLENGE_URL_ROOT = 'https://meno-scripture.org/challenge';
 
 const CODE_RE = /^[A-Z0-9]{4,16}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

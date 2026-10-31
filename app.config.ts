@@ -94,10 +94,14 @@ const config: ExpoConfig = {
         },
       ],
     },
-    // Universal links deferred: the associated-domains entitlement blocks
-    // local dev signing (wildcard team profile lacks the capability) and the
-    // meno.app domain isn't live. Re-add before M8:
-    // associatedDomains: ['applinks:meno.app'],
+    // Universal links for challenge links (docs/10 §10.1; the site serves
+    // /.well-known/apple-app-site-association). Store builds only: the
+    // associated-domains entitlement blocks local dev signing (the wildcard
+    // team profile lacks the capability), and EAS turns the capability on
+    // for the App ID when it builds. Dev builds keep the meno:// links.
+    ...(process.env.EAS_BUILD === 'true' && !variant
+      ? { associatedDomains: ['applinks:meno-scripture.org'] }
+      : {}),
   },
   android: {
     package: bundleId,

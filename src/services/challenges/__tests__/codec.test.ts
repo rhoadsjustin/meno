@@ -31,6 +31,13 @@ describe('challenge codec', () => {
     expect(parseChallengeUrl(encodeChallengeUrl(phil))).toEqual(phil);
   });
 
+  it('shares a universal link and still reads the old meno:// links', () => {
+    const url = encodeChallengeUrl(phil);
+    expect(url.startsWith('https://meno-scripture.org/challenge?v=1&')).toBe(true);
+    const legacy = url.replace('https://meno-scripture.org/challenge', 'meno://challenge');
+    expect(parseChallengeUrl(legacy)).toEqual(phil);
+  });
+
   it('round-trips without a target date', () => {
     const { targetDate: _, ...rest } = phil;
     const dateless: Challenge = { ...rest };
