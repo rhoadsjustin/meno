@@ -11,6 +11,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 
 import { t as translate } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
+import type { CatalogRefreshState } from '@/features/goals/translation-catalog';
 import { translationCoverage, type LanguageSummary, type Translation } from '@/services/bible';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
@@ -221,6 +222,70 @@ export function CatalogStatusRow({
   );
 }
 
+/**
+ * The version-list refresh, at the top of the picker: a spinner while the
+ * Platform is asked, then how many translations arrived, or the failure in
+ * the error colour with the reason. The bar's refresh button retries.
+ */
+export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) {
+  const colors = useThemeColors();
+  const { t } = useTranslation('goals');
+  if (refresh.state === 'idle') return null;
+  const text = [styles.statusText, { fontFamily: fonts?.ui }];
+  if (refresh.state === 'checking') {
+    return (
+      <View
+        style={styles.refresh}
+        accessible
+        accessibilityLiveRegion="polite"
+        accessibilityLabel={t('picker.refreshChecking')}>
+        <ActivityIndicator color={colors.inkFaint} />
+        <Text style={[text, styles.refreshText, { color: colors.inkFaint }]}>
+          {t('picker.refreshChecking')}
+        </Text>
+      </View>
+    );
+  }
+  if (refresh.state === 'done') {
+    const message =
+      refresh.added > 0
+        ? t('picker.refreshAdded', { count: refresh.added })
+        : t('picker.refreshUpToDate');
+    return (
+      <View
+        style={styles.refresh}
+        accessible
+        accessibilityLiveRegion="polite"
+        accessibilityLabel={message}>
+        <SymbolView
+          name={{ ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }}
+          tintColor={refresh.added > 0 ? colors.lapis : colors.inkFaint}
+          size={20}
+        />
+        <Text style={[text, styles.refreshText, { color: colors.inkFaint }]}>{message}</Text>
+      </View>
+    );
+  }
+  const detail = refresh.reason ?? t('picker.refreshHint');
+  return (
+    <View
+      style={styles.refresh}
+      accessible
+      accessibilityRole="alert"
+      accessibilityLabel={`${t('picker.refreshFailed')} ${detail}`}>
+      <SymbolView
+        name={{ ios: 'exclamationmark.triangle.fill', android: 'warning', web: 'warning' }}
+        tintColor={colors.error}
+        size={20}
+      />
+      <View style={styles.refreshText}>
+        <Text style={[text, { color: colors.error }]}>{t('picker.refreshFailed')}</Text>
+        <Text style={[text, { color: colors.inkFaint }]}>{detail}</Text>
+      </View>
+    </View>
+  );
+}
+
 /** The empty search state (HIG: say what was searched and what to try). */
 export function NoResults({ query }: { query: string }) {
   const colors = useThemeColors();
@@ -280,6 +345,15 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
   },
   statusText: { fontSize: 15, lineHeight: 20 },
+  refresh: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.lg,
+  },
+  refreshText: { flex: 1 },
   noResults: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxxl },
   noResultsTitle: { fontSize: 20, fontWeight: '600', textAlign: 'center' },
   noResultsHint: { fontSize: 15, lineHeight: 20, textAlign: 'center' },

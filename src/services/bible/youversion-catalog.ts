@@ -214,7 +214,15 @@ async function storeTranslations(list: readonly Translation[]): Promise<void> {
   }
 }
 
-let catalogLoading: Promise<void> | null = null;
+/** What one `ensureCatalog` call did: whether it asked the Platform, and how many versions are new. */
+export type CatalogRefresh = { fetched: boolean; added: number };
+
+let catalogLoading: Promise<CatalogRefresh> | null = null;
+
+/** Whether the version list is older than `maxAge`, so `ensureCatalog` would fetch it. */
+export function versionsStale(maxAge: number = STALE_MS): boolean {
+  return Date.now() - catalogFetchedAt >= maxAge;
+}
 
 /**
  * The language names and every version this app key may read, in one pass:
@@ -229,15 +237,17 @@ let catalogLoading: Promise<void> | null = null;
 export function ensureCatalog(
   locale: string,
   options: { force?: boolean; versionsMaxAge?: number } = {},
-): Promise<void> {
+): Promise<CatalogRefresh> {
   catalogLoading ??= (async () => {
     await loadCatalog();
-    if (!youversionKeyConfigured()) return;
+    if (!youversionKeyConfigured()) return { fetched: false, added: 0 };
     const fresh = Date.now() - catalogFetchedAt < (options.versionsMaxAge ?? STALE_MS);
     const sameLocale = languagesLocale === locale;
     await ensureLanguages(locale, { force: options.force });
-    if (!options.force && fresh && sameLocale) return;
+    if (!options.force && fresh && sameLocale) return { fetched: false, added: 0 };
     const list = await fetchAllBibles(undefined, locale);
+    const known = new Set(registeredTranslations().map((t) => t.id));
+    const added = list.filter((t) => !known.has(t.id)).length;
     await storeTranslations(list);
     await pruneTranslations(new Set(list.map((t) => t.id)));
     const now = Date.now();
@@ -247,6 +257,7 @@ export function ensureCatalog(
       .values({ key: CATALOG_FETCHED_KEY, value: String(now) })
       .onConflictDoUpdate({ target: tables.settings.key, set: { value: String(now) } });
     catalogFetchedAt = now;
+    return { fetched: true, added };
   })().finally(() => {
     catalogLoading = null;
   });

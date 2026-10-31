@@ -9,6 +9,10 @@
  * search on Android) and searches every translation and language at once,
  * so nothing has to be opened before it can be found.
  *
+ * Opening the picker checks for new translations (see its layout); the row
+ * at the top says so, then how many arrived or why it failed, and the
+ * refresh button in the bar checks again on demand.
+ *
  * A modal over the goal wizard's sheet; the choice travels back through
  * features/goals/translation-choice.
  */
@@ -32,10 +36,11 @@ import {
   GroupHeader,
   LanguageRow,
   NoResults,
+  RefreshStatusRow,
   TranslationRow,
 } from '@/features/goals/translation-rows';
 import { useTranslation } from '@/i18n/react';
-import { searchCatalog, summarizeLanguages } from '@/services/bible';
+import { searchCatalog, summarizeLanguages, youversionKeyConfigured } from '@/services/bible';
 import { useThemeColors, layout, spacing } from '@/theme';
 
 export function TranslationPicker() {
@@ -46,8 +51,11 @@ export function TranslationPicker() {
   const { selected } = useLocalSearchParams<{ selected?: string }>();
   const choose = useTranslationChoice((s) => s.choose);
   const closeIcon = useBarIcon('xmark', 'close');
+  const refreshIcon = useBarIcon('arrow.clockwise', 'refresh');
   const status = useTranslationCatalog((s) => s.status);
   const load = useTranslationCatalog((s) => s.load);
+  const refresh = useTranslationCatalog((s) => s.refresh);
+  const checking = status === 'loading' || refresh.state === 'checking';
   const { sections, featured } = useCatalogSections(selected);
   const [query, setQuery] = useState('');
 
@@ -148,6 +156,17 @@ export function TranslationPicker() {
             {t('common:cancel')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
+        {youversionKeyConfigured() && (
+          <Stack.Toolbar placement="right">
+            <Stack.Toolbar.Button
+              icon={refreshIcon}
+              accessibilityLabel={t('picker.refresh')}
+              disabled={checking}
+              onPress={() => void load({ versionsMaxAge: 0 })}>
+              {t('picker.refresh')}
+            </Stack.Toolbar.Button>
+          </Stack.Toolbar>
+        )}
       </ScreenHeader>
       <Stack.SearchBar
         placeholder={t('picker.search')}
@@ -166,6 +185,7 @@ export function TranslationPicker() {
         renderItem={renderItem}
         renderSectionHeader={({ section }) => <GroupHeader title={section.title} />}
         stickySectionHeadersEnabled={false}
+        ListHeaderComponent={<RefreshStatusRow refresh={refresh} />}
         ListEmptyComponent={searching ? <NoResults query={query} /> : <View />}
         ListFooterComponent={
           searching ? (
