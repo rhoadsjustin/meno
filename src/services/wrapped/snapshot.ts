@@ -37,6 +37,7 @@ export function parseRecap(raw: string | null | undefined, year: number): YearRe
     if (!numbers.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0)) return null;
     if (!Array.isArray(r.cards) || !r.cards.every((c) => CARDS.includes(c))) return null;
     if (r.persona !== null && !PERSONAS.includes(r.persona as PersonaCode)) return null;
+    if (!Array.isArray(r.alsoPersonas) || !r.alsoPersonas.every((c) => PERSONAS.includes(c))) return null;
     if (!Array.isArray(r.badges) || typeof r.eligible !== 'boolean' || !r.span) return null;
     return r as YearRecap;
   } catch {

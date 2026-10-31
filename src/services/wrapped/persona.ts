@@ -36,12 +36,27 @@ function share<T>(items: readonly T[], test: (item: T) => boolean): number {
   return items.filter(test).length / items.length;
 }
 
+/** At most this many "also" personas join the main one (docs/10 §3). */
+export const ALSO_PERSONAS_MAX = 2;
+
+/**
+ * Every persona the year earned, main one first: the time of day (at most
+ * one: the windows don't overlap enough for two), then the voice, then
+ * faithfulness. The Steady Walker only when nothing else fits. Empty when
+ * the year is too short to describe.
+ */
+export function personasFor(facts: PersonaFacts): PersonaCode[] {
+  if (facts.activeDays < PERSONA_MIN_DAYS || facts.hours.length === 0) return [];
+  const earned: PersonaCode[] = [];
+  if (share(facts.hours, isMorning) >= 0.5) earned.push('morningWatch');
+  else if (share(facts.hours, isNight) >= 0.5) earned.push('nightMeditator');
+  else if (share(facts.hours, isMidday) >= 0.4) earned.push('middayPause');
+  if (share(facts.modes, (m) => m === 'speak') >= 0.3) earned.push('voiceInTheRoom');
+  if (facts.longestRun >= 30) earned.push('faithfulKeeper');
+  return earned.length > 0 ? earned : ['steadyWalker'];
+}
+
+/** The main persona, or null when the year is too short to describe. */
 export function personaFor(facts: PersonaFacts): PersonaCode | null {
-  if (facts.activeDays < PERSONA_MIN_DAYS || facts.hours.length === 0) return null;
-  if (share(facts.hours, isMorning) >= 0.5) return 'morningWatch';
-  if (share(facts.hours, isNight) >= 0.5) return 'nightMeditator';
-  if (share(facts.hours, isMidday) >= 0.4) return 'middayPause';
-  if (share(facts.modes, (m) => m === 'speak') >= 0.3) return 'voiceInTheRoom';
-  if (facts.longestRun >= 30) return 'faithfulKeeper';
-  return 'steadyWalker';
+  return personasFor(facts)[0] ?? null;
 }

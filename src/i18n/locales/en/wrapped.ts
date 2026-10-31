@@ -58,6 +58,8 @@ export default {
     },
     persona: {
       heading: 'Your rhythm',
+      /** Other personas the year earned, e.g. "Also: The Voice in the Room · The Faithful Keeper". */
+      also: 'Also: {{names}}',
     },
     badges: {
       heading: 'Medallions earned',

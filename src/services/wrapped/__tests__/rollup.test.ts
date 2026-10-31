@@ -213,6 +213,14 @@ describe('rollupYear', () => {
     expect(roll(input({ attempts: daily('2026-10-01', 4, 6) })).persona).toBeNull();
     const r = roll(input({ attempts: daily('2026-10-01', 5, 6) }));
     expect(r.persona).toBe('morningWatch');
+    expect(r.alsoPersonas).toEqual([]);
     expect(r.cards).toContain('persona');
+  });
+
+  it('adds up to two more personas the year earned', () => {
+    // Forty mornings in a row, all spoken: morning first, then voice and faithfulness.
+    const r = roll(input({ attempts: daily('2026-03-02', 40, 6, { mode: 'speak' }) }));
+    expect(r.persona).toBe('morningWatch');
+    expect(r.alsoPersonas).toEqual(['voiceInTheRoom', 'faithfulKeeper']);
   });
 });

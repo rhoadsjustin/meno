@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { personaFor, type PersonaFacts } from '@/services/wrapped/persona';
+import { personaFor, personasFor, type PersonaFacts } from '@/services/wrapped/persona';
 import { isRecapSeason, recapYearFor } from '@/services/wrapped/season';
 
 const base: PersonaFacts = { hours: [], modes: [], activeDays: 10, longestRun: 3 };
@@ -36,6 +36,28 @@ describe('personaFor', () => {
 
   it('lets time of day win over speaking', () => {
     expect(personaFor(facts({ hours: [6, 6, 6], modes: repeat('speak' as const, 3) }))).toBe('morningWatch');
+  });
+});
+
+describe('personasFor', () => {
+  it('lists everything the year earned, main persona first', () => {
+    expect(
+      personasFor(facts({ hours: [6, 6, 7], modes: repeat('speak' as const, 3), longestRun: 40 })),
+    ).toEqual(['morningWatch', 'voiceInTheRoom', 'faithfulKeeper']);
+  });
+
+  it('gives at most one time of day', () => {
+    // Half mornings, half nights: the morning check wins, night is not added.
+    expect(personasFor(facts({ hours: [6, 7, 21, 22] }))).toEqual(['morningWatch']);
+  });
+
+  it('keeps the Steady Walker for years nothing else describes', () => {
+    expect(personasFor(facts({ hours: [15, 16] }))).toEqual(['steadyWalker']);
+    expect(personasFor(facts({ hours: [15, 16], longestRun: 30 }))).toEqual(['faithfulKeeper']);
+  });
+
+  it('is empty when the year is too short', () => {
+    expect(personasFor(facts({ activeDays: 4, hours: [6] }))).toEqual([]);
   });
 });
 

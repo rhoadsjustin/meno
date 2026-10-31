@@ -289,6 +289,11 @@ function CardBody({
           <Text {...scale} style={type.label}>
             {p.line}
           </Text>
+          {p.also.length > 0 && (
+            <Text {...scale} style={[type.detail, { marginTop: 10 * u, color: colors.ink }]}>
+              {t('cards.persona.also', { names: p.also.join(' · ') })}
+            </Text>
+          )}
           {gap(28)}
           {p.text && (
             <Text {...scale} style={type.verse}>
@@ -381,6 +386,11 @@ function CardBody({
               <Text {...scale} style={[type.heading, { fontSize: 20 * u, lineHeight: 26 * u, color: colors.lapis }]}>
                 {view.persona.name}
               </Text>
+              {view.persona.also.length > 0 && (
+                <Text {...scale} style={type.detail}>
+                  {t('cards.persona.also', { names: view.persona.also.join(' · ') })}
+                </Text>
+              )}
             </>
           )}
         </>

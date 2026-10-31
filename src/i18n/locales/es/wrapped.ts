@@ -53,6 +53,7 @@ export default {
     },
     persona: {
       heading: 'Tu ritmo',
+      also: 'También: {{names}}',
     },
     badges: {
       heading: 'Medallas obtenidas',

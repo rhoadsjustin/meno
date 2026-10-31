@@ -57,7 +57,13 @@ The single most-shared Wrapped element is an identity label. Ours come from
 *when* and *how* someone practiced — never how well, never against others.
 Each pairs with a verse reference (rendered as text only when PD).
 
-| Persona | Rule (first match wins) | Verse |
+One main persona plus up to two "also" personas (owner decision,
+2026-10-31): every rule that matches is earned, in table order, with at
+most one time of day. The first is the main persona (name, line, verse);
+the next two show as "Also: …" on the persona and summary cards. The Steady
+Walker appears only when nothing else matches.
+
+| Persona | Rule (in order) | Verse |
 |---|---|---|
 | The Morning Watch | ≥50% of practice 4:00–9:00 | Ps 5:3 |
 | The Night Meditator | ≥50% of practice 20:00–2:00 | Ps 63:6 |

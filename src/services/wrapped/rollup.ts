@@ -3,7 +3,7 @@
  * read through the injected clock, so tests pin the time zone.
  */
 import { INITIAL_STREAK, recordActivity } from '@/services/streaks';
-import { personaFor } from '@/services/wrapped/persona';
+import { ALSO_PERSONAS_MAX, personasFor } from '@/services/wrapped/persona';
 import { firstSeasonCutoff } from '@/services/wrapped/season';
 import type {
   CardId,
@@ -75,7 +75,7 @@ export function rollupYear(input: RecapInput, { year, clock }: RollupOptions): Y
 
   const passage = passageOfYear(input, attempts);
 
-  const persona = personaFor({
+  const personas = personasFor({
     hours: attempts.map((a) => clock.hourOf(a.createdAt)),
     modes: attempts.map((a) => a.mode),
     activeDays: days.size,
@@ -107,7 +107,8 @@ export function rollupYear(input: RecapInput, { year, clock }: RollupOptions): Y
     unlocks,
     badges,
     passage,
-    persona,
+    persona: personas[0] ?? null,
+    alsoPersonas: personas.slice(1, 1 + ALSO_PERSONAS_MAX),
   };
   return { ...recap, cards: cardsFor(recap) };
 }

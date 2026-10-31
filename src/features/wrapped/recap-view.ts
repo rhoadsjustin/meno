@@ -37,6 +37,8 @@ export type RecapView = {
     reference: string;
     /** WEB text for English; other languages show the reference. */
     text: string | null;
+    /** Names of the other personas the year earned, if any. */
+    also: string[];
   } | null;
   badgeNames: string[];
 };
@@ -88,6 +90,7 @@ export async function loadRecapView(year: number): Promise<RecapView> {
       line: t(`wrapped:persona.${recap.persona}.line`),
       reference: text ? `${formatRef(ref)} WEB` : formatRef(ref),
       text,
+      also: recap.alsoPersonas.map((code) => t(`wrapped:persona.${code}.name`)),
     };
   }
 

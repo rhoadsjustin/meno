@@ -107,6 +107,8 @@ export type YearRecap = {
   badges: string[];
   passage: PassageOfYear | null;
   persona: PersonaCode | null;
+  /** Up to two more personas the year also earned, in order (docs/10 §3). */
+  alsoPersonas: PersonaCode[];
   /** The cards to show, in order; cards without enough data are left out. */
   cards: CardId[];
 };
