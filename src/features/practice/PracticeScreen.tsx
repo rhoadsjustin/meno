@@ -641,12 +641,17 @@ export function PracticeScreen({
       </ScreenHeader>
 
       <View style={styles.flex}>
-        {/* The rail stays for the summary and shows where the verse ended up,
-            so the two panes hold still and a half-folded iPhone Duo keeps its
-            crease in the gutter instead of under a centred column. */}
-        {showRail && session && chunk && goal ? (
-          <FoldAwareRow fill>
-            {round}
+        {/* The round is always the row's first pane, with or without the rail
+            beside it: opening, closing or rotating an iPhone Duo crosses the
+            rail's breakpoint, and re-parenting the round there remounted it
+            and threw away the typing, the placed tiles or the transcript in
+            progress. Only the rail comes and goes. It stays for the summary
+            and shows where the verse ended up, so the two panes hold still
+            and a half-folded iPhone Duo keeps its crease in the gutter
+            instead of under a centred column. */}
+        <FoldAwareRow fill>
+          {round}
+          {showRail && session && chunk && goal ? (
             <View style={styles.rail}>
               <Card>
                 <Text
@@ -677,10 +682,8 @@ export function PracticeScreen({
                 </View>
               </Card>
             </View>
-          </FoldAwareRow>
-        ) : (
-          round
-        )}
+          ) : null}
+        </FoldAwareRow>
       </View>
     </View>
   );
