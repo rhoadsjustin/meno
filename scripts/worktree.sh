@@ -31,13 +31,17 @@ usage() { sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; }
 # Main checkout = first entry of `git worktree list`.
 main_checkout() { git worktree list --porcelain | awk '/^worktree /{print substr($0,10); exit}'; }
 
-# deps_key <checkout>: lockfile hash + Node major (native binaries follow Node).
+# deps_key <checkout>: hash of the lockfile and any patch-package patches (a
+# store entry is installed with its patches applied, so a new patch needs a new
+# entry) + Node major (native binaries follow Node). With no patches the hash is
+# the lockfile's alone, as before patches existed. Keep in step with
+# scripts/cleanup-validation.sh.
 deps_key() {
   local lock="$1/package-lock.json"
   [ -f "$lock" ] || die "no package-lock.json in $1"
   local node_major
   node_major=$(node -p 'process.versions.node.split(".")[0]')
-  echo "$(shasum -a 256 "$lock" | cut -c1-16)-node$node_major"
+  echo "$( { cat "$lock"; cat "$1"/patches/*.patch 2>/dev/null || true; } | shasum -a 256 | cut -c1-16)-node$node_major"
 }
 
 # ensure_store <checkout> -> prints the store dir holding a finished install.

@@ -2,8 +2,10 @@
  * Speak (tier 6, docs/03 §4; UX per 07 §6): full-screen recitation surface.
  * The mic is a single start/stop toggle pinned bottom-center; the transcript
  * accumulates across takes (stopping never erases), and between takes it is
- * directly editable in place. On-device recognition only (02 §7).
+ * directly editable in place. On-device recognition only (02 §7): a language
+ * this phone can't hear on the device turns the round into a typed one.
  */
+import { getLocales } from 'expo-localization';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -36,6 +38,7 @@ import { useTranslation } from '@/i18n/react';
 import { getTranslation } from '@/services/bible';
 import { gradeSpoken, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
+import { recognizerLocale } from '@/services/speech/locale';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
@@ -50,6 +53,31 @@ export type SpeakOutcome = {
 };
 
 type MicState = 'idle' | 'listening' | 'processing';
+
+/** Why this phone can't hear the verse: no recognizer for its language, or none on the device. */
+type Unavailable = 'language' | 'offline';
+
+/**
+ * The recognizer locale for a translation, or why there is none. iOS needs an
+ * exact supported locale and, with on-device only, a recognizer that runs
+ * without the network. Android keeps the raw code when its service can't say
+ * (the offline-pack check and its errors handle the rest).
+ */
+async function resolveRecognizer(
+  languageCode: string,
+): Promise<{ locale: string } | { unavailable: Unavailable }> {
+  const supported = await ExpoSpeechRecognitionModule.getSupportedLocales({})
+    .then((r) => r.locales)
+    .catch(() => [] as string[]);
+  const device = getLocales().map((l) => l.languageTag);
+  const locale = recognizerLocale(languageCode, supported, device);
+  // An empty list means the service couldn't say; try, and let the error tell.
+  if (Platform.OS !== 'ios' || supported.length === 0) return { locale: locale ?? languageCode };
+  if (!locale) return { unavailable: 'language' };
+  const onDevice = ExpoSpeechRecognitionModule.supportsOnDeviceRecognitionForLocale?.(locale);
+  if (onDevice === false) return { unavailable: 'offline' };
+  return { locale };
+}
 
 // Strong curves (weak built-ins read as mush).
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
@@ -94,6 +122,19 @@ export function SpeakRound({
   const [speechError, setSpeechError] = useState<string | null>(null);
   // Android only: the offline speech pack for the verse's language is missing.
   const [pack, setPack] = useState<'ok' | 'missing' | 'downloading'>('ok');
+  // iOS: the verse's language can't be recognized on this phone.
+  const [unavailable, setUnavailable] = useState<Unavailable | null>(null);
+  const languageCode = getTranslation(translationId).languageCode;
+  const recognizer = useMemo(() => resolveRecognizer(languageCode), [languageCode]);
+  useEffect(() => {
+    let live = true;
+    void recognizer.then((r) => {
+      if (live && 'unavailable' in r) setUnavailable(r.unavailable);
+    });
+    return () => {
+      live = false;
+    };
+  }, [recognizer]);
 
   // Bias on-device recognition toward the verse's vocabulary (02 §7).
   const contextualStrings = useMemo(() => [...new Set(displayWords(text))], [text]);
@@ -171,21 +212,24 @@ export function SpeakRound({
           setPack('missing');
           return;
         }
+        // The patched iOS recognizer refuses rather than going online.
+        setUnavailable('offline');
+        return;
     }
     setSpeechError(t('speak.error', { error: event.error }));
   });
 
   const downloadPack = useCallback(async () => {
     try {
-      await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({
-        locale: getTranslation(translationId).languageCode,
-      });
+      const r = await recognizer;
+      if (!('locale' in r)) return;
+      await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({ locale: r.locale });
       setPack('downloading');
     } catch {
       setPack('ok');
       setSpeechError(t('speak.offlineUnsupported'));
     }
-  }, [translationId, t]);
+  }, [recognizer, t]);
 
   const toggleListening = useCallback(async () => {
     if (listening) {
@@ -196,13 +240,18 @@ export function SpeakRound({
       return;
     }
     setSpeechError(null);
+    const resolved = await recognizer;
+    if ('unavailable' in resolved) {
+      setUnavailable(resolved.unavailable);
+      return;
+    }
+    const lang = resolved.locale;
     const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!result.granted) {
       setPermission('denied');
       return;
     }
     setPermission('granted');
-    const lang = getTranslation(translationId).languageCode;
     // Recitation audio never leaves the phone, so there is no cloud
     // fallback: an Android phone needs on-device recognition and the
     // offline pack for the verse's language.
@@ -235,7 +284,7 @@ export function SpeakRound({
       contextualStrings,
     });
     setMicState('listening');
-  }, [listening, translationId, contextualStrings, setInterim, t]);
+  }, [listening, recognizer, contextualStrings, setInterim, t]);
 
   const submitTranscript = useCallback(() => {
     const result = gradeSpoken(text, committed, {
@@ -249,20 +298,31 @@ export function SpeakRound({
     });
   }, [text, committed, translationId, onDone]);
 
-  if (typeMode) {
+  if (typeMode || unavailable) {
     return (
       <>
+        {unavailable && (
+          <Animated.Text
+            entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
+            style={[styles.notice, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            {t(
+              unavailable === 'language' ? 'speak.unavailableLanguage' : 'speak.unavailableOffline',
+            )}
+          </Animated.Text>
+        )}
         <TypeRound
           text={text}
           reference={reference}
           translationId={translationId}
           onDone={(o) => onDone({ ...o, typed: true })}
         />
-        <Pressable accessibilityRole="button" onPress={() => setTypeMode(false)}>
-          <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('speak.speakInstead')}
-          </Text>
-        </Pressable>
+        {!unavailable && (
+          <Pressable accessibilityRole="button" onPress={() => setTypeMode(false)}>
+            <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+              {t('speak.speakInstead')}
+            </Text>
+          </Pressable>
+        )}
       </>
     );
   }
@@ -413,6 +473,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   prompt: { fontSize: 28, marginTop: spacing.md, textAlign: 'center' },
   error: { fontSize: 14, lineHeight: 19, marginTop: spacing.md, textAlign: 'center' },
+  notice: { fontSize: 14, lineHeight: 19, marginBottom: spacing.lg, textAlign: 'center' },
   packArea: { alignItems: 'center' },
   packButton: { fontSize: 15, fontWeight: '600', marginTop: spacing.sm, padding: spacing.sm },
   transcriptArea: { flexGrow: 1, marginTop: spacing.xl },

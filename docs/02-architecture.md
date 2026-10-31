@@ -131,7 +131,9 @@ Public-domain English translations shipped as a prebuilt SQLite database (~4–5
 
 ## 7. Speech recognition
 
-- `expo-speech-recognition` with `requiresOnDeviceRecognition: true` and `addsPunctuation: false`; language from translation's `languageCode`.
+- `expo-speech-recognition` with `requiresOnDeviceRecognition: true` and `addsPunctuation: false`.
+- **Locale**: `recognizerLocale(languageCode, supported, deviceTags)` (`services/speech/locale.ts`, pure + tested) picks from the recognizer's supported locales: the device's own region for the verse's language first, then the text's region (`es-419` = any Spanish region but Spain), then the language's usual one. The Platform's bare ids (`de`, `es`, `zh-Hant-TW`) need this — iOS accepts only an exact supported locale. A text in a script its recognizer doesn't write (`hi-Latn`, `sr-Latn`, Traditional vs Simplified Chinese) gets none.
+- **On-device or nothing**: `patches/expo-speech-recognition+58.0.0.patch` makes iOS refuse to start (`language-not-supported`) when the locale's recognizer can't run without the network — unpatched, the library silently drops `requiresOnDeviceRecognition` and recognizes on Apple's servers — and adds `supportsOnDeviceRecognitionForLocale` so the round can check before asking for the mic. On iOS, a verse whose language has no recognizer, or none on the device, makes the Speak round a typed one with a one-line reason (Type alone can seal a verse, 03 §1). Android keeps its offline-pack flow, now with the resolved locale.
 - Provide contextual strings (the expected verse's vocabulary) via `contextualStrings` to bias recognition toward archaic/rare words ("thee", "propitiation", proper nouns).
 - Recognition output → same normalization + grading pipeline as typed input (03 §4), with a phonetic-leniency pass for homophones.
 - Permissions: mic + speech recognition, requested just-in-time on first Speak-tier attempt with a pre-permission explainer screen.
