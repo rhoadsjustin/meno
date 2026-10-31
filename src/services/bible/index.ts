@@ -51,10 +51,10 @@ export {
 } from '@/services/bible/registry';
 export * from '@/services/bible/catalog';
 export {
-  browsedLanguageIds,
-  cachedLanguages,
+  availableChapters,
+  catalogFetched,
   deviceLocale,
-  ensureBibles,
+  ensureCatalog,
   ensureLanguages,
   ensureTranslation,
   fillPlaceholders,

@@ -4,8 +4,10 @@ import {
   attributionLine,
   buildQuery,
   decodeEntities,
+  fetchAllBibles,
   fetchBible,
   fetchBibles,
+  fetchBookChapters,
   fetchLanguages,
   fetchYouVersionChapter,
   parsePassageHtml,
@@ -273,6 +275,35 @@ describe('requests', () => {
     expect(calls[0].headers['X-YVP-App-Key']).toBe('test-key');
     expect(calls[0].headers['Accept-Language']).toBe('es-MX');
     expect(calls[1].url).toContain('page_token=p2');
+  });
+
+  it('asks for every licensed version in one wildcard range', async () => {
+    const fetchImpl = fake(() =>
+      json({
+        data: [
+          { id: 4465, abbreviation: 'KAD', title: 'Eda', language_tag: 'kad', books: ['MRK'] },
+          { id: 12, abbreviation: 'ASV', title: 'American Standard', language_tag: 'en' },
+        ],
+        next_page_token: null,
+      }),
+    );
+    const list = await fetchAllBibles(fetchImpl, 'en-US');
+    expect(list.map((t) => `${t.id}:${t.languageCode}`)).toEqual(['yv-4465:kad', 'yv-12:en']);
+    expect(list[0].books).toEqual(['Mark']);
+    expect(calls[0].url).toBe(
+      'https://api.youversion.com/v1/bibles?language_ranges%5B%5D=*&page_size=99',
+    );
+  });
+
+  it('lists the chapters a version has of a book, numbers only', async () => {
+    const fetchImpl = fake(() =>
+      json({
+        id: 'GEN',
+        chapters: [{ id: 'INTRO' }, { id: '12' }, { id: '1' }, { id: '15' }, { id: '2' }],
+      }),
+    );
+    expect(await fetchBookChapters(3364, 'GEN', fetchImpl)).toEqual([1, 2, 12, 15]);
+    expect(calls[0].url).toBe('https://api.youversion.com/v1/bibles/3364/books/GEN');
   });
 
   it('asks for all languages at once, paging only if the server refuses', async () => {

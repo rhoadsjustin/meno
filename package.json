@@ -72,6 +72,8 @@
     "e2e": "bash scripts/e2e-local.sh",
     "ota": "tsx scripts/ota.ts",
     "cleanup": "bash scripts/cleanup-validation.sh",
+    "worktree": "bash scripts/worktree.sh new",
+    "deps": "bash scripts/worktree.sh deps",
     "test:watch": "vitest",
     "build:bible": "tsx scripts/build-bible-db.ts",
     "db:generate": "drizzle-kit generate",

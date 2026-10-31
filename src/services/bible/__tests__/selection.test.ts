@@ -106,6 +106,11 @@ describe('passage selection', () => {
     expect(chaptersToExtendThrough(null, 'Phil', 1, 4)).toEqual([2, 3, 4]);
     expect(chaptersToExtendThrough(null, 'Jude', 1, 1)).toEqual([]);
     expect(chaptersToExtendThrough(selectWholeChapter('Phil', 4, 23), 'Phil', 4, 4)).toEqual([]);
+    // A portion with gaps: Genesis 1–12, 15–18.
+    const portion = [1, 2, 3, 10, 11, 12, 15, 16, 17, 18];
+    expect(chaptersToExtendThrough(null, 'Gen', 10, portion)).toEqual([11, 12]);
+    expect(chaptersToExtendThrough(null, 'Gen', 12, portion)).toEqual([]);
+    expect(chaptersToExtendThrough(null, 'Gen', 15, portion)).toEqual([16, 17, 18]);
   });
 
   it('moves the start and keeps the end', () => {

@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  filterLanguages,
-  filterSections,
   groupByLanguage,
   languageKey,
   languageTitle,
   matchesQuery,
   preferredLanguageIds,
+  searchCatalog,
+  summarizeLanguages,
+  translationCoverage,
   type LanguageInfo,
 } from '@/services/bible/catalog';
 import type { Translation } from '@/services/bible/types';
@@ -113,27 +114,91 @@ describe('search', () => {
     expect(matchesQuery('English', 'esp')).toBe(false);
   });
 
-  it('keeps a whole section when its title matches, else only matching rows', () => {
-    const sections = groupByLanguage(
-      [
-        t({ id: 'yv-111', languageCode: 'en', name: 'New International Version', abbrev: 'NIV' }),
-        t({ id: 'yv-1588', languageCode: 'en', name: 'Amplified Bible', abbrev: 'AMP' }),
-        t({ id: 'yv-128', languageCode: 'es', name: 'Nueva Versión Internacional', abbrev: 'NVI' }),
-      ],
-      languages,
-      ['en'],
-    );
-    expect(filterSections(sections, 'span').map((s) => s.languageId)).toEqual(['es']);
-    expect(filterSections(sections, 'span')[0].translations).toHaveLength(1);
-    const byAbbrev = filterSections(sections, 'niv');
-    expect(byAbbrev.map((s) => s.languageId)).toEqual(['en']);
-    expect(byAbbrev[0].translations.map((x) => x.abbrev)).toEqual(['NIV']);
-    expect(filterSections(sections, 'zzz')).toEqual([]);
+  const sections = groupByLanguage(
+    [
+      t({ id: 'yv-111', languageCode: 'en', name: 'New International Version', abbrev: 'NIV' }),
+      t({ id: 'yv-1588', languageCode: 'en', name: 'Amplified Bible', abbrev: 'AMP' }),
+      t({ id: 'yv-59', languageCode: 'en', name: 'Lexham English Septuagint', abbrev: 'LES' }),
+      t({ id: 'yv-128', languageCode: 'es', name: 'Nueva Versión Internacional', abbrev: 'NVI' }),
+      t({ id: 'yv-9', languageCode: 'ar', name: 'Arabic Bible', abbrev: 'ARB' }),
+    ],
+    languages,
+    ['en'],
+  );
+  const ids = (q: string) => searchCatalog(sections, q).translations.map((h) => h.translation.id);
+
+  it('ranks an exact abbreviation, then word starts, then anywhere', () => {
+    expect(ids('niv')).toEqual(['yv-111']);
+    expect(ids('nvi')[0]).toBe('yv-128');
+    // "bible" starts a word in two names; "ible" is only inside them.
+    expect(ids('bible')).toEqual(['yv-1588', 'yv-9']);
+    expect(ids('nation')).toEqual(['yv-111']);
   });
 
-  it('narrows the unbrowsed languages and skips the ones already shown', () => {
-    const list = [...languages.values()];
-    expect(filterLanguages(list, new Set(['en']), '').map((l) => l.id)).toEqual(['es', 'ar']);
-    expect(filterLanguages(list, new Set(), 'ara').map((l) => l.id)).toEqual(['ar']);
+  it('brings in every version of a language named by the search', () => {
+    const found = searchCatalog(sections, 'span');
+    expect(found.languages.map((l) => l.id)).toEqual(['es']);
+    expect(found.translations.map((h) => h.languageTitle)).toEqual(['Spanish']);
+    // A language matched only inside a word ("anish" in "Spanish") is
+    // listed, but its versions are not dragged into the translations.
+    expect(searchCatalog(sections, 'anish').translations).toEqual([]);
+    expect(searchCatalog(sections, 'anish').languages.map((l) => l.id)).toEqual(['es']);
+  });
+
+  it('finds a language by its id and counts its versions', () => {
+    expect(searchCatalog(sections, 'en').languages).toEqual([
+      { id: 'en', title: 'English', count: 3 },
+    ]);
+    expect(searchCatalog(sections, 'zzz')).toEqual({ translations: [], languages: [] });
+  });
+
+  it('summarizes every language with nothing searched', () => {
+    expect(summarizeLanguages(sections).map((l) => `${l.id}:${l.count}`)).toEqual([
+      'en:3',
+      'ar:1',
+      'es:1',
+    ]);
+    expect(searchCatalog(sections, '  ').translations).toEqual([]);
+  });
+});
+
+describe('translationCoverage', () => {
+  it('names a whole Bible, a testament, or a count of books', () => {
+    expect(translationCoverage({})).toEqual({ kind: 'full' });
+    const nt = [
+      'Matt',
+      'Mark',
+      'Luke',
+      'John',
+      'Acts',
+      'Rom',
+      '1Cor',
+      '2Cor',
+      'Gal',
+      'Eph',
+      'Phil',
+      'Col',
+      '1Thess',
+      '2Thess',
+      '1Tim',
+      '2Tim',
+      'Titus',
+      'Phlm',
+      'Heb',
+      'Jas',
+      '1Pet',
+      '2Pet',
+      '1John',
+      '2John',
+      '3John',
+      'Jude',
+      'Rev',
+    ];
+    expect(translationCoverage({ books: nt })).toEqual({ kind: 'nt' });
+    expect(translationCoverage({ books: ['Mark', 'Acts', 'Eph', 'Col'] })).toEqual({
+      kind: 'books',
+      count: 4,
+    });
+    expect(translationCoverage({ books: [...nt, 'Gen'] })).toEqual({ kind: 'books', count: 28 });
   });
 });
