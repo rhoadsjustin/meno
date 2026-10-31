@@ -22,9 +22,8 @@ import {
   useTapGesture,
 } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
+import { SafeAreaListener } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-
-import { useHeaderHeight } from 'expo-router/react-navigation';
 
 import { PageCurlView } from '@modules/page-curl';
 import { useContentLayout } from '@/components/content-layout';
@@ -97,7 +96,12 @@ export function BookSpread({
   const { fontScale } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   // The pages run under the (clear) navigation bar; the text starts below it.
-  const headerHeight = useHeaderHeight();
+  // Where the bar ends is read from UIKit's safe area of the spread itself:
+  // under a translucent bar a view's top inset reaches the bar's bottom edge,
+  // in every pose, and it is 0 once the view sits below the bar. The same
+  // inset is what react-native-screens lays content out by under an opaque
+  // bar, so it tracks the bar wherever the system puts it.
+  const [barBottom, setBarBottom] = useState<number | null>(null);
 
   // The reader's place. `from` remembers the chapter the route asked for, so
   // a jump made elsewhere (toolbar chevrons) resets to that chapter's first
@@ -118,12 +122,12 @@ export function BookSpread({
   }, []);
 
   const geo = useMemo<Geometry | null>(() => {
-    if (!frame || frame.width <= 0 || frame.height <= 0) return null;
+    if (!frame || barBottom === null || frame.width <= 0 || frame.height <= 0) return null;
     const crease =
       fold && fold.x > frame.x && fold.x + fold.width < frame.x + frame.width ? fold : null;
     const spine = crease ? crease.x + crease.width / 2 - frame.x : frame.width / 2;
     const inner = crease ? crease.width / 2 + spacing.md : spacing.lg;
-    const top = Math.max(headerHeight - frame.y, 0) + spacing.md;
+    const top = barBottom + spacing.md;
     const bottom = Math.max(insets.bottom, spacing.md);
     const footer = Math.ceil(22 * Math.min(fontScale, FOOTER_MAX_SCALE));
     // Both pages take the narrower side's width, so the spread is even
@@ -133,7 +137,7 @@ export function BookSpread({
     const pageHeight = Math.floor(frame.height - top - bottom - footer - spacing.sm);
     if (textWidth <= 0 || pageHeight <= 0) return null;
     return { width: frame.width, spine, half, inner, textWidth, pageHeight, top, bottom, footer };
-  }, [frame, fold, insets.bottom, fontScale, headerHeight]);
+  }, [frame, fold, insets.bottom, fontScale, barBottom]);
 
   // Verses and pages for this chapter and its neighbours, so a turn across a
   // chapter boundary has its pages ready.
@@ -235,62 +239,64 @@ export function BookSpread({
   const attribution = getTranslation(translationId).attribution;
 
   return (
-    <View ref={ref} onLayout={onLayout} style={styles.spread}>
-      {geo && current && Curl && (
-        <Curl
-          style={[styles.half, { left: geo.spine - geo.half, width: geo.half * 2 }]}
-          current={backward ? 2 : 0}
-          spreadKey={`${layoutKey}:${pos.chapter}:${spread}`}
-          onTurn={({ nativeEvent: { delta } }) => {
-            const to = delta > 0 ? forward : backward;
-            if (to) jump(to);
-          }}>
-          {sheets.map(({ key, side, face, to }) => (
-            <PageView
-              key={key}
-              geo={geo}
-              colors={colors}
-              attribution={attribution}
-              side={side}
-              face={face}
-              left={0}
-              onTurn={to ? () => jump(to) : undefined}
-            />
-          ))}
-        </Curl>
-      )}
-      {geo && current && !Curl && (
-        <GestureDetector gesture={gesture}>
-          <View style={StyleSheet.absoluteFill}>
-            {sheets
-              .filter((sheet) => sheet.here)
-              .map(({ key, side, face, to }) => (
-                <PageView
-                  key={key}
-                  geo={geo}
-                  colors={colors}
-                  attribution={attribution}
-                  side={side}
-                  face={face}
-                  left={side === 'left' ? geo.spine - geo.half : geo.spine}
-                  onTurn={to ? () => jump(to) : undefined}
-                />
-              ))}
-          </View>
-        </GestureDetector>
-      )}
-      {geo &&
-        wanted.map((c) =>
-          verses[c] && !paged[c] ? (
-            <Measurer
-              key={`${layoutKey}:${c}`}
-              verses={verses[c]}
-              geo={geo}
-              onPaged={(result) => storePaged(c, result)}
-            />
-          ) : null,
+    <SafeAreaListener style={styles.flex} onChange={({ insets }) => setBarBottom(insets.top)}>
+      <View ref={ref} onLayout={onLayout} style={styles.spread}>
+        {geo && current && Curl && (
+          <Curl
+            style={[styles.half, { left: geo.spine - geo.half, width: geo.half * 2 }]}
+            current={backward ? 2 : 0}
+            spreadKey={`${layoutKey}:${pos.chapter}:${spread}`}
+            onTurn={({ nativeEvent: { delta } }) => {
+              const to = delta > 0 ? forward : backward;
+              if (to) jump(to);
+            }}>
+            {sheets.map(({ key, side, face, to }) => (
+              <PageView
+                key={key}
+                geo={geo}
+                colors={colors}
+                attribution={attribution}
+                side={side}
+                face={face}
+                left={0}
+                onTurn={to ? () => jump(to) : undefined}
+              />
+            ))}
+          </Curl>
         )}
-    </View>
+        {geo && current && !Curl && (
+          <GestureDetector gesture={gesture}>
+            <View style={StyleSheet.absoluteFill}>
+              {sheets
+                .filter((sheet) => sheet.here)
+                .map(({ key, side, face, to }) => (
+                  <PageView
+                    key={key}
+                    geo={geo}
+                    colors={colors}
+                    attribution={attribution}
+                    side={side}
+                    face={face}
+                    left={side === 'left' ? geo.spine - geo.half : geo.spine}
+                    onTurn={to ? () => jump(to) : undefined}
+                  />
+                ))}
+            </View>
+          </GestureDetector>
+        )}
+        {geo &&
+          wanted.map((c) =>
+            verses[c] && !paged[c] ? (
+              <Measurer
+                key={`${layoutKey}:${c}`}
+                verses={verses[c]}
+                geo={geo}
+                onPaged={(result) => storePaged(c, result)}
+              />
+            ) : null,
+          )}
+      </View>
+    </SafeAreaListener>
   );
 }
 
@@ -446,6 +452,7 @@ function PageView({ left, ...props }: PageProps & { left: number; onTurn?: () =>
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   spread: { flex: 1, overflow: 'hidden' },
   half: { position: 'absolute', top: 0, bottom: 0 },
   text: { position: 'absolute', overflow: 'hidden' },
