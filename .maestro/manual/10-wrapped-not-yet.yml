@@ -1,0 +1,28 @@
+# Year in the Word (docs/10) on a fresh install: the tester preview link
+# opens the recap out of season, and with no practice yet it says what
+# opens it instead of showing empty cards. Closing it, Today carries the
+# same note (the preview flag keeps the entry point visible). The full
+# card flow needs days of practice history, which a flow can't seed:
+# check it on a simulator with scripts/seed-wrapped.py.
+appId: com.rhoadsdev.meno
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- openLink: meno:///wrapped?preview=1
+# iOS confirms opening a custom scheme; optional, it can lag or be skipped.
+- extendedWaitUntil:
+    visible: "Open"
+    timeout: 5000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Not quite yet"
+    timeout: 10000
+- assertVisible: ".*opens once you.ve practiced on 3 days\\."
+- tapOn: "Close"
+- extendedWaitUntil:
+    visible: ".*Year in the Word opens once you.ve practiced on 3 days\\."
+    timeout: 10000

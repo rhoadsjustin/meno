@@ -94,6 +94,7 @@ export default {
     close: 'Cerrar',
     share: 'Compartir',
     shareLabel: 'Compartir esta tarjeta como imagen',
+    shareHeading: 'Comparte esta tarjeta',
     storyFormat: 'Para historias',
     postFormat: 'Para una publicación',
     position: 'Tarjeta {{index}} de {{total}}',

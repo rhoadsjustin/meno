@@ -99,6 +99,7 @@ export default {
     close: 'Close',
     share: 'Share',
     shareLabel: 'Share this card as an image',
+    shareHeading: 'Share this card',
     storyFormat: 'For Stories',
     postFormat: 'For a post',
     /** VoiceOver position, e.g. "Card 2 of 8". */

@@ -16,6 +16,7 @@ import {
   type RecapInput,
   type YearRecap,
 } from '@/services/wrapped';
+import { parseRecap, serializeRecap, snapshotKey } from '@/services/wrapped/snapshot';
 
 export async function loadRecapInput(year: number, clock: LocalClock = deviceClock): Promise<RecapInput> {
   const [chunkRows, attemptRows, goalRows, unlockRows, badgeRows, keptDays] = await Promise.all([
@@ -76,9 +77,27 @@ export async function loadRecapInput(year: number, clock: LocalClock = deviceClo
   };
 }
 
-/** The recap for `year`, as of now. */
+/**
+ * The recap for `year`, as of now. A finished year reads from its snapshot
+ * (docs/10 §5.4), taken the first time it is opened after December 31.
+ */
 export async function loadYearRecap(year: number, clock: LocalClock = deviceClock): Promise<YearRecap> {
-  return rollupYear(await loadRecapInput(year, clock), { year, clock });
+  const yearOver = Number(clock.dayOf(new Date()).slice(0, 4)) > year;
+  const key = snapshotKey(year);
+  if (yearOver) {
+    const rows = await db.select().from(tables.settings).where(eq(tables.settings.key, key)).limit(1);
+    const kept = parseRecap(rows[0]?.value, year);
+    if (kept) return kept;
+  }
+  const recap = rollupYear(await loadRecapInput(year, clock), { year, clock });
+  if (yearOver) {
+    const value = serializeRecap(recap);
+    await db
+      .insert(tables.settings)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: tables.settings.key, set: { value } });
+  }
+  return recap;
 }
 
 type ChunkRange = {

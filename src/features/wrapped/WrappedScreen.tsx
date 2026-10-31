@@ -26,13 +26,16 @@ import Animated, { FadeIn, FadeInDown, ReduceMotion, useReducedMotion } from 're
 import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
 import { useContentLayout } from '@/components/content-layout';
+import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ScreenHeader } from '@/components/screen-header';
 import { RecapCard } from '@/features/wrapped/RecapCard';
 import { loadRecapView, type RecapView } from '@/features/wrapped/recap-view';
 import { ShareStage, type ShareFormat, type ShareStageHandle } from '@/features/wrapped/ShareStage';
 import { useTranslation } from '@/i18n/react';
 import { shareGoalChallenge } from '@/services/challenges';
+import { markRecapSeen } from '@/services/db/repos/appFlags';
 import { getGoal } from '@/services/db/repos/goals';
+import { rescheduleAll } from '@/services/notifications';
 import type { CardId } from '@/services/wrapped';
 import { fonts, layout, radius, spacing, useThemeColors } from '@/theme';
 
@@ -43,8 +46,10 @@ export function WrappedScreen({ year }: { year: number }) {
   const colors = useThemeColors();
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const { t } = useTranslation(['wrapped', 'common']);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { sides } = useContentLayout();
+  // The pager's own width: a page is as wide as its pane, not the window.
+  const [pagerWidth, setPagerWidth] = useState(0);
   const { bottom } = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const closeIcon = useBarIcon('xmark', 'close');
@@ -59,7 +64,12 @@ export function WrappedScreen({ year }: { year: number }) {
   useEffect(() => {
     let live = true;
     loadRecapView(year)
-      .then((v) => live && setView(v))
+      .then((v) => {
+        if (!live) return;
+        setView(v);
+        // Seen: the December notice has nothing left to announce.
+        if (v.recap.eligible) void markRecapSeen(year).then(rescheduleAll);
+      })
       .catch(() => live && setView(null));
     return () => {
       live = false;
@@ -71,18 +81,19 @@ export function WrappedScreen({ year }: { year: number }) {
 
   // Keep the page under the finger after a rotation or fold changes the width.
   useEffect(() => {
-    list.current?.scrollToIndex({ index, animated: false });
-    // Only the width changes this; index changes scroll on their own.
+    if (cards.length > 0) list.current?.scrollToIndex({ index, animated: false });
+    // Only the page width changes this; index changes scroll on their own.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width]);
+  }, [pagerWidth]);
 
   // A swipe settles on a page: that page is the current card.
   const onSettle = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const page = Math.round(e.nativeEvent.contentOffset.x / width);
-      if (page >= 0 && page < cards.length) setIndex(page);
+      const pageWidth = e.nativeEvent.layoutMeasurement.width || 1;
+      const settled = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+      if (settled >= 0 && settled < cards.length) setIndex(settled);
     },
-    [width, cards.length],
+    [cards.length],
   );
 
   // A light tick per card; a success when the summary arrives (07 §8).
@@ -167,17 +178,33 @@ export function WrappedScreen({ year }: { year: number }) {
     );
   }
 
-  return (
-    <View style={[styles.root, { backgroundColor: colors.surface }]}>
-      {header}
-      <View style={[styles.ticks, sides]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        {cards.map((c, i) => (
-          <View
-            key={c}
-            style={[styles.tick, { backgroundColor: i <= index ? colors.lapis : colors.separator }]}
-          />
-        ))}
-      </View>
+  // Wider than tall (iPhone Duo opened): cards on one side, sharing on the
+  // other, as even halves that keep the crease between them when folded.
+  const twoPane = width >= layout.wideBreakpoint && width > height;
+  const page = pagerWidth || width;
+
+  const ticks = (
+    <View style={styles.ticks} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {cards.map((c, i) => (
+        <View key={c} style={[styles.tick, { backgroundColor: i <= index ? colors.lapis : colors.separator }]} />
+      ))}
+    </View>
+  );
+
+  const inviteButton = view.passage && (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => void invite()}
+      style={[styles.invite, { backgroundColor: colors.lapis }]}>
+      <Text style={[styles.inviteText, { fontFamily: fonts?.ui }]}>
+        {t('cards.summary.invite', { next: year + 1 })}
+      </Text>
+    </Pressable>
+  );
+
+  const pager = (
+    <View style={styles.pager} onLayout={(e) => setPagerWidth(Math.round(e.nativeEvent.layout.width))}>
+      {ticks}
       <FlatList
         ref={list}
         data={cards}
@@ -186,9 +213,10 @@ export function WrappedScreen({ year }: { year: number }) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onSettle}
-        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+        extraData={page}
+        getItemLayout={(_, i) => ({ length: page, offset: page * i, index: i })}
         renderItem={({ item, index: i }) => (
-          <View style={[{ width }, sides]}>
+          <View style={{ width: page }}>
             <ScrollView
               contentContainerStyle={[styles.page, { paddingBottom: Math.max(bottom, spacing.xl) }]}
               showsVerticalScrollIndicator={false}>
@@ -215,31 +243,49 @@ export function WrappedScreen({ year }: { year: number }) {
                   <RecapCard view={view} card={item} variant="screen" scheme={scheme} />
                 )}
                 {/* Stories-style taps: left third back, the rest forward. */}
-                <Pressable
-                  style={[styles.tapZone, styles.tapBack]}
-                  onPress={() => go(i - 1)}
-                  accessible={false}
-                />
-                <Pressable
-                  style={[styles.tapZone, styles.tapForward]}
-                  onPress={() => go(i + 1)}
-                  accessible={false}
-                />
+                <Pressable style={[styles.tapZone, styles.tapBack]} onPress={() => go(i - 1)} accessible={false} />
+                <Pressable style={[styles.tapZone, styles.tapForward]} onPress={() => go(i + 1)} accessible={false} />
               </View>
-              {item === 'summary' && view.passage && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void invite()}
-                  style={[styles.invite, { backgroundColor: colors.lapis }]}>
-                  <Text style={[styles.inviteText, { fontFamily: fonts?.ui }]}>
-                    {t('cards.summary.invite', { next: year + 1 })}
-                  </Text>
-                </Pressable>
-              )}
+              {!twoPane && item === 'summary' && inviteButton}
             </ScrollView>
           </View>
         )}
       />
+    </View>
+  );
+
+  // The second pane: the same two share formats as the bar's menu, as
+  // buttons, plus the summary's invitation.
+  const sharePane = twoPane && (
+    <View style={[styles.sharePane, { paddingBottom: Math.max(bottom, spacing.xl) }]}>
+      <Text accessibilityRole="header" style={[styles.shareHeading, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+        {t('screen.shareHeading')}
+      </Text>
+      {(['story', 'square'] as const).map((format) => (
+        <Pressable
+          key={format}
+          accessibilityRole="button"
+          disabled={sharing}
+          onPress={() => void share(format)}
+          style={[styles.shareButton, { borderColor: colors.separator, backgroundColor: colors.surfaceRaised }]}>
+          <Text style={[styles.shareButtonText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
+            {t(format === 'story' ? 'screen.storyFormat' : 'screen.postFormat')}
+          </Text>
+        </Pressable>
+      ))}
+      {current === 'summary' && inviteButton}
+    </View>
+  );
+
+  return (
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      {header}
+      {/* One tree for both layouts, so the pager keeps its place when the
+          window changes shape (FoldAwareRow leaves a lone pane in place). */}
+      <FoldAwareRow fill>
+        {pager}
+        {sharePane}
+      </FoldAwareRow>
       <ShareStage ref={stage} view={view} scheme={scheme} />
     </View>
   );
@@ -248,9 +294,19 @@ export function WrappedScreen({ year }: { year: number }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1 },
+  pager: { flex: 1, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: layout.screenMargin },
   notYetTitle: { fontSize: 26, fontWeight: '600', marginBottom: spacing.sm, textAlign: 'center' },
   notYetBody: { fontSize: 17, lineHeight: 24, textAlign: 'center', maxWidth: 360 },
+  sharePane: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingHorizontal: layout.screenMargin },
+  shareHeading: { fontSize: 22, fontWeight: '600', marginBottom: spacing.sm },
+  shareButton: {
+    borderRadius: radius.capsule,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  shareButtonText: { fontSize: 17, fontWeight: '600' },
   ticks: {
     flexDirection: 'row',
     gap: spacing.xs,

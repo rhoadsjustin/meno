@@ -121,3 +121,46 @@ describe('reminder time', () => {
     expect(parseReminderTime('evening')).toEqual(DEFAULT_REMINDER_TIME);
   });
 });
+
+describe('Year in the Word notice', () => {
+  const recapIn = (plan: ReturnType<typeof planNotifications>) => plan.filter((p) => p.kind === 'recap');
+  const notice = { year: 2026, plannedFor: null };
+
+  it('goes once, on the first December day, clear of the reminder', () => {
+    const plan = planNotifications(
+      input({ now: new Date(2026, 10, 29, 10, 0), hasMemorized: true, recapNotice: notice }),
+    );
+    const recap = recapIn(plan);
+    expect(recap).toHaveLength(1);
+    expect(recap[0].at).toEqual(new Date(2026, 11, 1, 12, 0));
+    expect(recap[0].url).toBe('/wrapped');
+    for (const count of byDay(plan).values()) expect(count).toBeLessThanOrEqual(MAX_PER_DAY);
+  });
+
+  it('takes the evening when the reminder leaves room', () => {
+    const plan = planNotifications(
+      input({ now: new Date(2026, 11, 3, 10, 0), reminderTime: { hour: 8, minute: 0 }, recapNotice: notice }),
+    );
+    expect(recapIn(plan)[0].at).toEqual(new Date(2026, 11, 3, 19, 0));
+  });
+
+  it('keeps an earlier plan’s time, and never replans a notice that passed', () => {
+    const plannedFor = new Date(2026, 11, 2, 19, 0);
+    const before = planNotifications(
+      input({ now: new Date(2026, 11, 1, 9, 0), recapNotice: { year: 2026, plannedFor } }),
+    );
+    expect(recapIn(before)[0].at).toEqual(plannedFor);
+    const after = planNotifications(
+      input({ now: new Date(2026, 11, 3, 9, 0), recapNotice: { year: 2026, plannedFor } }),
+    );
+    expect(recapIn(after)).toHaveLength(0);
+  });
+
+  it('stays in December, and away without a recap to announce', () => {
+    const lastDay = recapIn(planNotifications(input({ now: new Date(2026, 11, 30, 22, 0), recapNotice: notice })));
+    expect(lastDay.map((p) => p.at)).toEqual([new Date(2026, 11, 31, 12, 0)]);
+    const january = planNotifications(input({ now: new Date(2027, 0, 2, 9, 0), recapNotice: notice }));
+    expect(recapIn(january)).toHaveLength(0);
+    expect(recapIn(planNotifications(input({ now: new Date(2026, 11, 5, 9, 0) })))).toHaveLength(0);
+  });
+});
