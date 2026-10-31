@@ -210,6 +210,39 @@ export async function fetchBibles(
   return rows.map(toTranslation);
 }
 
+/**
+ * Every version this app key may read, in every language: the wildcard
+ * range `*` is the one form that unions languages (about 360 versions, four
+ * pages of 99). Unlicensed versions are left out, as with a single range.
+ */
+export async function fetchAllBibles(fetchImpl?: Fetch, locale?: string): Promise<Translation[]> {
+  const rows = await fetchAllPages<YvBible>(
+    '/bibles',
+    { 'language_ranges[]': ['*'], page_size: '99' },
+    { fetchImpl, acceptLanguage: locale },
+  );
+  return rows.map(toTranslation);
+}
+
+type YvBook = { id: string; chapters?: { id: string }[] | null };
+
+/**
+ * The chapters one version has of a book, ascending. Portions skip
+ * chapters (a Genesis of 1–12, 15–18, 21–22), so the canon's count is not
+ * enough. Introductions and other non-numeric chapter ids are dropped.
+ */
+export async function fetchBookChapters(
+  bibleId: number,
+  usfm: string,
+  fetchImpl?: Fetch,
+): Promise<number[]> {
+  const row = await request<YvBook>(`/bibles/${bibleId}/books/${usfm}`, {}, { fetchImpl });
+  const chapters = (row?.chapters ?? [])
+    .map((c) => (/^\d+$/.test(c.id) ? Number(c.id) : NaN))
+    .filter((n) => Number.isInteger(n) && n > 0);
+  return [...new Set(chapters)].sort((a, b) => a - b);
+}
+
 /** One version's metadata (a goal or challenge naming a version the catalog lacks). */
 export async function fetchBible(
   bibleId: number,

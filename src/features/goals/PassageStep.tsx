@@ -32,6 +32,7 @@ import {
 import { contentColumn } from '@/components/content-layout';
 import { ExtendMenu } from '@/features/goals/ExtendMenu';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
+import { useAvailableChapters } from '@/features/reader/use-available-chapters';
 import { t as translate } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import {
@@ -39,7 +40,6 @@ import {
   DEFAULT_TRANSLATION_ID,
   bookName,
   formatRange,
-  getBook,
   getChapter,
   getTranslation,
   translationHasBook,
@@ -106,7 +106,6 @@ export function PassageStep({
 }: Props) {
   const colors = useThemeColors();
   const { t } = useTranslation(['goals', 'common']);
-  const book = getBook(bookId);
   /** This book and a chapter of it, e.g. "John 3". */
   const bookChapter = (n: number) =>
     t('passage.bookChapter', { book: bookName(bookId), chapter: n });
@@ -122,6 +121,13 @@ export function PassageStep({
   // A New Testament or a few books: the book menu offers only what the
   // translation has.
   const books = translation ? BOOKS.filter((b) => translationHasBook(translation, b.id)) : BOOKS;
+  // Likewise chapters: a portion may have Genesis 1–12 and 15–18 only.
+  const { chapters, ready: chaptersReady } = useAvailableChapters(translationId, bookId);
+  useEffect(() => {
+    if (chaptersReady && chapters.length > 0 && !chapters.includes(chapter)) {
+      onChapterChange(chapters.find((c) => c > chapter) ?? chapters[0]);
+    }
+  }, [chaptersReady, chapters, chapter, onChapterChange]);
 
   // The picker screen hands its choice back through the store.
   const choice = useTranslationChoice((s) => s.choice);
@@ -231,7 +237,7 @@ export function PassageStep({
     />
   );
 
-  const extendable = chaptersToExtendThrough(selection, bookId, chapter, book.chapters);
+  const extendable = chaptersToExtendThrough(selection, bookId, chapter, chapters);
 
   const header = (
     <View style={styles.header}>
@@ -266,15 +272,11 @@ export function PassageStep({
             ))}
           </Picker>
         </Host>
-        {book.chapters > 1 && (
+        {chapters.length > 1 && (
           <Host matchContents seedColor={colors.lapis}>
             <Picker selectedValue={chapter} onValueChange={(v) => onChapterChange(Number(v))}>
-              {Array.from({ length: book.chapters }, (_, i) => (
-                <Picker.Item
-                  key={i + 1}
-                  label={t('passage.chapter', { chapter: i + 1 })}
-                  value={i + 1}
-                />
+              {chapters.map((n) => (
+                <Picker.Item key={n} label={t('passage.chapter', { chapter: n })} value={n} />
               ))}
             </Picker>
           </Host>

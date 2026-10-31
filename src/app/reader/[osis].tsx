@@ -20,6 +20,7 @@ import {
   parseOsisRef,
   type Verse,
 } from '@/services/bible';
+import { useAvailableChapters } from '@/features/reader/use-available-chapters';
 import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
 
 export default function ReaderRoute() {
@@ -67,7 +68,10 @@ export default function ReaderRoute() {
   const goToChapter = (chapter: number) => {
     router.setParams({ osis: `${ref.bookId}.${chapter}.1` });
   };
-  const chapters = Array.from({ length: bookInfo.chapters }, (_, i) => i + 1);
+  // Only the chapters this translation has (a portion may skip some).
+  const { chapters } = useAvailableChapters(translationId, ref.bookId);
+  const previousChapter = [...chapters].reverse().find((c) => c < ref.chapter);
+  const nextChapter = chapters.find((c) => c > ref.chapter);
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
@@ -83,15 +87,15 @@ export default function ReaderRoute() {
           <Stack.Toolbar.Button
             icon={previousIcon}
             accessibilityLabel={t('previousChapter')}
-            disabled={ref.chapter <= 1}
-            onPress={() => goToChapter(ref.chapter - 1)}>
+            disabled={previousChapter === undefined}
+            onPress={() => previousChapter !== undefined && goToChapter(previousChapter)}>
             {t('previousChapter')}
           </Stack.Toolbar.Button>
           <Stack.Toolbar.Button
             icon={nextIcon}
             accessibilityLabel={t('nextChapter')}
-            disabled={ref.chapter >= bookInfo.chapters}
-            onPress={() => goToChapter(ref.chapter + 1)}>
+            disabled={nextChapter === undefined}
+            onPress={() => nextChapter !== undefined && goToChapter(nextChapter)}>
             {t('nextChapter')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
@@ -113,7 +117,7 @@ export default function ReaderRoute() {
             translationId={translationId}
             bookId={ref.bookId}
             chapter={ref.chapter}
-            chapterCount={bookInfo.chapters}
+            chapterCount={chapters[chapters.length - 1] ?? bookInfo.chapters}
             onChapterChange={goToChapter}
           />
         </>
