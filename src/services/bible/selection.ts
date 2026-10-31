@@ -120,11 +120,17 @@ export function chaptersToExtendThrough(
   selection: PassageSelection | null,
   bookId: string,
   fromChapter: number,
-  bookChapters: number
+  bookChapters: number | readonly number[]
 ): number[] {
   const first = selection && selection.bookId === bookId ? selection.start.chapter : fromChapter;
+  // A portion may skip chapters; a passage runs only through the unbroken
+  // stretch after its first chapter.
+  const has =
+    typeof bookChapters === 'number'
+      ? (c: number) => c <= bookChapters
+      : (c: number) => bookChapters.includes(c);
   const out: number[] = [];
-  for (let c = first + 1; c <= bookChapters; c++) out.push(c);
+  for (let c = first + 1; has(c); c++) out.push(c);
   return out;
 }
 

@@ -7,7 +7,8 @@
  */
 import { Platform, Settings } from 'react-native';
 
-import { languageKey, type LanguageInfo } from '@/services/bible/catalog';
+import { getBook } from '@/services/bible/canon';
+import type { LanguageInfo } from '@/services/bible/catalog';
 import {
   getTranslation,
   registerTranslations,
@@ -17,21 +18,22 @@ import {
 } from '@/services/bible/registry';
 import type { Translation } from '@/services/bible/types';
 import {
+  fetchAllBibles,
   fetchBible,
-  fetchBibles,
+  fetchBookChapters,
   fetchLanguages,
   youversionKeyConfigured,
 } from '@/services/bible/youversion';
 
 /** Catalog metadata is refetched after this long. */
 const STALE_MS = 7 * 24 * 60 * 60 * 1000;
-/** settings rows: when each language's versions were last fetched. */
-const BIBLES_FETCHED_KEY = 'yv.bibles.';
+/** settings row: when the whole version list was last fetched. */
+const CATALOG_FETCHED_KEY = 'yv.catalog';
 
 let languagesMemory: LanguageInfo[] = [];
 let languagesLocale: string | null = null;
 let languagesFetchedAt = 0;
-const biblesFetchedAt = new Map<string, number>();
+let catalogFetchedAt = 0;
 let loading: Promise<void> | null = null;
 
 function dbModule() {
@@ -95,7 +97,7 @@ function translationToRow(t: Translation, fetchedAt: Date) {
 export function loadCatalog(): Promise<void> {
   loading ??= (async () => {
     const { db, tables } = await dbModule();
-    const { eq, like } = await import('drizzle-orm');
+    const { eq } = await import('drizzle-orm');
     const rows = await db
       .select()
       .from(tables.translations)
@@ -110,10 +112,8 @@ export function loadCatalog(): Promise<void> {
     const fetched = await db
       .select()
       .from(tables.settings)
-      .where(like(tables.settings.key, `${BIBLES_FETCHED_KEY}%`));
-    for (const row of fetched) {
-      biblesFetchedAt.set(row.key.slice(BIBLES_FETCHED_KEY.length), Number(row.value));
-    }
+      .where(eq(tables.settings.key, CATALOG_FETCHED_KEY));
+    catalogFetchedAt = Number(fetched[0]?.value ?? 0) || 0;
   })().catch((e: unknown) => {
     loading = null;
     throw e;
@@ -121,22 +121,13 @@ export function loadCatalog(): Promise<void> {
   return loading;
 }
 
-/** The languages last fetched, alphabetical in the locale they were named in. */
-export function cachedLanguages(): LanguageInfo[] {
-  return languagesMemory;
-}
-
 export function languagesById(): Map<string, LanguageInfo> {
   return new Map(languagesMemory.map((l) => [l.id, l]));
 }
 
-/** Languages whose versions have been fetched at some point. */
-export function browsedLanguageIds(): Set<string> {
-  return new Set(biblesFetchedAt.keys());
-}
-
-function cachedTranslationsFor(languageId: string): Translation[] {
-  return registeredTranslations().filter((t) => languageKey(t.languageCode) === languageId);
+/** True once the full version list has been fetched at least once. */
+export function catalogFetched(): boolean {
+  return catalogFetchedAt > 0;
 }
 
 /**
@@ -223,50 +214,91 @@ async function storeTranslations(list: readonly Translation[]): Promise<void> {
   }
 }
 
+let catalogLoading: Promise<void> | null = null;
+
 /**
- * The versions this app key may read in one language, from the cache when
- * it was fetched within the week, else from the Platform. Returns what was
- * fetched (or cached) for that language id.
+ * The language names and every version this app key may read, in one pass:
+ * from the cache when fetched within the week (and in this locale), else
+ * from the Platform. The picker lists only languages that have a version,
+ * so nobody taps a language to find it empty.
  */
-export async function ensureBibles(
-  languageId: string,
-  options: { force?: boolean; locale?: string } = {},
-): Promise<Translation[]> {
-  await loadCatalog();
-  const at = biblesFetchedAt.get(languageId);
-  if (!options.force && at !== undefined && Date.now() - at < STALE_MS) {
-    return cachedTranslationsFor(languageId);
-  }
-  if (!youversionKeyConfigured()) return cachedTranslationsFor(languageId);
-  const list = await fetchBibles(languageId, undefined, options.locale);
-  await storeTranslations(list);
-  await pruneTranslations(languageId, new Set(list.map((t) => t.id)));
-  const now = Date.now();
-  const { db, tables } = await dbModule();
-  await db
-    .insert(tables.settings)
-    .values({ key: BIBLES_FETCHED_KEY + languageId, value: String(now) })
-    .onConflictDoUpdate({ target: tables.settings.key, set: { value: String(now) } });
-  biblesFetchedAt.set(languageId, now);
-  return list;
+export function ensureCatalog(locale: string, options: { force?: boolean } = {}): Promise<void> {
+  catalogLoading ??= (async () => {
+    await loadCatalog();
+    if (!youversionKeyConfigured()) return;
+    const fresh = Date.now() - catalogFetchedAt < STALE_MS;
+    const sameLocale = languagesLocale === locale;
+    await ensureLanguages(locale, options);
+    if (!options.force && fresh && sameLocale) return;
+    const list = await fetchAllBibles(undefined, locale);
+    await storeTranslations(list);
+    await pruneTranslations(new Set(list.map((t) => t.id)));
+    const now = Date.now();
+    const { db, tables } = await dbModule();
+    await db
+      .insert(tables.settings)
+      .values({ key: CATALOG_FETCHED_KEY, value: String(now) })
+      .onConflictDoUpdate({ target: tables.settings.key, set: { value: String(now) } });
+    catalogFetchedAt = now;
+  })().finally(() => {
+    catalogLoading = null;
+  });
+  return catalogLoading;
 }
 
 /**
- * Drops cached versions of one language that the Platform no longer lists
- * for this key — except any a goal still names, which keep their metadata
- * (the goal's text fetch will say 403 on its own).
+ * Drops cached versions the Platform no longer lists for this key — except
+ * any a goal still names, which keep their metadata (the goal's text fetch
+ * will say 403 on its own). An empty list is a failed fetch, not a key
+ * with nothing: it prunes nothing.
  */
-async function pruneTranslations(languageId: string, keep: ReadonlySet<string>): Promise<void> {
+async function pruneTranslations(keep: ReadonlySet<string>): Promise<void> {
+  if (keep.size === 0) return;
   const { db, tables } = await dbModule();
   const { inArray } = await import('drizzle-orm');
   const goals = await db.select({ translationId: tables.goals.translationId }).from(tables.goals);
   const named = new Set(goals.map((g) => g.translationId));
-  const stale = cachedTranslationsFor(languageId)
+  const stale = registeredTranslations()
     .map((t) => t.id)
     .filter((id) => !keep.has(id) && !named.has(id));
   if (stale.length === 0) return;
-  await db.delete(tables.translations).where(inArray(tables.translations.id, stale));
+  for (const batch of chunk(stale, 200)) {
+    await db.delete(tables.translations).where(inArray(tables.translations.id, batch));
+  }
   for (const id of stale) unregisterTranslation(id);
+}
+
+/** Chapter lists already fetched this launch, by `${translationId}.${bookId}`. */
+const chapterLists = new Map<string, Promise<number[]>>();
+
+function allChapters(bookId: string): number[] {
+  return Array.from({ length: getBook(bookId).chapters }, (_, i) => i + 1);
+}
+
+/**
+ * The chapters a version has of a book. Bundled and ESV text has every
+ * chapter; a Platform version may be a portion, so its list is fetched once
+ * per launch (metadata only, never text). Offline or failing, it falls back
+ * to the canon's chapters and lets the chapter fetch say what is missing.
+ */
+export function availableChapters(translationId: string, bookId: string): Promise<number[]> {
+  const bibleId = youversionBibleId(translationId);
+  if (bibleId === null || !youversionKeyConfigured()) {
+    return Promise.resolve(allChapters(bookId));
+  }
+  const key = `${translationId}.${bookId}`;
+  let list = chapterLists.get(key);
+  if (!list) {
+    list = fetchBookChapters(bibleId, getBook(bookId).usfm).then(
+      (chapters) => (chapters.length > 0 ? chapters : allChapters(bookId)),
+      (e: unknown) => {
+        chapterLists.delete(key);
+        throw e;
+      },
+    );
+    chapterLists.set(key, list);
+  }
+  return list.catch(() => allChapters(bookId));
 }
 
 /** Fills in a version the registry only holds a placeholder for. */

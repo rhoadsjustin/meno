@@ -4,6 +4,7 @@
  * narrows them. Language ids are BCP 47, as the YouVersion Platform speaks
  * them (docs/02-architecture.md §5).
  */
+import { BOOKS } from '@/services/bible/canon';
 import type { Translation, TranslationSource } from '@/services/bible/types';
 
 export type LanguageInfo = {
@@ -128,35 +129,91 @@ function fold(s: string): string {
     .trim();
 }
 
-/**
- * Narrows sections to a search: a section whose title matches keeps all its
- * translations; otherwise only the translations whose name or abbreviation
- * matches stay, and empty sections drop out.
- */
-export function filterSections(
-  sections: readonly TranslationSection[],
-  query: string,
-): TranslationSection[] {
-  if (fold(query).length === 0) return [...sections];
-  const out: TranslationSection[] = [];
-  for (const s of sections) {
-    if (matchesQuery(s.title, query)) {
-      out.push(s);
-      continue;
-    }
-    const translations = s.translations.filter(
-      (t) => matchesQuery(t.name, query) || matchesQuery(t.abbrev, query),
-    );
-    if (translations.length > 0) out.push({ ...s, translations });
-  }
-  return out;
+/** A language as the picker lists it: its title and how many versions it has. */
+export type LanguageSummary = { id: string; title: string; count: number };
+
+export function summarizeLanguages(sections: readonly TranslationSection[]): LanguageSummary[] {
+  return sections.map((s) => ({ id: s.languageId, title: s.title, count: s.translations.length }));
 }
 
-/** Languages not yet browsed, narrowed by the same search. */
-export function filterLanguages(
-  languages: readonly LanguageInfo[],
-  exclude: ReadonlySet<string>,
+export type TranslationHit = {
+  translation: Translation;
+  languageId: string;
+  languageTitle: string;
+};
+
+export type CatalogSearch = { translations: TranslationHit[]; languages: LanguageSummary[] };
+
+/** True when some word of `text` starts with the query ("bible" in "Berean Standard Bible"). */
+function wordStartsWith(text: string, q: string): boolean {
+  const f = fold(text);
+  return f.startsWith(q) || f.split(/[\s\-–—(),.·/]+/u).some((w) => w.startsWith(q));
+}
+
+/**
+ * The picker's search, across every language at once. Translations match on
+ * name or abbreviation, best first: the exact abbreviation ("niv"), then a
+ * word starting with the query, then the query anywhere. A language whose
+ * name has a word starting with the query also brings in all its versions
+ * ("span" lists the Spanish ones), after the direct matches. Languages match
+ * on name or id. Ties keep the sections' order, so preferred languages lead.
+ */
+export function searchCatalog(
+  sections: readonly TranslationSection[],
   query: string,
-): LanguageInfo[] {
-  return languages.filter((l) => !exclude.has(l.id) && matchesQuery(l.name, query));
+): CatalogSearch {
+  const q = fold(query);
+  if (q.length === 0) return { translations: [], languages: summarizeLanguages(sections) };
+  const scored: { hit: TranslationHit; score: number; order: number }[] = [];
+  const languages: { summary: LanguageSummary; score: number; order: number }[] = [];
+  let order = 0;
+  for (const s of sections) {
+    const languageWord = wordStartsWith(s.title, q) || fold(s.languageId) === q;
+    if (languageWord || fold(s.title).includes(q)) {
+      languages.push({
+        summary: { id: s.languageId, title: s.title, count: s.translations.length },
+        score: fold(s.title).startsWith(q) || fold(s.languageId) === q ? 0 : 1,
+        order: order++,
+      });
+    }
+    for (const translation of s.translations) {
+      const abbrev = fold(translation.abbrev);
+      const name = fold(translation.name);
+      let score: number;
+      if (abbrev === q) score = 0;
+      else if (abbrev.startsWith(q) || wordStartsWith(translation.name, q)) score = 1;
+      else if (abbrev.includes(q) || name.includes(q)) score = 2;
+      else if (languageWord) score = 3;
+      else continue;
+      scored.push({
+        hit: { translation, languageId: s.languageId, languageTitle: s.title },
+        score,
+        order: order++,
+      });
+    }
+  }
+  const byScore = <T extends { score: number; order: number }>(a: T, b: T) =>
+    a.score - b.score || a.order - b.order;
+  return {
+    translations: scored.sort(byScore).map((x) => x.hit),
+    languages: languages.sort(byScore).map((x) => x.summary),
+  };
+}
+
+/** How much of the Bible a version has, in words a row can say. */
+export type Coverage =
+  { kind: 'full' } | { kind: 'ot' } | { kind: 'nt' } | { kind: 'books'; count: number };
+
+const NT_IDS = BOOKS.filter((b) => b.testament === 'nt').map((b) => b.id);
+const OT_IDS = BOOKS.filter((b) => b.testament === 'ot').map((b) => b.id);
+
+export function translationCoverage(t: Pick<Translation, 'books'>): Coverage {
+  if (!t.books) return { kind: 'full' };
+  const has = new Set(t.books);
+  const allNt = NT_IDS.every((id) => has.has(id));
+  const allOt = OT_IDS.every((id) => has.has(id));
+  if (allNt && allOt) return { kind: 'full' };
+  if (allNt && has.size === NT_IDS.length) return { kind: 'nt' };
+  if (allOt && has.size === OT_IDS.length) return { kind: 'ot' };
+  return { kind: 'books', count: has.size };
 }
