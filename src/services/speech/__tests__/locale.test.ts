@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { recognizerLocale } from '@/services/speech/locale';
+import { fallbackLocale, recognizerLocale } from '@/services/speech/locale';
 
 /** SFSpeechRecognizer.supportedLocales() on iOS 27 / macOS 27, abridged. */
 const IOS = [
@@ -97,5 +97,24 @@ describe('recognizerLocale', () => {
 
   it('falls back to any region, alphabetically, when no rule applies', () => {
     expect(recognizerLocale('ca', ['ca-AD', 'ca-FR'])).toBe('ca-AD');
+  });
+});
+
+describe('fallbackLocale', () => {
+  it('guesses a regional locale without the recognizer’s list', () => {
+    expect(fallbackLocale('de')).toBe('de-DE');
+    expect(fallbackLocale('en')).toBe('en-US');
+    expect(fallbackLocale('en-GB')).toBe('en-GB');
+    expect(fallbackLocale('es')).toBe('es-MX');
+    expect(fallbackLocale('es-419')).toBe('es-MX');
+    expect(fallbackLocale('zh-Hant')).toBe('zh-TW');
+    expect(fallbackLocale('zh-Hant-HK')).toBe('zh-HK');
+  });
+
+  it('prefers the device’s region, and keeps the script rule', () => {
+    expect(fallbackLocale('es', ['es-ES'])).toBe('es-ES');
+    expect(fallbackLocale('en-GB', ['en-US'])).toBe('en-US');
+    expect(fallbackLocale('hi-Latn')).toBeNull();
+    expect(fallbackLocale('')).toBeNull();
   });
 });

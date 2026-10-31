@@ -38,7 +38,7 @@ import { useTranslation } from '@/i18n/react';
 import { getTranslation } from '@/services/bible';
 import { gradeSpoken, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
-import { recognizerLocale } from '@/services/speech/locale';
+import { fallbackLocale, recognizerLocale } from '@/services/speech/locale';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
 
@@ -57,24 +57,50 @@ type MicState = 'idle' | 'listening' | 'processing';
 /** Why this phone can't hear the verse: no recognizer for its language, or none on the device. */
 type Unavailable = 'language' | 'offline';
 
+/** Resolves to `fallback` if `promise` takes longer than `ms`. */
+function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise).catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+/** How long to wait on the recognizer's answers before going with a guess. */
+const RECOGNIZER_TIMEOUT_MS = 3000;
+
 /**
  * The recognizer locale for a translation, or why there is none. iOS needs an
  * exact supported locale and, with on-device only, a recognizer that runs
  * without the network. Android keeps the raw code when its service can't say
- * (the offline-pack check and its errors handle the rest).
+ * (the offline-pack check and its errors handle the rest). A recognizer that
+ * doesn't answer in time (seen on a freshly booted simulator) gets a guess;
+ * the patched recognizer still refuses a locale it can't hear on the device.
  */
 async function resolveRecognizer(
   languageCode: string,
 ): Promise<{ locale: string } | { unavailable: Unavailable }> {
-  const supported = await ExpoSpeechRecognitionModule.getSupportedLocales({})
-    .then((r) => r.locales)
-    .catch(() => [] as string[]);
   const device = getLocales().map((l) => l.languageTag);
+  const supported = await within(
+    ExpoSpeechRecognitionModule.getSupportedLocales({}).then((r) => r.locales),
+    RECOGNIZER_TIMEOUT_MS,
+    [] as string[],
+  );
   const locale = recognizerLocale(languageCode, supported, device);
   // An empty list means the service couldn't say; try, and let the error tell.
-  if (Platform.OS !== 'ios' || supported.length === 0) return { locale: locale ?? languageCode };
+  if (Platform.OS !== 'ios' || supported.length === 0) {
+    return { locale: locale ?? fallbackLocale(languageCode, device) ?? languageCode };
+  }
   if (!locale) return { unavailable: 'language' };
-  const onDevice = ExpoSpeechRecognitionModule.supportsOnDeviceRecognitionForLocale?.(locale);
+  // Called on the module (native methods need it as `this`); absent when unpatched.
+  const onDevice = ExpoSpeechRecognitionModule.supportsOnDeviceRecognitionForLocale
+    ? await within(
+        Promise.resolve().then(() =>
+          ExpoSpeechRecognitionModule.supportsOnDeviceRecognitionForLocale!(locale),
+        ),
+        RECOGNIZER_TIMEOUT_MS,
+        undefined as boolean | undefined,
+      )
+    : undefined;
   if (onDevice === false) return { unavailable: 'offline' };
   return { locale };
 }

@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-speech-recognition/build/ExpoSpeechRecognitionModule.types.d.ts b/node_modules/expo-speech-recognition/build/ExpoSpeechRecognitionModule.types.d.ts
-index 5dad166..7d046fb 100644
+index 5dad166..293aef0 100644
 --- a/node_modules/expo-speech-recognition/build/ExpoSpeechRecognitionModule.types.d.ts
 +++ b/node_modules/expo-speech-recognition/build/ExpoSpeechRecognitionModule.types.d.ts
 @@ -663,6 +663,8 @@ export declare class ExpoSpeechRecognitionModuleType extends NativeModule<ExpoSp
@@ -7,12 +7,12 @@ index 5dad166..7d046fb 100644
       */
      supportsOnDeviceRecognition(): boolean;
 +    /** Meno patch (iOS only): on-device support for this locale's recognizer. */
-+    supportsOnDeviceRecognitionForLocale?(locale: string): boolean;
++    supportsOnDeviceRecognitionForLocale?(locale: string): Promise<boolean>;
      /**
       * Whether the recording feature is available on the device.
       *
 diff --git a/node_modules/expo-speech-recognition/ios/ExpoSpeechRecognitionModule.swift b/node_modules/expo-speech-recognition/ios/ExpoSpeechRecognitionModule.swift
-index 9dc9082..85e3090 100644
+index 9dc9082..3076588 100644
 --- a/node_modules/expo-speech-recognition/ios/ExpoSpeechRecognitionModule.swift
 +++ b/node_modules/expo-speech-recognition/ios/ExpoSpeechRecognitionModule.swift
 @@ -204,6 +204,17 @@ public class ExpoSpeechRecognitionModule: Module {
@@ -33,12 +33,13 @@ index 9dc9082..85e3090 100644
            if !options.requiresOnDeviceRecognition {
              guard await SFSpeechRecognizer.hasAuthorizationToRecognize() else {
                sendErrorAndStop(
-@@ -354,6 +365,12 @@ public class ExpoSpeechRecognitionModule: Module {
+@@ -354,6 +365,13 @@ public class ExpoSpeechRecognitionModule: Module {
        return recognizer?.supportsOnDeviceRecognition ?? false
      }
  
 +    // Meno patch: on-device support for a given locale, not the device default.
-+    Function("supportsOnDeviceRecognitionForLocale") { (locale: String) -> Bool in
++    // Async: creating a recognizer can take a second or more, off the JS thread.
++    AsyncFunction("supportsOnDeviceRecognitionForLocale") { (locale: String) -> Bool in
 +      let recognizer = SFSpeechRecognizer(locale: Locale(identifier: locale))
 +      return recognizer?.supportsOnDeviceRecognition ?? false
 +    }
@@ -63,7 +64,7 @@ index b278425..b57feba 100644
    private var audioFileRef: ExtAudioFileRef?
    private var outputFileUrl: URL?
 diff --git a/node_modules/expo-speech-recognition/src/ExpoSpeechRecognitionModule.types.ts b/node_modules/expo-speech-recognition/src/ExpoSpeechRecognitionModule.types.ts
-index acb7061..a728b91 100644
+index acb7061..8f29710 100644
 --- a/node_modules/expo-speech-recognition/src/ExpoSpeechRecognitionModule.types.ts
 +++ b/node_modules/expo-speech-recognition/src/ExpoSpeechRecognitionModule.types.ts
 @@ -709,6 +709,8 @@ export declare class ExpoSpeechRecognitionModuleType extends NativeModule<ExpoSp
@@ -71,7 +72,7 @@ index acb7061..a728b91 100644
     */
    supportsOnDeviceRecognition(): boolean;
 +  /** Meno patch (iOS only): on-device support for this locale's recognizer. */
-+  supportsOnDeviceRecognitionForLocale?(locale: string): boolean;
++  supportsOnDeviceRecognitionForLocale?(locale: string): Promise<boolean>;
    /**
     * Whether the recording feature is available on the device.
     *

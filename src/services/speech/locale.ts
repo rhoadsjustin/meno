@@ -153,3 +153,29 @@ export function recognizerLocale(
   const usual = DEFAULT_REGION[text.lang] ?? text.lang.toUpperCase();
   return (candidates.find((c) => c.tag.region === usual) ?? candidates[0]).id;
 }
+
+/**
+ * A best guess when the recognizer can't list its locales in time: the
+ * device's region for the language, else the text's, else the usual one,
+ * with the same script rule. The recognizer itself still has the last word
+ * (it refuses a locale it can't hear on the device).
+ */
+export function fallbackLocale(
+  languageCode: string,
+  deviceTags: readonly string[] = [],
+): string | null {
+  const text = parse(languageCode);
+  if (!text) return null;
+  const guesses: string[] = [];
+  for (const device of deviceTags) {
+    const d = parse(device);
+    if (d && d.lang === text.lang && d.region) guesses.push(`${text.lang}-${d.region}`);
+  }
+  if (text.lang === 'zh') {
+    guesses.push(...CHINESE_REGIONS[chineseScript(text) ?? 'Hans'].map((r) => `zh-${r}`));
+  } else {
+    if (text.region && text.region !== '419') guesses.push(`${text.lang}-${text.region}`);
+    guesses.push(`${text.lang}-${DEFAULT_REGION[text.lang] ?? text.lang.toUpperCase()}`);
+  }
+  return recognizerLocale(languageCode, guesses, deviceTags);
+}
