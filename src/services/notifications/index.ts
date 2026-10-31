@@ -17,9 +17,11 @@ import { Platform } from 'react-native';
 import { t } from '@/i18n';
 
 import { db, tables } from '@/services/db';
+import { recapNoticeAt, recapSeen, setRecapNoticeAt } from '@/services/db/repos/appFlags';
 import { listActiveGoals } from '@/services/db/repos/goals';
 import { countDueReviews } from '@/services/db/repos/reviews';
 import { loadStreak, localToday } from '@/services/db/repos/streaks';
+import { activeDaysIn } from '@/services/db/repos/wrapped';
 import {
   formatReminderTime,
   parseReminderTime,
@@ -33,6 +35,7 @@ import {
   type ScheduledReminder,
 } from '@/services/notifications/status';
 import { streakDisplay } from '@/services/streaks';
+import { RECAP_MIN_DAYS, recapYearFor } from '@/services/wrapped';
 
 export { DEFAULT_REMINDER_TIME, type ReminderTime } from '@/services/notifications/plan';
 export {
@@ -134,8 +137,10 @@ async function readPlanState() {
     loadStreak(),
     db.select({ id: tables.reviewItems.id }).from(tables.reviewItems).limit(1),
   ]);
-  const streak = streakDisplay(streakState, localToday());
+  const today = localToday();
+  const streak = streakDisplay(streakState, today);
   return {
+    recapNotice: await recapNoticeState(today),
     reminderTime: time,
     hasPractice: goals.length > 0 || dueCount > 0,
     practicedToday: streak.activeToday,
@@ -148,12 +153,24 @@ async function readPlanState() {
 type PlanState = Awaited<ReturnType<typeof readPlanState>>;
 
 /**
+ * The December Year in the Word notice (docs/10 §5.5): only in December,
+ * only once the recap is ready, and never after it has been opened.
+ */
+async function recapNoticeState(today: string): Promise<{ year: number; plannedFor: Date | null } | null> {
+  const year = recapYearFor(today);
+  if (year === null || !today.startsWith(`${year}-12-`)) return null;
+  if (await recapSeen(year)) return null;
+  if ((await activeDaysIn(year)) < RECAP_MIN_DAYS) return null;
+  return { year, plannedFor: await recapNoticeAt(year) };
+}
+
+/**
  * Android files every notification under a channel the user can mute or
  * tune on its own in Settings: one for the daily reminder, one for pop
  * quizzes. Both pop up on screen, as iOS banners do. Named in the UI language; recreating a channel only renames it,
  * so this runs before each plan and keeps the names current.
  */
-const CHANNELS = { practice: 'practice', popQuiz: 'pop-quiz' } as const;
+const CHANNELS = { practice: 'practice', popQuiz: 'pop-quiz', recap: 'practice' } as const;
 
 async function ensureChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
@@ -175,7 +192,13 @@ async function applyPlan(state?: PlanState): Promise<void> {
     await Notifications.cancelAllScheduledNotificationsAsync();
     return;
   }
-  const plan = planNotifications({ now: new Date(), ...(state ?? (await readPlanState())) });
+  const input = state ?? (await readPlanState());
+  const plan = planNotifications({ now: new Date(), ...input });
+  // The recap notice is planned once; later plans reuse its time.
+  const recap = plan.find((p) => p.kind === 'recap');
+  if (recap && input.recapNotice && !input.recapNotice.plannedFor) {
+    await setRecapNoticeAt(input.recapNotice.year, recap.at);
+  }
   await ensureChannels();
 
   await Notifications.cancelAllScheduledNotificationsAsync();

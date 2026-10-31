@@ -158,6 +158,20 @@ export function mayPersistText(id: string): boolean {
   return t.licenseType === 'public_domain' || t.licenseType === 'api_cached';
 }
 
+/**
+ * License rule 2 (02 §5, "share sheets"): verse text may go into something
+ * the user shares — an image, a message — only from a public-domain
+ * translation. Everything else is shared as its reference. An unknown id
+ * answers no.
+ */
+export function mayShareVerseText(id: string): boolean {
+  try {
+    return getTranslation(id).licenseType === 'public_domain';
+  } catch {
+    return false;
+  }
+}
+
 /** Whether a translation has the book at all (partial Bibles are common). */
 export function translationHasBook(t: Translation, bookId: string): boolean {
   if (!isValidBookId(bookId)) return false;

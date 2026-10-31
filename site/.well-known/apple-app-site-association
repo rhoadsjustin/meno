@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["Z8825H46UN.com.rhoadsdev.meno"],
+        "components": [{ "/": "/challenge*", "comment": "Challenge links (docs/06 §5, docs/10 §10.1)" }]
+      }
+    ]
+  }
+}

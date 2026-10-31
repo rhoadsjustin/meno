@@ -9,8 +9,11 @@
  *   today once today is practiced.
  * - Pop quizzes at random times inside the 9am–9pm window, once there is a
  *   memorized verse to quiz.
- * - Never more than MAX_PER_DAY a day, the reminder included, and never two
- *   within three hours of each other.
+ * - One Year in the Word notice in December (docs/10 §5.5), on the first day
+ *   it can go, in the evening if the reminder leaves room. Planned once: its
+ *   time is remembered, and a notice that has passed is never planned again.
+ * - Never more than MAX_PER_DAY a day, the reminder and notice included, and
+ *   never two within three hours of each other.
  */
 import { t } from '@/i18n';
 
@@ -28,6 +31,10 @@ export const MIN_GAP_MS = 3 * 60 * 60 * 1000;
 
 export const PRACTICE_PREFIX = 'practice';
 export const POP_QUIZ_PREFIX = 'popquiz';
+export const RECAP_PREFIX = 'recap';
+
+/** Hours tried for the recap notice, best first: evening, then midday. */
+const RECAP_HOURS = [19, 12, 16, 10];
 
 /** Anything due sooner than this is skipped rather than fired mid-tap. */
 const LEAD_MS = 60_000;
@@ -35,7 +42,7 @@ const QUIZ_TRIES = 8;
 
 export type PlannedNotification = {
   id: string;
-  kind: 'practice' | 'popQuiz';
+  kind: 'practice' | 'popQuiz' | 'recap';
   at: Date;
   title: string;
   body: string;
@@ -54,6 +61,12 @@ export type PlanInput = {
   dueCount: number;
   /** At least one memorized verse exists to quiz. */
   hasMemorized: boolean;
+  /**
+   * A Year in the Word recap to announce: set only in December, when the
+   * recap is ready and hasn't been opened. `plannedFor` is the time chosen
+   * by an earlier plan, if any.
+   */
+  recapNotice?: { year: number; plannedFor: Date | null } | null;
   random?: () => number;
 };
 
@@ -99,6 +112,28 @@ function reminderCopy(input: PlanInput, isNext: boolean): { title: string; body:
   };
 }
 
+/** When the recap notice goes on `day`, or null if it can't go that day. */
+function recapTime(
+  input: PlanInput,
+  day: number,
+  earliest: number,
+  planned: PlannedNotification[],
+): Date | null {
+  const notice = input.recapNotice!;
+  if (notice.plannedFor) {
+    // Planned before: keep that moment, or nothing once it has passed.
+    const at = notice.plannedFor;
+    const sameDay = atTime(input.now, day, 0, 0).toDateString() === at.toDateString();
+    return sameDay && at.getTime() > earliest ? at : null;
+  }
+  for (const hour of RECAP_HOURS) {
+    const at = atTime(input.now, day, hour, 0);
+    if (at.getFullYear() !== notice.year || at.getMonth() !== 11) return null;
+    if (at.getTime() > earliest && clearOf(at, planned)) return at;
+  }
+  return null;
+}
+
 export function planNotifications(input: PlanInput): PlannedNotification[] {
   const random = input.random ?? Math.random;
   const earliest = input.now.getTime() + LEAD_MS;
@@ -117,6 +152,21 @@ export function planNotifications(input: PlanInput): PlannedNotification[] {
           at,
           ...reminderCopy(input, isNext),
           url: '/',
+        });
+        today++;
+      }
+    }
+
+    if (input.recapNotice && !planned.some((p) => p.kind === 'recap') && today < MAX_PER_DAY) {
+      const at = recapTime(input, day, earliest, planned);
+      if (at) {
+        planned.push({
+          id: `${RECAP_PREFIX}-${input.recapNotice.year}`,
+          kind: 'recap',
+          at,
+          title: t('wrapped:notification.title', { year: input.recapNotice.year }),
+          body: t('wrapped:notification.body'),
+          url: '/wrapped',
         });
         today++;
       }

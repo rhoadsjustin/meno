@@ -208,6 +208,9 @@ function RootLayout() {
                 name="translation-picker"
                 options={{ presentation: 'modal', headerShown: false }}
               />
+              {/* Year in the Word (docs/10): full screen, its own native bar
+            (Close, Share) configured in-page. */}
+              <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen
                 name="onboarding"
                 options={{
