@@ -21,7 +21,7 @@ export type PersonaFacts = {
 export const PERSONA_VERSES: Record<PersonaCode, Ref> = {
   morningWatch: { bookId: 'Ps', chapter: 5, verse: 3 },
   nightMeditator: { bookId: 'Ps', chapter: 63, verse: 6 },
-  middayPause: { bookId: 'Dan', chapter: 6, verse: 10 },
+  middayPause: { bookId: 'Ps', chapter: 55, verse: 17 },
   voiceInTheRoom: { bookId: 'Ps', chapter: 119, verse: 13 },
   faithfulKeeper: { bookId: 'Luke', chapter: 16, verse: 10 },
   steadyWalker: { bookId: 'Ps', chapter: 1, verse: 2 },

@@ -67,7 +67,7 @@ Walker appears only when nothing else matches.
 |---|---|---|
 | The Morning Watch | ≥50% of practice 4:00–9:00 | Ps 5:3 |
 | The Night Meditator | ≥50% of practice 20:00–2:00 | Ps 63:6 |
-| The Midday Pause | ≥40% 11:00–14:00 | Dan 6:10 |
+| The Midday Pause | ≥40% 11:00–14:00 | Ps 55:17 |
 | The Voice in the Room | Speak ≥30% of attempts | Ps 119:13 |
 | The Faithful Keeper | longest run ≥30 days | Lk 16:10 |
 | The Steady Walker | fallback | Ps 1:2 |
