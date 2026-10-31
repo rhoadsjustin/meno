@@ -11,7 +11,10 @@
         "resourceClass": "m-medium",
         "image": "macos-tahoe-26.6-xcode-27.1"
       },
-      "channel": "development"
+      "channel": "development",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "e2e-test": {
       "distribution": "internal",
@@ -20,7 +23,10 @@
         "resourceClass": "m-medium",
         "image": "macos-tahoe-26.6-xcode-27.1"
       },
-      "channel": "e2e-test"
+      "channel": "e2e-test",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
       "autoIncrement": true,
@@ -29,7 +35,10 @@
         "resourceClass": "m-medium",
         "image": "macos-tahoe-26.6-xcode-27.1"
       },
-      "channel": "production"
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {
@@ -38,6 +47,10 @@
         "appleId": "rhoadsjustin@gmail.com",
         "appleTeamId": "Z8825H46UN",
         "ascAppId": "6806028621"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

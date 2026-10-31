@@ -1,7 +1,16 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Switch, Text, useColorScheme, View } from 'react-native';
+import {
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
@@ -219,35 +228,39 @@ export default function SettingsScreen() {
           ))}
       </Card>
 
-      <Card style={rowCard('lock')}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={isWide ? { selected: detail === 'lock' } : undefined}
-          accessibilityHint={isWide ? t('lock.hintWide') : undefined}
-          onPress={() => (isWide ? setDetail('lock') : router.push('/lock-setup'))}
-          style={styles.rowText}>
-          <Text style={[styles.rowTitle, { color: titleColor('lock'), fontFamily: fonts?.ui }]}>
-            {t('lock.title')}
-          </Text>
-          <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {isLockAvailable()
-              ? lockEnabled
-                ? t('lock.onSummary', {
-                    recitations: t('stats:recitationCount', { count: lockStats.recitations }),
-                    overrides: t('stats:overrideCount', { count: lockStats.overrides }),
-                  })
-                : t('lock.offBody')
-              : t('lock.unavailable')}
-          </Text>
-        </Pressable>
-        {lockEnabled && (
-          <Pressable accessibilityRole="button" onPress={() => void disableLock()}>
-            <Text style={[styles.killSwitch, { color: colors.error, fontFamily: fonts?.ui }]}>
-              {t('lock.killSwitch')}
+      {/* Recite to Unlock is built on Apple's Screen Time; Android has no
+          equivalent yet, so the row isn't offered there at all. */}
+      {Platform.OS === 'ios' && (
+        <Card style={rowCard('lock')}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={isWide ? { selected: detail === 'lock' } : undefined}
+            accessibilityHint={isWide ? t('lock.hintWide') : undefined}
+            onPress={() => (isWide ? setDetail('lock') : router.push('/lock-setup'))}
+            style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: titleColor('lock'), fontFamily: fonts?.ui }]}>
+              {t('lock.title')}
+            </Text>
+            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              {isLockAvailable()
+                ? lockEnabled
+                  ? t('lock.onSummary', {
+                      recitations: t('stats:recitationCount', { count: lockStats.recitations }),
+                      overrides: t('stats:overrideCount', { count: lockStats.overrides }),
+                    })
+                  : t('lock.offBody')
+                : t('lock.unavailable')}
             </Text>
           </Pressable>
-        )}
-      </Card>
+          {lockEnabled && (
+            <Pressable accessibilityRole="button" onPress={() => void disableLock()}>
+              <Text style={[styles.killSwitch, { color: colors.error, fontFamily: fonts?.ui }]}>
+                {t('lock.killSwitch')}
+              </Text>
+            </Pressable>
+          )}
+        </Card>
+      )}
 
       {update.pending && (
         <Card>

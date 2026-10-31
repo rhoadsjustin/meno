@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { BookSpread } from '@/features/reader/BookSpread';
 import { useTranslation } from '@/i18n/react';
@@ -25,6 +26,8 @@ export default function ReaderRoute() {
   const { osis, translation } = useLocalSearchParams<{ osis: string; translation?: string }>();
   const colors = useThemeColors();
   const { t } = useTranslation('reader');
+  const previousIcon = useBarIcon('chevron.left', 'chevron_left');
+  const nextIcon = useBarIcon('chevron.right', 'chevron_right');
   // Wide windows (iPhone Duo opened): a chapter sidebar beside the text.
   const { sides, isWide, foldAxis } = useContentLayout();
   // Book pose: the Duo half-open with the crease running top to bottom.
@@ -78,14 +81,14 @@ export default function ReaderRoute() {
       <ScreenHeader title={title} transparent={book}>
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Button
-            icon="chevron.left"
+            icon={previousIcon}
             accessibilityLabel={t('previousChapter')}
             disabled={ref.chapter <= 1}
             onPress={() => goToChapter(ref.chapter - 1)}>
             {t('previousChapter')}
           </Stack.Toolbar.Button>
           <Stack.Toolbar.Button
-            icon="chevron.right"
+            icon={nextIcon}
             accessibilityLabel={t('nextChapter')}
             disabled={ref.chapter >= bookInfo.chapters}
             onPress={() => goToChapter(ref.chapter + 1)}>

@@ -154,6 +154,13 @@ export default {
   },
   speak: {
     error: 'El reconocimiento de voz tuvo un problema ({{error}}). Puedes escribirlo.',
+    micBusy: 'Otra app está usando el micrófono. Ciérrala e inténtalo de nuevo, o escríbelo.',
+    packMissing:
+      'Para recitar en voz alta, este teléfono necesita el paquete de voz sin conexión del idioma del versículo, así tu voz nunca sale del dispositivo. Descárgalo e inténtalo de nuevo, o escríbelo.',
+    packDownload: 'Descargar paquete de voz',
+    packDownloading: 'Descargando el paquete de voz. Inténtalo en un minuto, o escríbelo por ahora.',
+    offlineUnsupported:
+      'Este teléfono no puede reconocer la voz sin conexión, y Meno mantiene tu voz en el dispositivo. Escribe tu recitación.',
     pausedAnnouncement: 'En pausa. Tus palabras se conservan — edítalas o sigue.',
     listeningAnnouncement: 'Escuchando. Recita y luego toca otra vez para pausar.',
     speakInstead: 'Decirlo en voz alta',

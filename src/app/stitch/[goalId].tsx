@@ -9,6 +9,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
+import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { t as translate } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
@@ -39,6 +40,7 @@ export default function StitchRoute() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
   const colors = useThemeColors();
   const { t } = useTranslation(['stitch', 'common']);
+  const closeIcon = useBarIcon('xmark', 'close');
   const { sides } = useContentLayout();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [data, setData] = useState<{
@@ -124,7 +126,7 @@ export default function StitchRoute() {
       <ScreenHeader backHidden title={t('title')}>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
-            icon="xmark"
+            icon={closeIcon}
             accessibilityLabel={t('common:close')}
             onPress={() => router.back()}>
             {t('common:close')}

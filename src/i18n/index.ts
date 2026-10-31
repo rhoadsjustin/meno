@@ -11,12 +11,36 @@
 import { createInstance } from 'i18next';
 
 import en from '@/i18n/locales/en';
+import enAndroid from '@/i18n/locales/en/android';
 import es from '@/i18n/locales/es';
+import esAndroid from '@/i18n/locales/es/android';
 
 export const SUPPORTED_LANGUAGES = ['en', 'es'] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
-export const resources = { en, es } as const;
+type Tree = { readonly [key: string]: string | Tree };
+
+/** `base` with every string in `over` put in place of the one at the same path. */
+export function overlay<T extends Tree>(base: T, over: Tree): T {
+  const out: Record<string, string | Tree> = { ...base };
+  for (const [key, value] of Object.entries(over)) {
+    const current = out[key];
+    out[key] =
+      typeof value === 'string' || typeof current !== 'object' ? value : overlay(current, value);
+  }
+  return out as T;
+}
+
+/** Android wording for the strings that name iPhone features. */
+export const androidOverlays = { en: enAndroid, es: esAndroid } as const;
+
+// EXPO_OS is inlined at build time; tests (no EXPO_OS) get the iOS catalogs.
+const onAndroid = process.env.EXPO_OS === 'android';
+
+export const resources = {
+  en: onAndroid ? overlay(en, enAndroid) : en,
+  es: onAndroid ? overlay(es, esAndroid) : es,
+} as const;
 
 export const i18n = createInstance();
 

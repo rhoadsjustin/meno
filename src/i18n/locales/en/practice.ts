@@ -158,6 +158,14 @@ export default {
   },
   speak: {
     error: 'Speech recognition hit a snag ({{error}}). You can type instead.',
+    micBusy: 'Another app is using the microphone. Close it and try again, or type instead.',
+    // Android: recognition stays on the phone, so it needs the offline pack.
+    packMissing:
+      'Speaking needs this phone’s offline speech pack for the verse’s language, so your voice never leaves the device. Download it, then try again — or type instead.',
+    packDownload: 'Download speech pack',
+    packDownloading: 'Downloading the speech pack. Try again in a minute, or type for now.',
+    offlineUnsupported:
+      'This phone can’t recognize speech offline, and Meno keeps your voice on the device. Type your recitation instead.',
     pausedAnnouncement: 'Paused. Your words are kept — edit them or keep going.',
     listeningAnnouncement: 'Listening. Recite, then tap again to pause.',
     speakInstead: 'Speak instead',

@@ -10,7 +10,11 @@
  * rather than checking the switch or the permission themselves.
  */
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { eq } from 'drizzle-orm';
+import { Platform } from 'react-native';
+
+import { t } from '@/i18n';
 
 import { db, tables } from '@/services/db';
 import { listActiveGoals } from '@/services/db/repos/goals';
@@ -94,6 +98,8 @@ async function permission(): Promise<ReminderPermission> {
  * by themselves once notifications are allowed in iPhone Settings.
  */
 export async function setNotificationsEnabled(enabled: boolean): Promise<boolean> {
+  // Android 13+ only shows the permission prompt once a channel exists.
+  if (enabled) await ensureChannels();
   const granted = enabled ? (await Notifications.requestPermissionsAsync()).granted : true;
   await writeSetting(ENABLED_KEY, String(enabled));
   await rescheduleAll();
@@ -141,6 +147,28 @@ async function readPlanState() {
 
 type PlanState = Awaited<ReturnType<typeof readPlanState>>;
 
+/**
+ * Android files every notification under a channel the user can mute or
+ * tune on its own in Settings: one for the daily reminder, one for pop
+ * quizzes. Both pop up on screen, as iOS banners do. Named in the UI language; recreating a channel only renames it,
+ * so this runs before each plan and keeps the names current.
+ */
+const CHANNELS = { practice: 'practice', popQuiz: 'pop-quiz' } as const;
+
+async function ensureChannels(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Promise.all([
+    Notifications.setNotificationChannelAsync(CHANNELS.practice, {
+      name: t('notifications:status.titlePractice'),
+      importance: AndroidImportance.HIGH,
+    }),
+    Notifications.setNotificationChannelAsync(CHANNELS.popQuiz, {
+      name: t('notifications:status.titlePopQuiz'),
+      importance: AndroidImportance.HIGH,
+    }),
+  ]);
+}
+
 /** Hands iOS a fresh plan, or clears it when nothing may be delivered. */
 async function applyPlan(state?: PlanState): Promise<void> {
   if (!(await notificationsEnabled()) || (await permission()) !== 'granted') {
@@ -148,6 +176,7 @@ async function applyPlan(state?: PlanState): Promise<void> {
     return;
   }
   const plan = planNotifications({ now: new Date(), ...(state ?? (await readPlanState())) });
+  await ensureChannels();
 
   await Notifications.cancelAllScheduledNotificationsAsync();
   for (const item of plan) {
@@ -160,7 +189,11 @@ async function applyPlan(state?: PlanState): Promise<void> {
         // depending on how iOS reports its trigger.
         data: { url: item.url, source: item.kind, at: item.at.getTime() },
       },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: item.at },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: item.at,
+        channelId: CHANNELS[item.kind],
+      },
     });
   }
 }

@@ -12,8 +12,8 @@ export type TimeFieldProps = {
 
 /**
  * A time of day the user can change. iOS renders the system picker
- * (`time-field.ios.tsx`); elsewhere the time is shown read-only until the
- * Android pass (M7) gives it a native control.
+ * (`time-field.ios.tsx`) and Android Material's time dialog
+ * (`time-field.android.tsx`); this read-only fallback is for web.
  */
 export function TimeField({ hour, minute, accessibilityLabel }: TimeFieldProps) {
   const colors = useThemeColors();
