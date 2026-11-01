@@ -81,9 +81,9 @@ Fallback if collision: "Meno: Hide the Word".)
 
 ## Keywords (100 chars max, comma-separated)
 
-`bible,verse,memorize,scripture,memory,kjv,esv,christian,faith,devotional,widget,memorization`
+`bible,verse,memorize,scripture,memory,kjv,esv,niv,christian,faith,devotional,widget,memorization`
 
-(94 chars)
+(96 chars; `niv` added with 1.7.0, once the NIV became readable through YouVersion)
 
 ## URLs (live)
 
@@ -96,7 +96,9 @@ Fallback if collision: "Meno: Hide the Word".)
   `marketingUrl` but NOT yet on the live listing: Apple's
   [editable-properties table](https://developer.apple.com/help/app-store-connect/reference/app-information/required-localizable-and-editable-properties)
   marks Marketing URL and Support URL as not editable on a released version, so it
-  lands with the next version. Pushed with 1.5.0 on 2026-10-29. For each release,
+  lands with the next version. Pushed with 1.5.0 on 2026-10-29; 1.5.0 was never
+  submitted, and the same ASC version was renamed to 1.7.0 by the 2026-11-01 push
+  (release notes cover everything since 1.0). For each release,
   set `apple.version` to the new version and run `eas metadata:push`. Do not push
   while `apple.version` is a version that is already live — eas-cli tries to
   create that version again and the push fails.
