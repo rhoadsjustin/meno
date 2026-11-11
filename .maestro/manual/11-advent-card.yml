@@ -1,0 +1,32 @@
+# The Advent plan (docs/11 §3.2) on a fresh install: the tester preview link
+# shows Today's Advent card out of season; starting it opens the challenge
+# join screen for Luke 2:1–14, and the card can be closed for the year.
+# Joining reads the passage (ESV over the network, or the bundled fallback),
+# so the join itself is checked by hand.
+appId: com.rhoadsdev.meno
+---
+- launchApp:
+    clearState: true
+- runFlow: ../helpers/complete-onboarding.yml
+- openLink: meno:///advent?preview=1
+# iOS confirms opening a custom scheme; optional, it can lag or be skipped.
+- extendedWaitUntil:
+    visible: "Open"
+    timeout: 5000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Memorize the Christmas story by Christmas"
+    timeout: 10000
+- assertVisible: "Start Luke 2:1.14"
+- assertVisible: "Or a shorter one: Luke 2:8.14"
+- tapOn: "Start Luke 2:1.14"
+- extendedWaitUntil:
+    visible: "Advent: Luke 2:1.14"
+    timeout: 10000
+- assertVisible: "Join challenge"
+- tapOn: "Not now"
+- tapOn: "Not this year"
+- assertNotVisible: "Memorize the Christmas story by Christmas"

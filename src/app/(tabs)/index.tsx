@@ -16,6 +16,7 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
+import { AdventInviteCard, AdventProgressCard, useAdventOffer } from '@/features/advent/AdventCard';
 import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
@@ -142,6 +143,8 @@ export default function TodayScreen() {
   const startBusy = useRef(false);
   // Year in the Word, in season (docs/10 §5.5).
   const recapOffer = useRecapOffer();
+  // The Advent plan, in season (docs/11 §3.2).
+  const advent = useAdventOffer();
 
   // Reads everything this screen shows; `isCancelled` guards a blurred screen.
   const load = useCallback(async (isCancelled: () => boolean) => {
@@ -628,6 +631,8 @@ export default function TodayScreen() {
   );
 
   const recapCard = <RecapTodayCard offer={recapOffer} />;
+  const adventInvite = <AdventInviteCard offer={advent.offer} onDismiss={advent.dismiss} />;
+  const adventProgress = <AdventProgressCard offer={advent.offer} />;
 
   return (
     <Screen title={t('app:tabs.today')} accessory={ember || undefined} wide>
@@ -641,6 +646,8 @@ export default function TodayScreen() {
             {links}
           </>
           <>
+            {adventInvite}
+            {adventProgress}
             {emptyDeck}
             {ladder}
             {secondary}
@@ -650,11 +657,13 @@ export default function TodayScreen() {
       ) : (
         <>
           {recapCard}
+          {adventInvite}
           {emptyIntro}
           {stackedStarters && emptyActions}
           {emptyDeck}
           {!stackedStarters && emptyActions}
           {hero}
+          {adventProgress}
           {secondary}
           {reminderPrompt}
           {links}

@@ -19,6 +19,7 @@ import widgets from './widgets';
 import app from './app';
 import wrapped from './wrapped';
 import siri from './siri';
+import advent from './advent';
 
 export default {
   common,
@@ -41,4 +42,5 @@ export default {
   app,
   wrapped,
   siri,
+  advent,
 } as const;

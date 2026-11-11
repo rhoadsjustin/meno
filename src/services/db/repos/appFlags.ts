@@ -83,6 +83,27 @@ export async function setRecapNoticeAt(year: number, at: Date): Promise<void> {
   await writeFlag(`wrappedNoticeAt:${year}`, String(at.getTime()));
 }
 
+/**
+ * Advent preview (docs/11 §3.2): set by opening `meno:///advent?preview=1`,
+ * it shows the Advent card out of season so testers can try it early.
+ */
+export async function adventPreview(): Promise<boolean> {
+  return (await readFlag('adventPreview')) === 'true';
+}
+
+export async function setAdventPreview(on: boolean): Promise<void> {
+  await writeFlag('adventPreview', on ? 'true' : 'false');
+}
+
+/** The year's Advent card was closed: no card, no invitation. */
+export async function adventDismissed(year: number): Promise<boolean> {
+  return (await readFlag(`adventDismissed:${year}`)) === 'true';
+}
+
+export async function setAdventDismissed(year: number, dismissed: boolean): Promise<void> {
+  await writeFlag(`adventDismissed:${year}`, dismissed ? 'true' : 'false');
+}
+
 async function readFlag(key: string): Promise<string | undefined> {
   const rows = await db.select().from(tables.settings).where(eq(tables.settings.key, key)).limit(1);
   return rows[0]?.value;
