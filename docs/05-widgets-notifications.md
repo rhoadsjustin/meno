@@ -115,3 +115,34 @@ Rules:
 - A Focus and Scheduled Summary can hold notifications back and are invisible to apps. Settings and the guide say so rather than guessing.
 - Notification categories with actions: pop quiz gets a "Later today" action (reschedules once) alongside default open.
 - Verse **text** in notification bodies only for license-permitting translations; otherwise reference only.
+
+## 3. Siri — "Look up a verse" (App Intents)
+
+"Hey Siri, look up a verse in Meno" → "Which verse?" → "John 3:16" → Siri reads the verse aloud, and shows it with its attribution, **in the translation the user is memorizing in**. The same action is in Shortcuts ("Look Up a Verse", which returns the text) and Spotlight. No web search, and for bundled translations no network.
+
+### How it is built
+
+An App Intent runs when iOS launches the app in the background. Under the scene life cycle React Native starts only when a scene connects, so **no JavaScript runs during an intent** — the intent cannot call `services/bible`. Instead:
+
+- **`src/services/siri`** publishes `Documents/siri-context.json` at launch and each time the app goes to the background (as the widget snapshot is): the translation being memorized (the focus goal's, else the one last chosen in the goal wizard, else the default), which bundled translation stands in for it if needed, every book's names in every UI language with their spoken forms ("First Corinthians", "1ra de Corintios", "Psalm"), and the wording of each reply in the UI language. Never verse text.
+- **`native/siri/*.swift`**, compiled into the app target by `plugins/withSiriIntents`, is the intent: `ScriptureReference.swift` parses the spoken reference against the published names, `ScriptureLookup.swift` reads the text, `MenoIntents.swift` is the App Intents surface and the snippet.
+
+### Where the text comes from (02 §5)
+
+| Memorizing in | Siri reads |
+| --- | --- |
+| Bundled (WEB, KJV, ASV) | The bundled database, offline. |
+| ESV | The goal's cached verses when the request is inside them (offline); otherwise one ESV API call, spoken and shown but never written. If that fails, the bundled translation in the same language, saying so. |
+| YouVersion Platform (NIV, NVI, …) | Not read natively yet (the Platform serves chapter HTML, parsed in JS). Siri reads the bundled translation in the same language and says which it is; with none in that language it says so and points to the app. |
+
+A reply reads at most 30 verses (`SIRI_MAX_VERSES`) and says when it stopped short. A request with no book or no chapter makes Siri ask again.
+
+### Limits
+
+- The phrase cannot carry the reference ("…look up John 3:16 in Meno"): App Shortcut phrases take only a fixed list of values, so Siri asks for the reference as a second step.
+- The intent's title, prompt and trigger phrases are English only; replies and book names follow the UI language. Spanish phrases need an `AppShortcuts.strings` table in the app target.
+- A fresh install answers "Open Meno once" until the app has launched and written the context.
+
+### Checks
+
+`npm run test:siri` compiles the parser and the lookup with `swiftc` and runs them against the real context output and the bundled Bible (`native/siri/checks`). The JS half is covered by `src/services/siri/__tests__`. The intent itself (Siri, Shortcuts, the snippet) is verified on a device.

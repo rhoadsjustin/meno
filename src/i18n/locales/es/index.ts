@@ -20,6 +20,7 @@ import notifications from './notifications';
 import widgets from './widgets';
 import app from './app';
 import wrapped from './wrapped';
+import siri from './siri';
 
 export default {
   common,
@@ -41,4 +42,5 @@ export default {
   widgets,
   app,
   wrapped,
+  siri,
 } satisfies Catalog<typeof en>;

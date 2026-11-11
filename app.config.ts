@@ -40,7 +40,7 @@ const updatesChannel = process.env.MENO_UPDATES_CHANNEL;
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
-  version: '1.7.0',
+  version: '1.8.0',
   runtimeVersion: { policy: 'appVersion' },
   updates: {
     url: 'https://u.expo.dev/6473c486-4b56-4c2c-9365-2ca7eeef6729',
@@ -130,6 +130,8 @@ const config: ExpoConfig = {
     // is embedded when CocoaPods' fresh-checkout classification misses it.
     './plugins/withEmbedJsiFramework',
     './plugins/withExtensionAppIcon',
+    // Siri / Shortcuts "Look Up a Verse" (native/siri, services/siri).
+    './plugins/withSiriIntents',
     'expo-router',
     'expo-sqlite',
     // SDK 57 asks for these to be listed explicitly (expo install --fix).

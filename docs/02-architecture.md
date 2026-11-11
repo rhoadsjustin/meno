@@ -22,7 +22,7 @@
 1. **Local-first.** Everything in F1–F4, F6, F7 works with zero network (using bundled translations). Sync is additive, never required.
 2. **Pure core.** Grading, normalization, chunking, and scheduling are pure TypeScript modules with no RN imports — fully unit-testable, reusable in widgets and (later) server.
 3. **Native shell.** Screens are thin: Expo UI components + Zustand + calls into services.
-4. **One door to Scripture.** `services/bible` is the only module that reads translation data and the only place licensing rules live.
+4. **One door to Scripture.** `services/bible` is the only module that reads translation data and the only place licensing rules live. One sanctioned exception: the Siri intent (`native/siri`, 05 §3) runs with no JavaScript, so it reads on-device text natively, read-only, under the same rules.
 
 ## 3. Project structure
 
@@ -121,6 +121,7 @@ Public-domain English translations shipped as a prebuilt SQLite database (~4–5
 1. Never write verse text to `verses` unless `licenseType` permits.
 2. Never include licensed text in analytics, logs, or share sheets beyond permitted excerpt lengths.
 3. Widget snapshots for licensed translations only include text if caching is permitted; otherwise widget shows reference + first-letters (derived data — verify per license; safe default is reference only).
+4. The Siri intent (05 §3) never writes verse text: bundled text is read in place, ESV outside a goal is fetched for the one reply, and the Siri context file holds no text.
 
 **Action item for the human**: register for the ESV API and YouVersion Platform app keys, and accept the publisher licenses you want in the Platform portal; review current license terms at build time — terms change and the above reflects October 2026 understanding.
 

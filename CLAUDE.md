@@ -33,7 +33,7 @@ Full specs live in `docs/`. Read the relevant spec before implementing any featu
 ## Conventions
 
 - Feature-folder structure under `src/features/<feature>/` (see `docs/02-architecture.md` §3).
-- All Scripture text access goes through `src/services/bible/` — nothing else touches translation data. Licensing rules per translation are enforced there (see `docs/02-architecture.md` §5).
+- All Scripture text access goes through `src/services/bible/` — nothing else touches translation data. Licensing rules per translation are enforced there (see `docs/02-architecture.md` §5). The one exception is the Siri intent in `native/siri/` (Swift, compiled into the app by `plugins/withSiriIntents`): no JS runs during an App Intent, so it reads on-device text natively from what `src/services/siri` publishes (`docs/05-widgets-notifications.md` §3). Check it with `npm run test:siri`.
 - Verse references use the canonical `Ref` type (`{ bookId, chapter, verse }`) and OSIS-style book IDs (`Gen`, `John`, `1Cor`). Never pass free-text references between modules.
 - Grading/normalization logic lives in `src/services/grading/` and is pure + unit-tested. This is the heart of the app — treat it like a compiler, not UI glue.
 - Every screen supports dark mode, Dynamic Type, VoiceOver labels, and reduced motion from day one.
