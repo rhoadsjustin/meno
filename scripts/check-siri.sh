@@ -22,6 +22,7 @@ if [[ "$(uname)" != "Darwin" ]]; then
   flags=(-I "$work/mod")
 fi
 
-"${SWIFTC:-swiftc}" "${flags[@]}" -o "$work/check" \
+# ${flags[@]+…}: macOS bash 3.2 treats an empty array as unbound under set -u.
+"${SWIFTC:-swiftc}" ${flags[@]+"${flags[@]}"} -o "$work/check" \
   native/siri/ScriptureReference.swift native/siri/ScriptureLookup.swift native/siri/checks/main.swift
 "$work/check" "$work"
