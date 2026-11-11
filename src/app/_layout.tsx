@@ -15,6 +15,7 @@ import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
 import { useUpdateLifecycle } from '@/services/updates';
+import { publishSiriContext } from '@/services/siri';
 import { publishWidgetSnapshot } from '@/services/widgets';
 import { palette } from '@/theme/tokens';
 
@@ -157,6 +158,9 @@ function RootLayout() {
       } else if (state === 'background') {
         // Publish the widget snapshot on every app close (05 §1).
         void publishWidgetSnapshot();
+        // Siri is asked once the app is out of front; hand it the current
+        // translation before then (services/siri).
+        void publishSiriContext();
       }
     });
     void rescheduleAll();
@@ -167,6 +171,7 @@ function RootLayout() {
     // Launch is also when a language change lands (iOS relaunches the app),
     // so re-render the widget's copy now rather than at the next close.
     void publishWidgetSnapshot();
+    void publishSiriContext();
     return () => {
       responseSub.remove();
       appStateSub.remove();

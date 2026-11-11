@@ -70,7 +70,9 @@ export type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';
 
 // Bump the version suffix whenever bundled.db contents change, so devices
 // that already imported an older copy re-import the new one.
-const BUNDLED_DB_NAME = 'bundled-bibles-v2.db';
+// The Siri intent opens this file natively by name (services/siri), so the
+// name is exported rather than repeated there.
+export const BUNDLED_DB_NAME = 'bundled-bibles-v2.db';
 
 let bundledDbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -86,6 +88,14 @@ function openBundledDb(): Promise<SQLite.SQLiteDatabase> {
     return SQLite.openDatabaseAsync(BUNDLED_DB_NAME);
   })();
   return bundledDbPromise;
+}
+
+/**
+ * Makes sure the bundled database has been copied out of the app bundle —
+ * for the Siri intent, which reads it from there with no JavaScript running.
+ */
+export async function ensureBundledText(): Promise<void> {
+  await openBundledDb();
 }
 
 /** Past any chapter's last verse (Psalm 119 has 176). */

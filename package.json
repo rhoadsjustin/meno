@@ -1,7 +1,7 @@
 {
   "name": "meno",
   "main": "expo-router/entry",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "dependencies": {
     "@expo/ui": "~58.0.23",
     "drizzle-orm": "^0.45.2",
@@ -75,6 +75,7 @@
     "worktree": "bash scripts/worktree.sh new",
     "deps": "bash scripts/worktree.sh deps",
     "test:watch": "vitest",
+    "test:siri": "bash scripts/check-siri.sh",
     "build:bible": "tsx scripts/build-bible-db.ts",
     "db:generate": "drizzle-kit generate",
     "format": "prettier --write .",
