@@ -59,6 +59,18 @@ let cases: [(String, ScriptureRange)] = [
   ("Salmo 23 versículo 1", r("Ps", 23, 1, 23, 1)),
   ("Hechos 2:38", r("Acts", 2, 38, 2, 38)),
   ("3 John 4", r("3John", 1, 4, 1, 4)),
+  // Dictation runs a spoken chapter and verse together.
+  ("John 316", r("John", 3, 16, 3, 16)),
+  ("Romans 828", r("Rom", 8, 28, 8, 28)),
+  ("John 316 to 18", r("John", 3, 16, 3, 18)),
+  ("John 316-18", r("John", 3, 16, 3, 18)),
+  ("John 305", r("John", 3, 5, 3, 5)),
+  ("Genesis 127", r("Gen", 1, 27, 1, 27)),
+  ("Psalm 119105", r("Ps", 119, 105, 119, 105)),
+  ("John 99", r("John", 9, 9, 9, 9)),
+  ("1 John 316", r("1John", 3, 16, 3, 16)),
+  ("Psalm 119", r("Ps", 119, 1, 119, 999)),
+  ("John 21", r("John", 21, 1, 21, 999)),
 ]
 for (text, want) in cases {
   let got = try? parser.parse(text)
@@ -90,7 +102,7 @@ a = await run("web", "John 3:16-4:2")
 check(a.kind == .verses && a.reference == "John 3:16–4:2", "cross chapter")
 a = await run("web", "John 3:99")
 check(a.kind == .failed && a.note == "I couldn’t find John 3:99 in the WEB.", "not found")
-a = await run("web", "John 99")
+a = await run("web", "John 40")
 check(a.kind == .failed && a.note == "John doesn’t have that chapter.", "chapter oor")
 a = await run("web", "umm")
 check(a.kind == .askAgain, "ask again")

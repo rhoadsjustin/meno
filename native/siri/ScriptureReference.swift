@@ -116,6 +116,14 @@ struct ScriptureReferenceParser: Sendable {
       right = [left[2]]
       left = [left[0], left[1]]
     }
+    // Dictation writes "John three sixteen" as "John 316": one number that is
+    // not a chapter of the book is a chapter and verse run together.
+    if left.count == 1, book.chapters > 1, left[0] > book.chapters,
+      let (chapter, verse) = ScriptureReferenceParser.splitRunTogether(
+        left[0], chapters: book.chapters)
+    {
+      left = [chapter, verse]
+    }
     guard left.count <= 2, right.count <= 2 else { throw ScriptureReferenceError.badRange }
 
     let end = ScriptureRange.chapterEnd
@@ -172,6 +180,24 @@ struct ScriptureReferenceParser: Sendable {
       || (range.startChapter == range.endChapter && range.startVerse <= range.endVerse)
     guard forward else { throw ScriptureReferenceError.badRange }
     return range
+  }
+
+  /// Splits a run-together number into chapter and verse: 316 → 3:16,
+  /// 828 → 8:28, 305 ("three oh five") → 3:5, 119105 → 119:105. A spoken
+  /// number merges with what follows when the verse is said as a two-digit
+  /// number, so that split is tried first, then a one-digit verse, then
+  /// three digits. Nil when no split leaves a chapter the book has.
+  static func splitRunTogether(_ number: Int, chapters: Int) -> (chapter: Int, verse: Int)? {
+    let digits = String(number)
+    for verseDigits in [2, 1, 3] where digits.count > verseDigits {
+      let cut = digits.index(digits.endIndex, offsetBy: -verseDigits)
+      guard let chapter = Int(digits[..<cut]), let verse = Int(digits[cut...]) else { continue }
+      // No chapter has more verses than Psalm 119's 176.
+      if chapter >= 1, chapter <= chapters, verse >= 1, verse <= 176 {
+        return (chapter, verse)
+      }
+    }
+    return nil
   }
 
   /// The first book named in the tokens (longest name at that position, so
