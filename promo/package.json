@@ -6,6 +6,9 @@
     "studio": "remotion studio",
     "render": "remotion render Promo out/meno-promo.mp4",
     "render:abide": "remotion render Abide out/meno-abide.mp4",
+    "render:reel": "remotion render Promo-9x16 out/meno-promo-9x16.mp4",
+    "render:abide:reel": "remotion render Abide-9x16 out/meno-abide-9x16.mp4",
+    "typecheck": "tsc",
     "music": "python3 scripts/music.py",
     "render:duo": "remotion render Duo out/meno-duo.mp4",
     "captures:duo": "bash scripts/duo-captures.sh"

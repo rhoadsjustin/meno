@@ -11,6 +11,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 
+import { SafeFill, useLayout } from './layout';
 import { Clip, Headline, Phone, Scene, Theme, Widgets } from './parts';
 import { C, SANS, SERIF } from './theme';
 
@@ -20,16 +21,17 @@ import { C, SANS, SERIF } from './theme';
 type SceneSpec = { id: string; frames: number; theme: Theme; render: () => React.ReactNode };
 
 const Intro: React.FC = () => {
+  const { type } = useLayout();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const mark = spring({ frame, fps, config: { damping: 18, mass: 0.8 } });
   const line = spring({ frame: frame - 18, fps, config: { damping: 200 } });
   return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+    <SafeFill style={{ alignItems: 'center', justifyContent: 'center' }}>
       <div
         style={{
           fontFamily: SERIF,
-          fontSize: 220,
+          fontSize: type(220),
           fontWeight: 500,
           color: C.lapis,
           transform: `scale(${0.8 + mark * 0.2})`,
@@ -42,7 +44,7 @@ const Intro: React.FC = () => {
           marginTop: 20,
           fontFamily: SERIF,
           fontWeight: 600,
-          fontSize: 76,
+          fontSize: type(76),
           color: C.ink,
           textAlign: 'center',
           lineHeight: 1.1,
@@ -52,7 +54,7 @@ const Intro: React.FC = () => {
         }}>
         Let the Word{'\n'}remain in you.
       </div>
-    </AbsoluteFill>
+    </SafeFill>
   );
 };
 
@@ -69,21 +71,22 @@ const Shield: React.FC = () => {
 };
 
 const Outro: React.FC = () => {
+  const { type } = useLayout();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const a = spring({ frame, fps, config: { damping: 200 } });
   const b = spring({ frame: frame - 12, fps, config: { damping: 200 } });
   return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', padding: 80 }}>
+    <SafeFill style={{ alignItems: 'center', justifyContent: 'center', padding: 80 }}>
       <div
-        style={{ fontFamily: SERIF, fontSize: 150, fontWeight: 600, color: C.white, opacity: a }}>
+        style={{ fontFamily: SERIF, fontSize: type(150), fontWeight: 600, color: C.white, opacity: a }}>
         Meno
       </div>
       <div
         style={{
           marginTop: 10,
           fontFamily: SANS,
-          fontSize: 40,
+          fontSize: type(40),
           color: C.onLapisFaint,
           textAlign: 'center',
           opacity: a,
@@ -99,23 +102,23 @@ const Outro: React.FC = () => {
           color: C.lapis,
           fontFamily: SANS,
           fontWeight: 600,
-          fontSize: 40,
+          fontSize: type(40),
           opacity: b,
           transform: `scale(${0.9 + b * 0.1})`,
         }}>
-        Free beta on iPhone
+        Free on iPhone
       </div>
       <div
         style={{
           marginTop: 34,
           fontFamily: SANS,
-          fontSize: 30,
+          fontSize: type(30),
           color: C.onLapisFaint,
           opacity: b,
         }}>
         No account · No ads · No tracking
       </div>
-    </AbsoluteFill>
+    </SafeFill>
   );
 };
 
