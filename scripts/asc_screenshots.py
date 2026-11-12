@@ -20,7 +20,11 @@ tokens with the system `openssl`, so the one Python dependency is `requests`.
 
 store/screenshots/6.9/ (1320x2868 or 1290x2796, portrait) goes to Apple's APP_IPHONE_67
 slot, which is the only iPhone set Apple requires; store/screenshots/6.5/ is optional and
-goes to APP_IPHONE_65. Uploading is additive, so a slot that already holds screenshots is
+goes to APP_IPHONE_65. store/screenshots/duo/ goes to APP_IPHONE_DUO, one set that takes
+both iPhone Duo panels: the inner display (2853x2007 landscape or 2007x2853 portrait) and
+the cover display (2034x1398 or 1398x2034). Apple's API reference doesn't list that value
+yet (Nov 2026); third-party tools upload with it and ASC shows the files in its iPhone Duo
+gallery. --slot duo uploads only that set. Uploading is additive, so a slot that already holds screenshots is
 left alone unless --replace is passed, which deletes what is there first. Files upload in
 filename order and that order is written back to the set, so 01-… is the first
 screenshot a customer sees.
@@ -45,6 +49,7 @@ SHOTS = os.path.join(os.path.dirname(__file__), "..", "store", "screenshots")
 SLOTS = [
     ("6.9", "APP_IPHONE_67", {(1320, 2868), (1290, 2796)}),
     ("6.5", "APP_IPHONE_65", {(1284, 2778), (1242, 2688)}),
+    ("duo", "APP_IPHONE_DUO", {(2853, 2007), (2007, 2853), (2034, 1398), (1398, 2034)}),
 ]
 # version states whose metadata can still be edited
 EDITABLE = {
@@ -262,10 +267,11 @@ def main():
     ap.add_argument("--plan", action="store_true", help="list what is on disk and exit (no network, no key needed)")
     ap.add_argument("--check", action="store_true", help="report what the version already has, upload nothing")
     ap.add_argument("--replace", action="store_true", help="delete the screenshots already in a slot before uploading")
+    ap.add_argument("--slot", choices=[label for label, *_ in SLOTS], help="only this slot (e.g. duo)")
     ap.add_argument("--bundle-id", default=BUNDLE_ID)
     args = ap.parse_args()
 
-    sets = local_sets()
+    sets = [s for s in local_sets() if not args.slot or s[0] == args.slot]
     bad = False
     for label, display, sizes, paths in sets:
         print(f"{label} -> {display}  ({len(paths)} files)")
@@ -294,7 +300,7 @@ def main():
 
     # --check reports every slot, even ones with nothing on disk yet
     if args.check:
-        slots = [(label, display, sizes, []) for label, display, sizes in SLOTS]
+        slots = [(label, display, sizes, []) for label, display, sizes in SLOTS if not args.slot or label == args.slot]
     else:
         slots = [s for s in sets if s[3]]
     for label, display, sizes, paths in slots:
