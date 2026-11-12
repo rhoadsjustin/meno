@@ -12,10 +12,15 @@
  * - One Year in the Word notice in December (docs/10 §5.5), on the first day
  *   it can go, in the evening if the reminder leaves room. Planned once: its
  *   time is remembered, and a notice that has passed is never planned again.
+ * - Advent notices (docs/11 §3.2): a line each Advent Sunday for someone on
+ *   the plan, or one invitation on the first Sunday. Their hour depends only
+ *   on the reminder time, so a later plan never moves one that has gone out.
  * - Never more than MAX_PER_DAY a day, the reminder and notice included, and
  *   never two within three hours of each other.
  */
 import { t } from '@/i18n';
+import { formatRange } from '@/services/bible/refs';
+import type { RefRange } from '@/services/bible/types';
 
 export type ReminderTime = { hour: number; minute: number };
 
@@ -32,6 +37,10 @@ export const MIN_GAP_MS = 3 * 60 * 60 * 1000;
 export const PRACTICE_PREFIX = 'practice';
 export const POP_QUIZ_PREFIX = 'popquiz';
 export const RECAP_PREFIX = 'recap';
+export const ADVENT_PREFIX = 'advent';
+
+/** Hours tried for an Advent notice, best first: Sunday afternoon. */
+const ADVENT_HOURS = [14, 17, 11, 20];
 
 /** Hours tried for the recap notice, best first: evening, then midday. */
 const RECAP_HOURS = [19, 12, 16, 10];
@@ -42,7 +51,7 @@ const QUIZ_TRIES = 8;
 
 export type PlannedNotification = {
   id: string;
-  kind: 'practice' | 'popQuiz' | 'recap';
+  kind: 'practice' | 'popQuiz' | 'recap' | 'advent';
   at: Date;
   title: string;
   body: string;
@@ -67,6 +76,12 @@ export type PlanInput = {
    * by an earlier plan, if any.
    */
   recapNotice?: { year: number; plannedFor: Date | null } | null;
+  /**
+   * Advent notices still to come (services/advent `adventNoticeDays`): the
+   * local date each goes out, the week it speaks for (0 is the invitation)
+   * and the verses it names.
+   */
+  adventNotices?: { year: number; date: string; week: number; range: RefRange }[];
   random?: () => number;
 };
 
@@ -134,6 +149,23 @@ function recapTime(
   return null;
 }
 
+function localDate(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}
+
+/**
+ * The hour an Advent notice goes: the first that keeps MIN_GAP_MS from the
+ * daily reminder. A function of the reminder time alone — not of what else
+ * is planned or what time it is — so re-planning after the notice has gone
+ * out can never pick a later hour and send it twice.
+ */
+export function adventNoticeHour(reminderTime: ReminderTime): number {
+  const reminder = reminderTime.hour * 60 + reminderTime.minute;
+  const gap = MIN_GAP_MS / 60_000;
+  return ADVENT_HOURS.find((hour) => Math.abs(hour * 60 - reminder) >= gap) ?? ADVENT_HOURS[0];
+}
+
 export function planNotifications(input: PlanInput): PlannedNotification[] {
   const random = input.random ?? Math.random;
   const earliest = input.now.getTime() + LEAD_MS;
@@ -167,6 +199,31 @@ export function planNotifications(input: PlanInput): PlannedNotification[] {
           title: t('wrapped:notification.title', { year: input.recapNotice.year }),
           body: t('wrapped:notification.body'),
           url: '/wrapped',
+        });
+        today++;
+      }
+    }
+
+    const advent = input.adventNotices?.find(
+      (n) => n.date === localDate(atTime(input.now, day, 12, 0)),
+    );
+    if (advent && today < MAX_PER_DAY) {
+      const at = atTime(input.now, day, adventNoticeHour(input.reminderTime), 0);
+      if (at.getTime() > earliest && clearOf(at, planned)) {
+        const passage = formatRange(advent.range);
+        planned.push({
+          id: `${ADVENT_PREFIX}-${advent.year}-${advent.week}`,
+          kind: 'advent',
+          at,
+          title:
+            advent.week === 0
+              ? t('advent:notification.inviteTitle')
+              : t('advent:notification.weekTitle', { week: advent.week }),
+          body:
+            advent.week === 0
+              ? t('advent:notification.inviteBody', { passage })
+              : t('advent:notification.weekBody', { passage }),
+          url: '/',
         });
         today++;
       }

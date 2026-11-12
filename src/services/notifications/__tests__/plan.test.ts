@@ -164,3 +164,82 @@ describe('Year in the Word notice', () => {
     expect(recapIn(planNotifications(input({ now: new Date(2026, 11, 5, 9, 0) })))).toHaveLength(0);
   });
 });
+
+describe('Advent notices', () => {
+  const adventIn = (plan: ReturnType<typeof planNotifications>) => plan.filter((p) => p.kind === 'advent');
+  const luke = (from: number, to: number) => ({
+    start: { bookId: 'Luke', chapter: 2, verse: from },
+    end: { bookId: 'Luke', chapter: 2, verse: to },
+  });
+  const weekly = [
+    { year: 2026, date: '2026-11-29', week: 1, range: luke(1, 4) },
+    { year: 2026, date: '2026-12-06', week: 2, range: luke(5, 7) },
+    { year: 2026, date: '2026-12-13', week: 3, range: luke(8, 11) },
+    { year: 2026, date: '2026-12-20', week: 4, range: luke(12, 14) },
+  ];
+
+  it('goes on Sunday afternoon and names the week’s verses', () => {
+    // Friday 27 Nov: the first two Sundays are inside the week ahead.
+    const plan = planNotifications(
+      input({ now: new Date(2026, 10, 27, 10, 0), hasMemorized: true, adventNotices: weekly }),
+    );
+    const advent = adventIn(plan);
+    expect(advent.map((p) => p.at)).toEqual([new Date(2026, 10, 29, 14, 0)]);
+    expect(advent[0].id).toBe('advent-2026-1');
+    expect(advent[0].title).toBe('Advent, week 1 of 4');
+    expect(advent[0].body).toBe('This week: Luke 2:1–4.');
+    expect(advent[0].url).toBe('/');
+    for (const count of byDay(plan).values()) expect(count).toBeLessThanOrEqual(MAX_PER_DAY);
+  });
+
+  it('invites with the whole passage', () => {
+    const plan = planNotifications(
+      input({
+        now: new Date(2026, 10, 28, 10, 0),
+        hasPractice: false,
+        adventNotices: [{ year: 2026, date: '2026-11-29', week: 0, range: luke(1, 14) }],
+      }),
+    );
+    expect(plan).toHaveLength(1);
+    expect(plan[0].id).toBe('advent-2026-0');
+    expect(plan[0].title).toBe('Advent begins today');
+    expect(plan[0].body).toContain('Luke 2:1–14');
+  });
+
+  it('keeps clear of the daily reminder', () => {
+    const plan = planNotifications(
+      input({
+        now: new Date(2026, 10, 28, 10, 0),
+        reminderTime: { hour: 15, minute: 30 },
+        adventNotices: weekly,
+      }),
+    );
+    const advent = adventIn(plan);
+    expect(advent).toHaveLength(1);
+    expect(advent[0].at).toEqual(new Date(2026, 10, 29, 11, 0));
+    for (const other of plan.filter((p) => p.kind !== 'advent')) {
+      expect(Math.abs(other.at.getTime() - advent[0].at.getTime())).toBeGreaterThanOrEqual(MIN_GAP_MS);
+    }
+  });
+
+  it('is not sent again by a plan made after it went out', () => {
+    // Sunday 29 Nov, 14:30: the 14:00 notice has gone. Practicing drops
+    // today's reminder, which must not free a later hour for a second one.
+    for (const practicedToday of [false, true]) {
+      const plan = planNotifications(
+        input({ now: new Date(2026, 10, 29, 14, 30), practicedToday, adventNotices: weekly }),
+      );
+      expect(adventIn(plan)).toHaveLength(0);
+    }
+    // The next Sunday comes into the week ahead on Monday.
+    const monday = planNotifications(input({ now: new Date(2026, 10, 30, 9, 0), adventNotices: weekly }));
+    expect(adventIn(monday).map((p) => p.id)).toEqual(['advent-2026-2']);
+  });
+
+  it('plans nothing without notices', () => {
+    expect(adventIn(planNotifications(input({ now: new Date(2026, 10, 28, 10, 0) })))).toHaveLength(0);
+    expect(
+      adventIn(planNotifications(input({ now: new Date(2026, 10, 28, 10, 0), adventNotices: [] }))),
+    ).toHaveLength(0);
+  });
+});

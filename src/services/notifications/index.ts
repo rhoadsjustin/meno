@@ -17,8 +17,14 @@ import { Platform } from 'react-native';
 import { t } from '@/i18n';
 
 import { db, tables } from '@/services/db';
-import { recapNoticeAt, recapSeen, setRecapNoticeAt } from '@/services/db/repos/appFlags';
-import { listActiveGoals } from '@/services/db/repos/goals';
+import { adventFor, adventNoticeDays } from '@/services/advent';
+import {
+  adventDismissed,
+  recapNoticeAt,
+  recapSeen,
+  setRecapNoticeAt,
+} from '@/services/db/repos/appFlags';
+import { goalByChallengeId, listActiveGoals } from '@/services/db/repos/goals';
 import { countDueReviews } from '@/services/db/repos/reviews';
 import { loadStreak, localToday } from '@/services/db/repos/streaks';
 import { activeDaysIn } from '@/services/db/repos/wrapped';
@@ -141,6 +147,7 @@ async function readPlanState() {
   const streak = streakDisplay(streakState, today);
   return {
     recapNotice: await recapNoticeState(today),
+    adventNotices: await adventNoticeState(today),
     reminderTime: time,
     hasPractice: goals.length > 0 || dueCount > 0,
     practicedToday: streak.activeToday,
@@ -165,12 +172,41 @@ async function recapNoticeState(today: string): Promise<{ year: number; plannedF
 }
 
 /**
+ * Advent notices (docs/11 §3.2), in season only: each Sunday's line names
+ * that week's verses on the full plan, and the whole passage on the short one.
+ */
+async function adventNoticeState(today: string) {
+  const plan = adventFor(today);
+  if (!plan) return [];
+  const [main, short, dismissed] = await Promise.all([
+    goalByChallengeId(plan.main.code),
+    goalByChallengeId(plan.short.code),
+    adventDismissed(plan.year),
+  ]);
+  const goal = main ?? short;
+  const joined = goal?.status === 'active';
+  // A finished or stopped Advent goal needs neither a weekly line nor an invitation.
+  if (goal && !joined) return [];
+  return adventNoticeDays(plan, { joined, dismissed }).map(({ date, week }) => ({
+    year: plan.year,
+    date,
+    week,
+    range: week === 0 ? plan.main.range : main ? plan.weeks[week - 1] : plan.short.range,
+  }));
+}
+
+/**
  * Android files every notification under a channel the user can mute or
  * tune on its own in Settings: one for the daily reminder, one for pop
  * quizzes. Both pop up on screen, as iOS banners do. Named in the UI language; recreating a channel only renames it,
  * so this runs before each plan and keeps the names current.
  */
-const CHANNELS = { practice: 'practice', popQuiz: 'pop-quiz', recap: 'practice' } as const;
+const CHANNELS = {
+  practice: 'practice',
+  popQuiz: 'pop-quiz',
+  recap: 'practice',
+  advent: 'practice',
+} as const;
 
 async function ensureChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;

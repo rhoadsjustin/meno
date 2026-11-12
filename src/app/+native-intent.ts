@@ -4,6 +4,7 @@
  * host, not a path — widgets, shields, and notifications all produce these.
  */
 const KNOWN_ROOTS = new Set([
+  'advent',
   'challenge',
   'practice',
   'review',
