@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Join a Meno challenge</title>
+<meta name="description" content="A friend invited you to memorize a passage of Scripture together in Meno.">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<meta name="apple-itunes-app" content="app-id=6806028621">
+<link rel="icon" href="/img/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/img/icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Meno">
+<meta property="og:title" content="Memorize Scripture with me in Meno">
+<meta property="og:description" content="A friend invited you to memorize a passage together.">
+<meta property="og:image" content="https://meno-scripture.org/img/og.jpg">
+<!--
+  Fallback for challenge links (docs/10 §10.1). With Meno 1.7+ installed,
+  iOS opens these links in the app and this page never shows. Without the
+  app (or on an older version) it names the passage and offers the App Store
+  or the meno:// link. References only, never verse text (02 §5). No
+  analytics, no cookies, no third-party requests.
+-->
+<style>
+  :root {
+    --surface: #FBFAF7; --raised: #FFFFFF; --ink: #1A1D26; --faint: #6E7280;
+    --lapis: #2244AA; --sep: rgba(26, 29, 38, 0.12); --gold: #A8802E;
+    --serif: "New York", ui-serif, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #10131A; --raised: #181C26; --ink: #E9E7E1; --faint: #8B8F9C;
+      --lapis: #5B7FE8; --sep: rgba(233, 231, 225, 0.14); --gold: #D4AF37;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: var(--surface); color: var(--ink); font-family: var(--sans);
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  main {
+    width: 100%; max-width: 420px; text-align: center; background: var(--raised);
+    border: 1px solid var(--sep); border-radius: 20px; padding: 40px 24px 32px;
+  }
+  .icon { width: 72px; height: 72px; border-radius: 16px; }
+  .kicker { margin: 20px 0 8px; color: var(--gold); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: 30px; line-height: 1.15; margin: 0; }
+  .title { font-family: var(--serif); font-style: italic; color: var(--faint); margin: 8px 0 0; }
+  .meta { color: var(--faint); font-size: 15px; margin: 12px 0 28px; }
+  .store { display: inline-block; }
+  .store img { height: 48px; display: block; }
+  .open { display: block; margin-top: 18px; color: var(--lapis); font-size: 15px; text-decoration: none; }
+  .open:hover { text-decoration: underline; }
+  .home { display: block; margin-top: 28px; color: var(--faint); font-size: 13px; text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <img class="icon" src="/img/icon-180.png" alt="">
+  <p class="kicker">Challenge invitation</p>
+  <h1 id="passage">Memorize Scripture with me</h1>
+  <p class="title" id="title" hidden></p>
+  <p class="meta" id="meta">A friend invited you to memorize a passage together in Meno.</p>
+  <a class="store" href="https://apps.apple.com/us/app/meno-scripture-memory/id6806028621" aria-label="Download Meno on the App Store">
+    <img src="/img/app-store-badge.svg" alt="">
+  </a>
+  <a class="open" id="open" href="meno://challenge">Already have Meno? Open the challenge</a>
+  <a class="home" href="/">meno-scripture.org</a>
+</main>
+<script>
+  // Book names by OSIS id (src/services/bible/canon.ts).
+  var BOOKS = {"Gen":"Genesis","Exod":"Exodus","Lev":"Leviticus","Num":"Numbers","Deut":"Deuteronomy","Josh":"Joshua","Judg":"Judges","Ruth":"Ruth","1Sam":"1 Samuel","2Sam":"2 Samuel","1Kgs":"1 Kings","2Kgs":"2 Kings","1Chr":"1 Chronicles","2Chr":"2 Chronicles","Ezra":"Ezra","Neh":"Nehemiah","Esth":"Esther","Job":"Job","Ps":"Psalm","Prov":"Proverbs","Eccl":"Ecclesiastes","Song":"Song of Solomon","Isa":"Isaiah","Jer":"Jeremiah","Lam":"Lamentations","Ezek":"Ezekiel","Dan":"Daniel","Hos":"Hosea","Joel":"Joel","Amos":"Amos","Obad":"Obadiah","Jonah":"Jonah","Mic":"Micah","Nah":"Nahum","Hab":"Habakkuk","Zeph":"Zephaniah","Hag":"Haggai","Zech":"Zechariah","Mal":"Malachi","Matt":"Matthew","Mark":"Mark","Luke":"Luke","John":"John","Acts":"Acts","Rom":"Romans","1Cor":"1 Corinthians","2Cor":"2 Corinthians","Gal":"Galatians","Eph":"Ephesians","Phil":"Philippians","Col":"Colossians","1Thess":"1 Thessalonians","2Thess":"2 Thessalonians","1Tim":"1 Timothy","2Tim":"2 Timothy","Titus":"Titus","Phlm":"Philemon","Heb":"Hebrews","Jas":"James","1Pet":"1 Peter","2Pet":"2 Peter","1John":"1 John","2John":"2 John","3John":"3 John","Jude":"Jude","Rev":"Revelation"};
+
+  function parseRef(osis) {
+    var m = /^([1-3]?[A-Za-z]+)\.(\d{1,3})\.(\d{1,3})$/.exec(osis || '');
+    if (!m || !BOOKS[m[1]]) return null;
+    return { book: m[1], chapter: +m[2], verse: +m[3] };
+  }
+
+  function formatRange(s, e) {
+    var name = BOOKS[s.book];
+    if (!e || (e.chapter === s.chapter && e.verse === s.verse)) return name + ' ' + s.chapter + ':' + s.verse;
+    if (e.chapter === s.chapter) return name + ' ' + s.chapter + ':' + s.verse + '–' + e.verse;
+    return name + ' ' + s.chapter + ':' + s.verse + '–' + e.chapter + ':' + e.verse;
+  }
+
+  var q = new URLSearchParams(location.search);
+  var start = parseRef(q.get('s'));
+  var end = parseRef(q.get('e'));
+  if (start && (!end || end.book === start.book)) {
+    document.getElementById('passage').textContent = formatRange(start, end);
+    document.getElementById('meta').textContent = 'A friend invited you to memorize this passage together in Meno.';
+    var due = q.get('d');
+    if (due && /^\d{4}-\d{2}-\d{2}$/.test(due)) {
+      var when = new Date(due + 'T12:00:00');
+      if (!isNaN(when)) {
+        document.getElementById('meta').textContent =
+          'A friend invited you to memorize this passage together in Meno by ' +
+          when.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + '.';
+      }
+    }
+  }
+  var title = (q.get('n') || '').trim().slice(0, 80);
+  if (title) {
+    var el = document.getElementById('title');
+    el.textContent = '“' + title + '”';
+    el.hidden = false;
+  }
+  if (location.search) document.getElementById('open').href = 'meno://challenge' + location.search;
+</script>
+</body>
+</html>
