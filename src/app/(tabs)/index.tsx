@@ -68,9 +68,10 @@ function dissolve(text: string, tier: number): { display: string; mono: boolean 
 export default function TodayScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation(['today', 'app', 'common']);
-  // Wide windows (iPhone Duo opened, Split View): hero on the left, the
-  // ladder and secondary cards on the right instead of one long stack.
-  const { isWide } = useContentLayout();
+  // Windows wider than tall (iPhone Duo opened, Split View): hero on the
+  // left, the ladder and secondary cards on the right instead of one long
+  // stack. Opened and rotated (669×951) keeps the one column.
+  const { twoPane } = useContentLayout();
   // At accessibility text sizes the starter cards stack (StarterDeck), so
   // there is nothing to swipe and the stack is long: the way into the picker
   // goes above it instead of several screens below.
@@ -626,7 +627,7 @@ export default function TodayScreen() {
           message={t('loadFailed.body')}
           action={{ label: t('common:retry'), busy: retrying, onPress: () => void retryLoad() }}
         />
-      ) : isWide ? (
+      ) : twoPane ? (
         <FoldAwareRow>
           <>
             {recapCard}

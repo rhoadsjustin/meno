@@ -33,8 +33,10 @@ export default function ReaderRoute() {
   const previousIcon = useBarIcon('chevron.left', 'chevron_left');
   const nextIcon = useBarIcon('chevron.right', 'chevron_right');
   const chaptersIcon = useBarIcon('list.number', 'format_list_numbered');
-  // Wide windows (iPhone Duo opened): a chapter sidebar beside the text.
-  const { sides, isWide, foldAxis } = useContentLayout();
+  // Windows wider than tall (iPhone Duo opened): a chapter sidebar beside
+  // the text. Taller than wide (opened and rotated) the text keeps the full
+  // width; the bar's chapter menu is there in every layout.
+  const { sides, isWide, twoPane, foldAxis } = useContentLayout();
   // Book pose: the Duo half-open with the crease running top to bottom.
   // The chapter is paged, one page each side of the crease, and turns like
   // a book instead of scrolling; the sidebar steps aside.
@@ -114,7 +116,7 @@ export default function ReaderRoute() {
       <ScreenHeader title={title} transparent={book}>
         <Stack.Toolbar placement="right">
           {/* Every chapter of the book, in every layout: the sidebar below
-              only exists on wide windows outside the book pose. */}
+              only exists on windows wider than tall, outside the book pose. */}
           {chapters.length > 1 && (
             <Stack.Toolbar.Menu
               icon={chaptersIcon}
@@ -165,8 +167,8 @@ export default function ReaderRoute() {
           />
         )
       ) : (
-        <View style={isWide ? styles.split : styles.flex}>
-          {isWide && (
+        <View style={twoPane ? styles.split : styles.flex}>
+          {twoPane && (
             <ScrollView
               style={[styles.sidebar, { borderColor: colors.separator }]}
               contentContainerStyle={styles.sidebarContent}>

@@ -21,8 +21,9 @@ import { useThemeColors, fonts, spacing, type ThemeColors } from '@/theme';
 export default function StatsScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation(['stats', 'common', 'app']);
-  // Wide windows: numerals and the practice grid beside the badge case.
-  const { isWide } = useContentLayout();
+  // Windows wider than tall: numerals and the practice grid beside the
+  // badge case. Otherwise one column, with the badges in their place in it.
+  const { twoPane } = useContentLayout();
   const [stats, setStats] = useState<Stats | null>(null);
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [earned, setEarned] = useState<Map<string, Date>>(new Map());
@@ -163,25 +164,18 @@ export default function StatsScreen() {
 
   return (
     <Screen title={t('app:tabs.stats')} wide>
-      {isWide ? (
-        <FoldAwareRow>
-          <>
-            {numerals}
-            <RecapStatsRow offer={recapOffer} />
-            {practice}
-            <RecapPastYears years={pastYears} />
-          </>
-          {badges}
-        </FoldAwareRow>
-      ) : (
+      {/* Always the row: with no second pane the first keeps its place in
+          the tree, so folding and unfolding does not remount the screen. */}
+      <FoldAwareRow>
         <>
           {numerals}
           <RecapStatsRow offer={recapOffer} />
           {practice}
-          {badges}
+          {!twoPane && badges}
           <RecapPastYears years={pastYears} />
         </>
-      )}
+        {twoPane ? badges : null}
+      </FoldAwareRow>
     </Screen>
   );
 }
