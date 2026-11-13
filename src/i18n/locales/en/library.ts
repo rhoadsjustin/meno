@@ -17,10 +17,10 @@ export default {
     heatmap:
       'Chunk progress for {{title}}: {{memorized}} memorized, {{learning}} in progress, {{locked}} not started',
     share: 'Share challenge',
-    shareSpoken: 'Share {{title}} as a challenge',
     onWidgets: 'On your widgets',
     showOnWidgets: 'Show on widgets',
-    showOnWidgetsSpoken: 'Show {{title}} on your widgets',
+    // The card's More menu: share, show on widgets, delete or stop.
+    moreSpoken: 'More actions for {{title}}',
   },
 
   emptyInProgressTitle: 'No passages yet',

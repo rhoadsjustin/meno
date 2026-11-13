@@ -17,10 +17,9 @@ export default {
     heatmap:
       'Progreso de los fragmentos de {{title}}: {{memorized}} memorizados, {{learning}} en curso, {{locked}} sin empezar',
     share: 'Compartir reto',
-    shareSpoken: 'Compartir {{title}} como reto',
     onWidgets: 'En tus widgets',
     showOnWidgets: 'Mostrar en widgets',
-    showOnWidgetsSpoken: 'Mostrar {{title}} en tus widgets',
+    moreSpoken: 'Más acciones para {{title}}',
   },
 
   emptyInProgressTitle: 'Aún no hay pasajes',
