@@ -24,7 +24,7 @@ import { removeGoal, stopPassage } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getTranslation } from '@/services/bible';
-import { shareGoalChallenge } from '@/services/challenges';
+import { shareGoalChallengeOrAlert } from '@/services/challenges';
 import {
   activeGoal,
   chunksForGoal,
@@ -238,7 +238,7 @@ export default function LibraryScreen() {
                 <GoalMenu
                   label={t('goal.moreSpoken', { title: goal.title })}
                   tint={colors.inkFaint}
-                  onShare={() => void shareGoalChallenge(goal).catch(() => {})}
+                  onShare={() => void shareGoalChallengeOrAlert(goal)}
                   onShowOnWidgets={
                     activeCount > 1 && goal.id !== focusId
                       ? () => void showOnWidgets(goal)

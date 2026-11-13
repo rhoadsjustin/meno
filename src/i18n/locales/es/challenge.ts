@@ -9,6 +9,10 @@ export default {
   joinedBodyMemorized: 'Ya memorizaste “{{title}}”.',
   joinedBodyInactive: '“{{title}}” está en este dispositivo, pero ya no está en curso.',
   translationDue: '{{abbrev}} · terminar antes del {{date}}',
+  translationAiming: '{{abbrev}} · con la mira en el {{date}}',
+  summary: '{{verses}} · {{days}}',
+  aboutDays_one: 'alrededor de {{count}} día',
+  aboutDays_other: 'alrededor de {{count}} días',
   swapped:
     'Se compartió en {{shared}}, que no está configurada en este dispositivo; memorizarás en {{local}}.',
   joinNote:
@@ -18,6 +22,8 @@ export default {
   joinFailed: 'No se pudo unir a este desafío. Inténtalo de nuevo.',
   failedHeading: 'No se pudo cargar este pasaje',
   failedBody: 'El enlace está bien. Inténtalo de nuevo en un momento.',
+  update: 'Actualizar Meno',
+  choosePassage: 'Elige un pasaje',
   errors: {
     malformed: 'Está incompleto o ya no sirve. Pide uno nuevo.',
     newerVersion:
@@ -30,7 +36,11 @@ export default {
     message: 'Memoriza {{passage}} ({{abbrev}}) conmigo en Meno. Únete a mi desafío: {{url}}',
     messageDue:
       'Memoriza {{passage}} ({{abbrev}}) conmigo antes del {{date}} en Meno. Únete a mi desafío: {{url}}',
+    text: 'Memoriza {{passage}} ({{abbrev}}) conmigo en Meno.',
+    textDue: 'Memoriza {{passage}} ({{abbrev}}) conmigo antes del {{date}} en Meno.',
     named: '“{{title}}”: {{message}}',
     subject: 'Desafío de Meno: {{title}}',
+    failedTitle: 'No se pudo compartir este desafío',
+    failed: 'Inténtalo de nuevo en un momento.',
   },
 } satisfies Catalog<typeof en>;

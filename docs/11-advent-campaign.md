@@ -92,7 +92,9 @@ and a future board (M8) can attach to it.
   there is no goal and below the practice card when there is. One line, the
   reference, and two actions: start Luke 2:1–14, or the shorter 2:8–14.
   Dismissible ("Not this year"); the choice is kept in settings as
-  `adventDismissed:2026`.
+  `adventDismissed:2026`. Closing it leaves "Advent plan hidden · Undo" in
+  its place until Today loses focus; after that the plan's link is the way
+  back.
 - Starting opens the **challenge join screen** with the plan's code and the
   Dec 25 target, so the card, the web page and a friend's link all make the
   same goal through one path (preview, already-joined check, translation
@@ -101,7 +103,9 @@ and a future board (M8) can attach to it.
   quiet progress line ("Advent, week 2 of 4 · This week: Luke 2:5–7") that
   opens the passage.
 - `meno:///advent` lands on Today; `meno:///advent?preview=1` shows the card
-  out of season for testers (`?preview=0` turns it off).
+  out of season for testers (`?preview=0` turns it off). Opening the link
+  also clears an earlier "Not this year", so it never lands on a Today
+  without the card.
 - Notifications through `services/notifications/plan.ts` as a new kind
   `advent`: one invitation on Nov 29 for people who have neither started nor
   dismissed, and one line each Advent Sunday for people who started. Inside
