@@ -3,7 +3,7 @@
  * `meno://challenge?...` link: shows the passage being challenged, then
  * creates the same goal locally with the shared `challengeId` attached.
  */
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -15,9 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
 import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
+import { ScreenHeader } from '@/components/screen-header';
 import { t as translate } from '@/i18n';
 import { Button } from '@/components/button';
 import { Unavailable } from '@/components/unavailable';
@@ -65,6 +67,7 @@ export default function ChallengeRoute() {
 function ChallengeScreen() {
   const colors = useThemeColors();
   const { t: tr } = useTranslation(['challenge', 'goals', 'common']);
+  const closeIcon = useBarIcon('xmark', 'close');
   // Key the parse on the raw values: a second challenge link opened while
   // this modal is already up must replace its content, not show the first.
   const { v, c, t, s, e, n, d } = useLocalSearchParams<Record<string, string>>();
@@ -156,15 +159,38 @@ function ChallengeScreen() {
     }
   };
 
-  // A link that cold-starts the app makes this the stack's root, which iOS
-  // shows full-screen rather than as a sheet. The insets are this modal's own
-  // (ModalSafeArea), so it pads under the status bar there and adds nothing
-  // in a sheet — and on iPhone Duo's cover panel, where the sheet is
-  // full-width, the sides keep Join clear of the status strip.
+  // "Not now" while there is an invitation to decline, "Close" otherwise.
+  const dismissLabel = view.kind === 'ready' ? tr('common:notNow') : tr('common:close');
+  const primary =
+    view.kind === 'ready' ? (
+      <Button label={tr('join')} busy={busy} onPress={() => void accept()} />
+    ) : // Only a passage still in progress has anything to practice.
+    view.kind === 'joined' && view.goal.status === 'active' ? (
+      <Button
+        label={tr('practice')}
+        onPress={() => router.replace(`/practice/${view.goal.id}`)}
+      />
+    ) : null;
+
+  // The dismiss control is in the native bar, which clears the status bar
+  // whether this is a sheet or (after a cold-start link) full screen, and on
+  // iPhone Duo moves to the side with the status strip. The remaining insets
+  // are this modal's own (ModalSafeArea): on the Duo's cover panel, where the
+  // sheet is full-width, the sides keep Join clear of the status strip.
   return (
     <SafeAreaView
-      edges={['top', 'bottom', 'left', 'right']}
+      edges={['bottom', 'left', 'right']}
       style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
+      <ScreenHeader backHidden title="" backgroundColor={colors.surfaceRaised}>
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button
+            icon={closeIcon}
+            accessibilityLabel={dismissLabel}
+            onPress={closeModal}>
+            {dismissLabel}
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
       <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {tr('invitation')}
@@ -249,30 +275,11 @@ function ChallengeScreen() {
         )}
       </ScrollView>
 
-      <View style={[styles.footer, { borderTopColor: colors.separator }]}>
-        <Button
-          variant="plain"
-          label={view.kind === 'ready' ? tr('common:notNow') : tr('common:close')}
-          onPress={closeModal}
-          style={styles.footerSecondary}
-        />
-        {view.kind === 'ready' && (
-          <Button
-            label={tr('join')}
-            busy={busy}
-            onPress={() => void accept()}
-            style={styles.footerPrimary}
-          />
-        )}
-        {/* Only a passage still in progress has anything to practice. */}
-        {view.kind === 'joined' && view.goal.status === 'active' && (
-          <Button
-            label={tr('practice')}
-            onPress={() => router.replace(`/practice/${view.goal.id}`)}
-            style={styles.footerPrimary}
-          />
-        )}
-      </View>
+      {primary && (
+        <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+          <View style={contentColumn}>{primary}</View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -310,7 +317,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { padding: spacing.xl, paddingBottom: spacing.xxxl, gap: spacing.sm },
-  kicker: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
+  kicker: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
   spinner: { marginTop: spacing.xxl },
   heading: { fontSize: 22, fontWeight: '700' },
   passage: { fontSize: 28, marginTop: spacing.xs },
@@ -325,16 +332,12 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: spacing.xl, marginVertical: spacing.md },
   statValue: { fontSize: 28 },
   statLabel: { fontSize: 13 },
+  // The one confirming action; dismissing is the bar's job.
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     // The bottom safe-area edge already clears the home indicator.
     paddingBottom: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerSecondary: { paddingHorizontal: spacing.sm },
-  footerPrimary: { paddingHorizontal: spacing.xxl, minWidth: 160 },
 });

@@ -3,10 +3,11 @@
  * chunk as one long passage, Speak or Type, graded as one text (≥90%).
  */
 import * as Haptics from 'expo-haptics';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
@@ -156,7 +157,7 @@ export default function StitchRoute() {
           <Stack.Toolbar.Button
             icon={closeIcon}
             accessibilityLabel={t('common:close')}
-            onPress={() => router.back()}>
+            onPress={closeModal}>
             {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
@@ -172,14 +173,14 @@ export default function StitchRoute() {
                 kind="empty"
                 title={t('nothingYet')}
                 message={t('nothingYetBody')}
-                action={{ label: t('common:done'), onPress: () => router.back() }}
+                action={{ label: t('common:done'), onPress: closeModal }}
               />
             ) : phase.reason === 'gone' ? (
               <Unavailable
                 kind="failed"
                 title={t('common:passageUnavailable')}
                 message={t('common:passageGone')}
-                action={{ label: t('common:done'), onPress: () => router.back() }}
+                action={{ label: t('common:done'), onPress: closeModal }}
               />
             ) : (
               <Unavailable
@@ -187,7 +188,7 @@ export default function StitchRoute() {
                 title={t('common:passageUnavailable')}
                 message={phase.message ?? t('common:tryAgainSoon')}
                 action={{ label: t('common:retry'), onPress: retryLoad }}
-                secondaryAction={{ label: t('common:done'), onPress: () => router.back() }}
+                secondaryAction={{ label: t('common:done'), onPress: closeModal }}
               />
             ))}
 
@@ -235,14 +236,14 @@ export default function StitchRoute() {
               <WordFeedback result={phase.result} />
               <Button
                 label={phase.passed ? t('common:done') : t('common:retry')}
-                onPress={() => (phase.passed ? router.back() : setPhase({ kind: 'quiz' }))}
+                onPress={() => (phase.passed ? closeModal() : setPhase({ kind: 'quiz' }))}
                 style={styles.primary}
               />
               {!phase.passed && (
                 <Button
                   variant="plain"
                   label={t('later')}
-                  onPress={() => router.back()}
+                  onPress={closeModal}
                   style={styles.later}
                 />
               )}

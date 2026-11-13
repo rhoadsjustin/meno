@@ -20,6 +20,7 @@ export function ScreenHeader({
   titleView,
   backHidden = false,
   transparent = false,
+  backgroundColor,
   children,
 }: {
   title?: string;
@@ -29,6 +30,8 @@ export function ScreenHeader({
   backHidden?: boolean;
   /** No bar background, for screens that draw under the bar themselves. */
   transparent?: boolean;
+  /** The bar's fill when the screen is not on `surface` (a raised sheet). */
+  backgroundColor?: string;
   children?: ReactNode;
 }) {
   const colors = useThemeColors();
@@ -37,7 +40,7 @@ export function ScreenHeader({
     <>
       <Stack.Header
         style={{
-          backgroundColor: transparent ? 'transparent' : colors.surface,
+          backgroundColor: transparent ? 'transparent' : (backgroundColor ?? colors.surface),
           shadowColor: 'transparent',
           color: colors.lapis,
         }}
