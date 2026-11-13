@@ -71,7 +71,7 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
 - Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. An almost (03 §3) marks the same slips in `amber` on `amberWash`, still struck through. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
 
 ### Library
-- Segmented: **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
+- Segmented (the system control, `@expo/ui/community/segmented-control`; on windows wider than tall both shelves show side by side instead): **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
 - Goal detail: chunk map, stats, stitch history, per-chunk drill-down.
 
 ### Reader

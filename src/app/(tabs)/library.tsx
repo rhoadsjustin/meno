@@ -1,3 +1,4 @@
+import { SegmentedControl } from '@expo/ui/community/segmented-control';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { Fragment, useCallback, useRef, useState } from 'react';
@@ -419,32 +420,18 @@ export default function LibraryScreen() {
       ) : (
         <>
           {!twoPane && (
-            <View style={[styles.segmented, { backgroundColor: colors.lapisWash }]}>
-              {(
-                [
-                  ['inProgress', t('inProgress')],
-                  ['memorized', t('memorized')],
-                ] as const
-              ).map(([value, label]) => {
-                const selected = segment === value;
-                return (
-                  <Pressable
-                    key={value}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected }}
-                    onPress={() => setSegment(value)}
-                    style={[styles.segment, selected && { backgroundColor: colors.surfaceRaised }]}>
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        { color: selected ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
-                      ]}>
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            // The system's segmented control (SwiftUI's segmented Picker on
+            // iOS, Material segmented buttons on Android): its own selected
+            // state, VoiceOver traits and Dynamic Type. No label of its own:
+            // each segment is read by its title, which Maestro flow 04 also
+            // looks for.
+            <SegmentedControl
+              values={[t('inProgress'), t('memorized')]}
+              selectedIndex={segment === 'inProgress' ? 0 : 1}
+              onChange={(e) =>
+                setSegment(e.nativeEvent.selectedSegmentIndex === 0 ? 'inProgress' : 'memorized')
+              }
+            />
           )}
           {/* Always the row, and each shelf under its own key: crossing the
               two-pane breakpoint (folding or unfolding iPhone Duo) changes
@@ -496,18 +483,6 @@ const styles = StyleSheet.create({
   // Matches the Screen scaffold's vertical rhythm between cards.
   stack: { gap: spacing.lg },
   shelfTitle: { marginBottom: -spacing.xs },
-  segmented: {
-    flexDirection: 'row',
-    borderRadius: radius.capsule,
-    padding: 3,
-  },
-  segment: {
-    flex: 1,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  segmentText: { fontSize: 15, fontWeight: '600' },
   goalTitle: { fontSize: 17, fontWeight: '600' },
   // The title wraps beside the trash button, which stays top-right.
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
