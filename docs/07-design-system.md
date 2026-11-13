@@ -82,6 +82,9 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
 
 ### Stats
 - Streak, 30-day accuracy, verses memorized as three large New York numerals; below, weekly practice grid and badge medallions (engraved-style, gold when earned, `inkFaint` outline when locked and visible-by-design).
+- Practice grid: Monday-start week rows under weekday initials, the first and last rows padded so every day sits under its weekday (`src/services/stats/practice-grid.ts`). Missed days keep a `separator` outline, today carries an ink ring, and the count ("Practiced on 31 of the last 35 days") is the card's visible caption and its one VoiceOver label.
+- Lifetime: label-value rows (Reviews; the Recite to Unlock recitation and override counts once the lock has been used), stated without judgement (06 §2).
+- Badges are rows: medallion, the whole name, then how to earn it (locked) or the date it was earned. Each medallion has its own glyph, keyed by badge code in the `stats` catalog (30 / 100 / 365, I / II / III, an initial for the rest).
 
 ### Goal wizard (sheet)
 - Two steps, one screen each: **Passage → Plan**. Cancel/Back and Continue/Start memorizing stay in the sheet's bottom bar.

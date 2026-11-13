@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Card } from '@/components/card';
@@ -12,15 +12,33 @@ import {
   usePastRecapYears,
   useRecapOffer,
 } from '@/features/wrapped/RecapEntry';
+import { locale } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { BADGE_CODES, badgeHint, badgeName, earnedBadges } from '@/services/db/repos/badges';
 import { loadStats, type Stats } from '@/services/db/repos/stats';
 import { loadStreak } from '@/services/db/repos/streaks';
-import { useThemeColors, fonts, radius, spacing, type ThemeColors, displayType } from '@/theme';
+import { practiceWeeks } from '@/services/stats/practice-grid';
+import {
+  useThemeColors,
+  fonts,
+  radius,
+  spacing,
+  textStyle,
+  type ThemeColors,
+  displayType,
+} from '@/theme';
 
-/** From this text scale the three numerals and the badges stack as rows:
- * a third of a phone's width cannot hold a 40pt "100%" (Library's switch). */
+/** From this text scale the three numerals stack as rows: a third of a
+ * phone's width cannot hold a 40pt "100%" (Library's switch). */
+
 const STACK_TEXT_SCALE = 1.4;
+
+/** Practice grid columns, Monday first (services/stats/practice-grid). */
+const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+
+function earnedDate(date: Date): string {
+  return date.toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export default function StatsScreen() {
   const colors = useThemeColors();
@@ -83,6 +101,15 @@ export default function StatsScreen() {
     </View>
   );
 
+  // Week rows under weekday initials, with the count as a visible caption.
+  // One element for VoiceOver: the caption is the whole of what it says.
+  const weeks = useMemo(() => practiceWeeks(stats?.practiceDays ?? []), [stats]);
+  const practicedOn = stats
+    ? t('practicedOn', {
+        practiced: stats.practiceDays.filter((d) => d.practiced).length,
+        total: stats.practiceDays.length,
+      })
+    : t('practiceDays');
   const practice = (
     <Card>
       <Text
@@ -90,38 +117,96 @@ export default function StatsScreen() {
         style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {t('practice')}
       </Text>
-      <View
-        style={styles.grid}
-        accessible
-        accessibilityLabel={
-          stats
-            ? t('practicedOn', {
-                practiced: stats.practiceDays.filter((d) => d.practiced).length,
-                total: stats.practiceDays.length,
-              })
-            : t('practiceDays')
-        }>
-        {stats?.practiceDays.map((d) => (
-          <View
-            key={d.date}
-            style={[
-              styles.cell,
-              { backgroundColor: d.practiced ? colors.lapis : colors.lapisWash },
-            ]}
-          />
-        ))}
+      <View accessible accessibilityLabel={practicedOn}>
+        <View style={styles.grid}>
+          <View style={styles.week}>
+            {WEEKDAYS.map((day) => (
+              <Text
+                key={day}
+                // Column heads stay one letter wide at any text size.
+                maxFontSizeMultiplier={1.6}
+                style={[styles.weekday, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {t(`weekdays.${day}`)}
+              </Text>
+            ))}
+          </View>
+          {weeks.map((week, row) => (
+            <View key={week.find((c) => c)?.date ?? row} style={styles.week}>
+              {week.map((cell, column) =>
+                cell ? (
+                  <View
+                    key={cell.date}
+                    style={[
+                      styles.cell,
+                      // A missed day keeps an outline: its wash alone is
+                      // about 1.1:1 against the card.
+                      cell.practiced
+                        ? { backgroundColor: colors.lapis, borderColor: colors.lapis }
+                        : { backgroundColor: colors.lapisWash, borderColor: colors.separator },
+                      // Today: a heavier ink ring, practiced or not.
+                      cell.today && { borderColor: colors.ink, borderWidth: 2 },
+                    ]}
+                  />
+                ) : (
+                  // Before the first day or after today: the column keeps its place.
+                  <View key={column} style={styles.cellGap} />
+                ),
+              )}
+            </View>
+          ))}
+        </View>
+        {stats && (
+          <Text style={[styles.caption, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            {practicedOn}
+          </Text>
+        )}
       </View>
-      {stats && (stats.recitations > 0 || stats.overrides > 0) && (
-        <Text style={[styles.neutral, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          {t('lockSummary', {
-            recitations: t('recitationCount', { count: stats.recitations }),
-            overrides: t('overrideCount', { count: stats.overrides }),
-          })}
-        </Text>
-      )}
     </Card>
   );
 
+  // Lifetime totals (06 §2), stated plainly. The lock rows appear once
+  // Recite to Unlock has been used.
+  const lockUsed = !!stats && (stats.recitations > 0 || stats.overrides > 0);
+  const lifetimeRows = stats
+    ? [
+        { key: 'reviews', label: t('lifetime.reviews'), value: stats.totalReviews },
+        ...(lockUsed
+          ? [
+              { key: 'recitations', label: t('lifetime.recitations'), value: stats.recitations },
+              { key: 'overrides', label: t('lifetime.overrides'), value: stats.overrides },
+            ]
+          : []),
+      ]
+    : [];
+  const lifetime = stats && (
+    <Card>
+      <Text
+        accessibilityRole="header"
+        style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        {t('lifetime.title')}
+      </Text>
+      {lifetimeRows.map((row, i) => (
+        <View
+          key={row.key}
+          accessible
+          accessibilityLabel={t('lifetime.spoken', { label: row.label, value: row.value })}
+          style={[
+            styles.lifetimeRow,
+            i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+          ]}>
+          <Text style={[styles.lifetimeLabel, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            {row.label}
+          </Text>
+          <Text style={[styles.lifetimeValue, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            {row.value}
+          </Text>
+        </View>
+      ))}
+    </Card>
+  );
+
+  // The badge case as rows: medallion, the whole name, then how to earn it
+  // (locked) or when it was earned. Nothing here is interactive.
   const badges = (
     <Card>
       <Text
@@ -129,48 +214,52 @@ export default function StatsScreen() {
         style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {t('badgesTitle')}
       </Text>
-      <View style={stacked ? styles.badgeList : styles.badges}>
+      <View style={styles.badges}>
         {BADGE_CODES.map((code) => {
-          const isEarned = earned.has(code);
+          const earnedAt = earned.get(code);
+          const isEarned = earnedAt !== undefined;
           const name = badgeName(code);
+          const detail = isEarned ? t('earnedOn', { date: earnedDate(earnedAt) }) : badgeHint(code);
+          // Engraved double rule (07 §7): two concentric rings.
+          const rule = isEarned ? colors.gold : colors.inkFaint;
+          const glyphColor = isEarned ? colors.surfaceRaised : colors.inkFaint;
           return (
             <View
               key={code}
               accessible
-              accessibilityLabel={t('badgeSpoken', {
-                name,
-                status: isEarned ? t('earned') : badgeHint(code),
-              })}
-              style={stacked ? styles.badgeRow : styles.badge}>
+              accessibilityLabel={t('badgeSpoken', { name, status: detail })}
+              style={styles.badge}>
               <View
                 style={[
                   styles.medallion,
-                  {
-                    borderColor: isEarned ? colors.gold : colors.inkFaint,
-                    backgroundColor: isEarned ? colors.gold : 'transparent',
-                  },
+                  { borderColor: rule, backgroundColor: isEarned ? colors.gold : 'transparent' },
                 ]}>
+                <View
+                  pointerEvents="none"
+                  style={[styles.medallionInnerRule, { borderColor: isEarned ? glyphColor : rule }]}
+                />
                 <Text
-                  style={[
-                    styles.medallionGlyph,
-                    {
-                      color: isEarned ? colors.surfaceRaised : colors.inkFaint,
-                      fontFamily: fonts?.scripture,
-                    },
-                  ]}>
-                  {name[0]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.5}
+                  // The medallion is a fixed size; its numeral fits inside it.
+                  allowFontScaling={false}
+                  style={[styles.medallionGlyph, { color: glyphColor, fontFamily: fonts?.scripture }]}>
+                  {t(`badges.${code}.glyph`)}
                 </Text>
               </View>
-              <Text
-                // Two lines before it clips: "Word hoard III" at one text
-                // size up is wider than the column. Stacked, it wraps freely.
-                numberOfLines={stacked ? undefined : 2}
-                style={[
-                  stacked ? styles.badgeRowName : styles.badgeName,
-                  { color: isEarned ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
-                ]}>
-                {name}
-              </Text>
+              <View style={styles.badgeText}>
+                <Text
+                  style={[
+                    styles.badgeName,
+                    { color: isEarned ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
+                  ]}>
+                  {name}
+                </Text>
+                <Text style={[styles.badgeDetail, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {detail}
+                </Text>
+              </View>
             </View>
           );
         })}
@@ -187,6 +276,7 @@ export default function StatsScreen() {
           {numerals}
           <RecapStatsRow offer={recapOffer} />
           {practice}
+          {lifetime}
           {!twoPane && badges}
           <RecapPastYears years={pastYears} />
         </>
@@ -257,23 +347,53 @@ const styles = StyleSheet.create({
   numeralLabel: { fontSize: 12, marginTop: spacing.xs },
   numeralLabelStacked: { flexShrink: 1, marginTop: 0 },
   sectionTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.md },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  cell: { width: 14, height: 14, borderRadius: radius.cell },
-  neutral: { fontSize: 13, marginTop: spacing.md },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
-  badge: { width: 72, alignItems: 'center', gap: spacing.xs },
+  // Seven even columns; capped so cells stay squarish on a wide card.
+  grid: { gap: 4, maxWidth: 320 },
+  week: { flexDirection: 'row', gap: 4 },
+  weekday: { flex: 1, textAlign: 'center', ...textStyle.caption2 },
+  cell: { flex: 1, height: 20, borderRadius: radius.cell, borderWidth: 1 },
+  cellGap: { flex: 1, height: 20 },
+  caption: { ...textStyle.footnote, marginTop: spacing.md },
+  lifetimeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  lifetimeLabel: { ...textStyle.body, flexShrink: 1 },
+  lifetimeValue: { ...textStyle.body, fontVariant: ['tabular-nums'] },
+  // One badge per row on a phone; two abreast where the card is wide enough.
+  badges: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: spacing.md },
+  badge: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 240,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
   medallion: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    borderWidth: 2,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  medallionGlyph: { fontSize: 22 },
-  badgeName: { fontSize: 11, textAlign: 'center' },
-  // Large text: one badge per row, medallion then the whole name.
-  badgeList: { gap: spacing.md },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  badgeRowName: { flex: 1, fontSize: 11 },
+  medallionInnerRule: {
+    position: 'absolute',
+    top: 2.5,
+    right: 2.5,
+    bottom: 2.5,
+    left: 2.5,
+    borderRadius: 26,
+    borderWidth: 1,
+  },
+  // Wide enough for "365" and "III" inside the inner rule before shrinking.
+  medallionGlyph: { fontSize: 20, width: 36, textAlign: 'center' },
+  badgeText: { flex: 1 },
+  badgeName: { ...textStyle.subheadline, fontWeight: '600' },
+  badgeDetail: { ...textStyle.footnote },
 });
