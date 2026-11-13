@@ -186,18 +186,17 @@ export function TranslationPicker() {
         renderSectionHeader={({ section }) => <GroupHeader title={section.title} />}
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={<RefreshStatusRow refresh={refresh} />}
-        ListEmptyComponent={searching ? <NoResults query={query} /> : <View />}
+        // "No results" is only true once every language has arrived. Until
+        // then the footer's status row answers the search instead: still
+        // loading, or failed with its Try again.
+        ListEmptyComponent={searching && status === 'ready' ? <NoResults query={query} /> : <View />}
         ListFooterComponent={
-          searching ? (
-            <View />
-          ) : (
-            <View>
-              {status !== 'ready' && (
-                <CatalogStatusRow status={status} onRetry={() => void load({ force: true })} />
-              )}
-              <GroupFooter>{t('picker.footnote')}</GroupFooter>
-            </View>
-          )
+          <View>
+            {status !== 'ready' && (
+              <CatalogStatusRow status={status} onRetry={() => void load({ force: true })} />
+            )}
+            {!searching && <GroupFooter>{t('picker.footnote')}</GroupFooter>}
+          </View>
         }
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
