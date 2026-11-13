@@ -39,6 +39,18 @@ export const POP_QUIZ_PREFIX = 'popquiz';
 export const RECAP_PREFIX = 'recap';
 export const ADVENT_PREFIX = 'advent';
 
+/**
+ * The Android channel each kind is filed under, so each can be muted on its
+ * own in Settings (docs/05 §2): the seasonal notices no longer ride on the
+ * daily reminder's channel.
+ */
+export const CHANNEL_IDS = {
+  practice: 'practice',
+  popQuiz: 'pop-quiz',
+  recap: 'seasonal',
+  advent: 'seasonal',
+} as const satisfies Record<PlannedNotification['kind'], string>;
+
 /** Hours tried for an Advent notice, best first: Sunday afternoon. */
 const ADVENT_HOURS = [14, 17, 11, 20];
 
@@ -70,6 +82,12 @@ export type PlanInput = {
   dueCount: number;
   /** At least one memorized verse exists to quiz. */
   hasMemorized: boolean;
+  /**
+   * The verse the review queue opens on: the review with the earliest due
+   * time. A quiz that fires once it is due names it (the reference only,
+   * never the text, so no license applies); an earlier quiz stays unnamed.
+   */
+  nextReview?: { range: RefRange; dueAt: Date } | null;
   /**
    * A Year in the Word recap to announce: set only in December, when the
    * recap is ready and hasn't been opened. `plannedFor` is the time chosen
@@ -124,6 +142,25 @@ function reminderCopy(input: PlanInput, isNext: boolean): { title: string; body:
   return {
     title: t('notifications:plan.practiceTitle'),
     body: t('notifications:plan.practiceBody'),
+  };
+}
+
+/**
+ * "Pop quiz — Psalm 23:1" (docs/05 §2) when the tap will land on that verse:
+ * `/review` opens on the review due longest, so only a quiz that fires after
+ * that review falls due can name it.
+ */
+function popQuizCopy(input: PlanInput, at: Date): { title: string; body: string } {
+  const next = input.nextReview;
+  if (next && next.dueAt.getTime() <= at.getTime()) {
+    return {
+      title: t('notifications:plan.popQuizTitleNamed', { passage: formatRange(next.range) }),
+      body: t('notifications:plan.popQuizBodyNamed'),
+    };
+  }
+  return {
+    title: t('notifications:plan.popQuizTitle'),
+    body: t('notifications:plan.popQuizBody'),
   };
 }
 
@@ -243,8 +280,7 @@ export function planNotifications(input: PlanInput): PlannedNotification[] {
         id: `${POP_QUIZ_PREFIX}-${day}-${slot}`,
         kind: 'popQuiz',
         at,
-        title: t('notifications:plan.popQuizTitle'),
-        body: t('notifications:plan.popQuizBody'),
+        ...popQuizCopy(input, at),
         url: '/review',
       });
       today++;

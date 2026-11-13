@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mulberry32 } from '@/services/practice/prng';
 import {
+  CHANNEL_IDS,
   DAYS_AHEAD,
   DEFAULT_REMINDER_TIME,
   MAX_PER_DAY,
@@ -85,6 +86,36 @@ describe('planNotifications', () => {
     const plan = planNotifications(input({ hasMemorized: true }));
     expect(plan.some((p) => p.kind === 'popQuiz')).toBe(true);
     for (const count of byDay(plan).values()) expect(count).toBeLessThanOrEqual(MAX_PER_DAY);
+  });
+
+  it('names the verse the review opens on, once that review is due', () => {
+    const psalm = { bookId: 'Ps', chapter: 23, verse: 1 };
+    const nextReview = { range: { start: psalm, end: psalm }, dueAt: new Date(2026, 9, 15, 12, 0) };
+    const quizzes = planNotifications(input({ hasMemorized: true, nextReview })).filter(
+      (p) => p.kind === 'popQuiz',
+    );
+    const early = quizzes.filter((p) => p.at.getTime() < nextReview.dueAt.getTime());
+    const late = quizzes.filter((p) => p.at.getTime() >= nextReview.dueAt.getTime());
+    expect(early.length).toBeGreaterThan(0);
+    expect(late.length).toBeGreaterThan(0);
+    // Before it is due the queue would not open on it, so the quiz stays unnamed.
+    for (const p of early) expect(p.title).toBe('Pop quiz');
+    for (const p of late) {
+      expect(p.title).toBe('Pop quiz — Psalms 23:1');
+      expect(p.body).toBe('Still have it from memory? 30 seconds.');
+      expect(p.url).toBe('/review');
+    }
+  });
+
+  it('leaves a quiz unnamed when no review is known', () => {
+    const plan = planNotifications(input({ hasMemorized: true, nextReview: null }));
+    for (const p of plan.filter((x) => x.kind === 'popQuiz')) expect(p.title).toBe('Pop quiz');
+  });
+
+  it('files seasonal notices under their own Android channel', () => {
+    expect(CHANNEL_IDS.recap).toBe(CHANNEL_IDS.advent);
+    expect(CHANNEL_IDS.recap).not.toBe(CHANNEL_IDS.practice);
+    expect(CHANNEL_IDS.recap).not.toBe(CHANNEL_IDS.popQuiz);
   });
 
   it('keeps quizzes inside the window and three hours from anything else', () => {

@@ -11,6 +11,13 @@ export default {
     streakBody: 'A minute of practice keeps it going.',
     popQuizTitle: 'Pop quiz',
     popQuizBody: 'Still have a verse you’ve memorized? 30 seconds.',
+    /** Names the verse the review opens on: the reference, never its text. */
+    popQuizTitleNamed: 'Pop quiz — {{passage}}',
+    popQuizBodyNamed: 'Still have it from memory? 30 seconds.',
+  },
+  /** Android notification channel names (Settings → Notifications). */
+  channel: {
+    seasonal: 'Seasonal notices',
   },
   status: {
     titlePractice: 'Daily reminder',

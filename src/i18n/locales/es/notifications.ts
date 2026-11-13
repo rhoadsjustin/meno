@@ -12,6 +12,11 @@ export default {
     streakBody: 'Un minuto de práctica la mantiene.',
     popQuizTitle: 'Prueba sorpresa',
     popQuizBody: '¿Todavía recuerdas un versículo que memorizaste? 30 segundos.',
+    popQuizTitleNamed: 'Prueba sorpresa: {{passage}}',
+    popQuizBodyNamed: '¿Todavía lo sabes de memoria? 30 segundos.',
+  },
+  channel: {
+    seasonal: 'Avisos de temporada',
   },
   status: {
     titlePractice: 'Recordatorio diario',
