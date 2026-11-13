@@ -4,6 +4,7 @@ import type en from '@/i18n/locales/en/stitch';
 export default {
   title: 'Unir',
   nothingYet: 'Todavía no hay nada que unir',
+  nothingYetBody: 'Podrás unir cuando tengas en marcha dos fragmentos de este pasaje.',
   intro: 'Únelo todo — recita como un solo pasaje todo lo que has aprendido hasta ahora.',
   goalCompleted: 'Todo el pasaje está guardado en tu corazón.',
   passed: 'Unido — se sostiene completo.',

@@ -1,8 +1,9 @@
 import * as Haptics from 'expo-haptics';
-import { router, useFocusEffect, type Href } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -14,11 +15,19 @@ import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
-import { t } from '@/i18n';
 import { Button } from '@/components/button';
 import { TextLink } from '@/components/text-link';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import { AdventInviteCard, AdventProgressCard, useAdventOffer } from '@/features/advent/AdventCard';
+import {
+  chunkRangeLabel,
+  goalAction,
+  practiceHref,
+  progressFor,
+  stepCopy,
+  type GoalProgress,
+} from '@/services/goals/progress';
 import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
@@ -35,81 +44,18 @@ import {
   chunkProgressLabel,
   listActiveGoals,
   listGoals,
-  practicePlan,
   startStarterGoal,
-  type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
 import { countDueReviews } from '@/services/db/repos/reviews';
-import { stitchPlan } from '@/services/db/repos/stitch';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
-import { describeStep, firstLetters, type PracticeStep } from '@/services/practice';
+import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
 import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, spacing, scriptureType } from '@/theme';
 
-/** Where one passage in progress stands. */
-type GoalProgress = {
-  goal: Goal;
-  /** The chunk the main button opens, and what opening it does. */
-  chunk: Chunk | null;
-  step: PracticeStep | null;
-  /** The verse that follows when `step` is a seal ahead of new work. */
-  thenChunk: Chunk | null;
-  /** A verse one recitation from memorized, offered beside the new work. */
-  sealChunk: Chunk | null;
-  totalChunks: number;
-  stitchDue: boolean;
-};
-
 /** The focus passage (the one on the widgets) gets the hero card and its text. */
 type TodayData = GoalProgress & { chunkText: string };
-
-async function progressFor(goal: Goal): Promise<GoalProgress> {
-  const [{ plan, chunks }, stitch] = await Promise.all([
-    practicePlan(goal.id),
-    stitchPlan(goal.id),
-  ]);
-  const chunkOf = (step: PracticeStep | null) =>
-    (step && chunks.find((c) => c.id === step.chunkId)) || null;
-  return {
-    goal,
-    chunk: chunkOf(plan.next),
-    step: plan.next,
-    thenChunk: chunkOf(plan.then),
-    sealChunk: chunkOf(plan.optionalSeal),
-    totalChunks: chunks.length,
-    stitchDue: stitch.due,
-  };
-}
-
-/** Button and sub-line copy for a passage's next step (services/practice/plan). */
-function stepCopy(p: GoalProgress & { chunk: Chunk; step: PracticeStep }) {
-  const copy = describeStep(
-    p.step,
-    chunkRangeLabel(p.chunk),
-    p.thenChunk ? chunkRangeLabel(p.thenChunk) : undefined,
-  );
-  // Where the verse sits in a longer passage (07 §6); a one-chunk goal has
-  // nothing to place.
-  const place =
-    p.totalChunks > 1
-      ? t('today:hero.chunkPlace', { index: p.chunk.orderIndex + 1, total: p.totalChunks })
-      : '';
-  return {
-    ...copy,
-    subline: place ? t('today:hero.placeAndDetail', { place, detail: copy.subline }) : copy.subline,
-    // The sub-line is not read on its own (the button says it all), so the
-    // spoken sentence carries the position too.
-    spoken: place ? t('today:hero.spokenWithPlace', { spoken: copy.spoken, place }) : copy.spoken,
-  };
-}
-
-function practiceHref(goalId: string, chunk?: Chunk): Href {
-  return chunk
-    ? `/practice/${goalId}?chunk=${encodeURIComponent(chunk.id)}`
-    : `/practice/${goalId}`;
-}
 
 /** Dissolution level for the hero card (07 §1): the text thins as the tier
  * climbs — full → first letters → reference only. */
@@ -121,7 +67,7 @@ function dissolve(text: string, tier: number): { display: string; mono: boolean 
 
 export default function TodayScreen() {
   const colors = useThemeColors();
-  const { t } = useTranslation(['today', 'app']);
+  const { t } = useTranslation(['today', 'app', 'common']);
   // Wide windows (iPhone Duo opened, Split View): hero on the left, the
   // ladder and secondary cards on the right instead of one long stack.
   const { isWide } = useContentLayout();
@@ -134,11 +80,18 @@ export default function TodayScreen() {
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
   const [dueCount, setDueCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  // The first load threw, so there is nothing true to show: neither the
+  // passages nor the first-run empty state. Once a load has succeeded, a
+  // later failure keeps what is on screen instead.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const everLoaded = useRef(false);
   // Quick start (empty state only): the starter cards, and which one is
   // being turned into a passage right now.
   const [starters, setStarters] = useState<StarterPassage[] | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startFailed, setStartFailed] = useState(false);
+  const [startersFailed, setStartersFailed] = useState(false);
   // Nothing in progress, but passages finished earlier: the empty state
   // must not tell someone with memorized verses that they have none.
   const [hasFinished, setHasFinished] = useState(false);
@@ -147,6 +100,24 @@ export default function TodayScreen() {
   const recapOffer = useRecapOffer();
   // The Advent plan, in season (docs/11 §3.2).
   const advent = useAdventOffer();
+
+  // The quick-start cards for the empty state. A failure says so and offers
+  // a retry, rather than leaving the empty state with no cards.
+  const loadStarters = useCallback(
+    (isCancelled: () => boolean) => {
+      setStartersFailed(false);
+      starterPassages()
+        .then((passages) => {
+          if (!isCancelled()) setStarters(passages);
+        })
+        .catch(() => {
+          if (isCancelled()) return;
+          setStartersFailed(true);
+          AccessibilityInfo.announceForAccessibility(t('empty.startersFailed'));
+        });
+    },
+    [t],
+  );
 
   // Reads everything this screen shows; `isCancelled` guards a blurred screen.
   const load = useCallback(async (isCancelled: () => boolean) => {
@@ -174,11 +145,7 @@ export default function TodayScreen() {
       }
       // The empty state doesn't wait on the cards: bundled text is instant,
       // but ESV may take a moment (and gives way to KJV if it can't be had).
-      starterPassages()
-        .then((passages) => {
-          if (!isCancelled()) setStarters(passages);
-        })
-        .catch(() => {});
+      if (!isCancelled()) loadStarters(isCancelled);
       return;
     }
     const [focus, rest] = await Promise.all([
@@ -200,17 +167,42 @@ export default function TodayScreen() {
       setStreak(streakNow);
       setLoaded(true);
     }
-  }, []);
+  }, [loadStarters]);
+
+  // `load` with its outcome recorded. Never rejects.
+  const reload = useCallback(
+    (isCancelled: () => boolean) =>
+      load(isCancelled).then(
+        () => {
+          if (isCancelled()) return;
+          everLoaded.current = true;
+          setLoadFailed(false);
+        },
+        () => {
+          if (isCancelled()) return;
+          // Stale data stays on screen; with none, say the load failed.
+          if (!everLoaded.current) setLoadFailed(true);
+          setLoaded(true);
+        },
+      ),
+    [load],
+  );
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      load(() => cancelled).catch(() => setLoaded(true));
+      void reload(() => cancelled);
       return () => {
         cancelled = true;
       };
-    }, [load]),
+    }, [reload]),
   );
+
+  const retryLoad = useCallback(async () => {
+    setRetrying(true);
+    await reload(() => false);
+    setRetrying(false);
+  }, [reload]);
 
   const showOnWidgets = useCallback(
     async (goal: Goal) => {
@@ -218,11 +210,13 @@ export default function TodayScreen() {
       try {
         await showGoalOnWidgets(goal.id);
         AccessibilityInfo.announceForAccessibility(t('nowOnWidgets', { title: goal.title }));
+      } catch {
+        Alert.alert(t('widgetsFailed', { title: goal.title }), t('common:tryAgainSoon'));
       } finally {
-        await load(() => false);
+        await reload(() => false);
       }
     },
-    [load, t],
+    [reload, t],
   );
 
   // One tap, one passage: the ref blocks a second tap before React has
@@ -241,11 +235,12 @@ export default function TodayScreen() {
       router.push(`/practice/${goal.id}`);
     } catch {
       setStartFailed(true);
+      AccessibilityInfo.announceForAccessibility(t('empty.startFailed'));
     } finally {
       startBusy.current = false;
       setStartingId(null);
     }
-  }, []);
+  }, [t]);
 
   const ember = streak && streak.current > 0 && (
     <Text
@@ -270,7 +265,7 @@ export default function TodayScreen() {
   // First run, before the user has a passage: the quick-start cards and the
   // way into the wizard. Kept apart from `hero` so a wide window can give the
   // cards a pane of their own instead of leaving half the screen empty.
-  const isEmpty = loaded && !data;
+  const isEmpty = loaded && !data && !loadFailed;
   const emptyIntro = isEmpty && (
     <View style={styles.emptyIntro}>
       <Text
@@ -308,6 +303,16 @@ export default function TodayScreen() {
           ]}>
           {t('empty.startFailed')}
         </Text>
+      )}
+      {startersFailed && !starters && (
+        <View style={styles.emptyIntro}>
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.emptyBody, { color: colors.error, fontFamily: fonts?.ui }]}>
+            {t('empty.startersFailed')}
+          </Text>
+          <TextLink label={t('common:retry')} onPress={() => loadStarters(() => false)} />
+        </View>
       )}
       <TextLink
         label={t('empty.chooseOwn')}
@@ -488,20 +493,10 @@ export default function TodayScreen() {
           </Text>
           {others.map((o) => {
             const copy = o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
-            // A stitch outranks the next chunk; a resting verse has no action.
-            const action = o.stitchDue
-              ? {
-                  label: t('others.stitch'),
-                  spoken: t('others.stitchSpoken', { title: o.goal.title }),
-                  href: `/stitch/${o.goal.id}` as Href,
-                }
-              : copy && o.step?.kind !== 'rest'
-                ? {
-                    label: copy.verb,
-                    spoken: t('others.stepSpoken', { title: o.goal.title, spoken: copy.spoken }),
-                    href: practiceHref(o.goal.id),
-                  }
-                : null;
+            // A stitch outranks the next chunk; a resting verse has no button
+            // (its sub-line already says it seals tomorrow).
+            const next = goalAction(o);
+            const action = next?.kind === 'open' ? next : null;
             const sealChunk = o.sealChunk;
             return (
               <Card key={o.goal.id}>
@@ -626,7 +621,16 @@ export default function TodayScreen() {
 
   return (
     <Screen title={t('app:tabs.today')} accessory={ember || undefined} wide>
-      {isWide ? (
+      {loadFailed ? (
+        // Not the first-run empty state: someone with passages in progress
+        // must not be told they have memorized nothing.
+        <Unavailable
+          kind="failed"
+          title={t('loadFailed.title')}
+          message={t('loadFailed.body')}
+          action={{ label: t('common:retry'), busy: retrying, onPress: () => void retryLoad() }}
+        />
+      ) : isWide ? (
         <FoldAwareRow>
           <>
             {recapCard}
@@ -661,13 +665,6 @@ export default function TodayScreen() {
       )}
     </Screen>
   );
-}
-
-function chunkRangeLabel(chunk: Chunk): string {
-  return formatRange({
-    start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
-    end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
-  });
 }
 
 const styles = StyleSheet.create({

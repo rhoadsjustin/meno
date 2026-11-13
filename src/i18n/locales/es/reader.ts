@@ -10,6 +10,8 @@ export default {
   nextPage: 'Página siguiente',
   page: 'Página {{page}}',
   loadFailed: 'No se pudo cargar {{chapter}}.',
+  loadFailedTitle: 'Este capítulo no se cargó',
+  loadingChapter: 'Cargando {{chapter}}',
   // A catalog version whose details haven't loaded; named by number only.
   placeholderAbbrev: 'Biblia {{n}}',
   placeholderName: 'Traducción {{n}} (detalles aún sin cargar)',

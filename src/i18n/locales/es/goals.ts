@@ -67,6 +67,7 @@ export default {
     clear: 'Borrar',
     clearSelection: 'Borrar selección',
     chapterFailed: 'Este capítulo no se cargó.',
+    chapterFailedTitle: 'Este capítulo no se cargó',
     tapToBegin: 'Toca un versículo para empezar.',
     tapToEnd: 'Toca otro versículo para cerrar el rango, o continúa con este.',
     tapToChooseAgain: 'Toca un versículo para elegir de nuevo.',

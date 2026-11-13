@@ -15,7 +15,6 @@ export default {
   },
   chunkProgress: 'Fragmento {{index}} de {{total}} · {{tier}}',
   errors: {
-    goalNotFound: 'No se encontró la meta',
     allMemorized: 'Ya memorizaste todos los fragmentos de este pasaje. ¡Bien hecho!',
   },
   plan: {
@@ -139,6 +138,13 @@ export default {
     revealHint: 'Mantén presionado para mostrar la palabra — contará como fallada',
     choice: 'Opción: {{choice}}',
     choiceHint: 'Toca dos veces para llenar el espacio actual',
+    answerWith: 'Responder: {{choice}}',
+    reveal: 'Mostrar la palabra (cuenta como fallada)',
+    saidCorrect: 'Correcto.',
+    saidWrong: 'Incorrecto. La palabra era {{word}}.',
+    saidMissed: 'Mostrada. La palabra era {{word}}.',
+    nextBlank: 'Espacio {{index}} de {{total}}.',
+    nextBlankAfter: 'Espacio {{index}} de {{total}}, después de “{{words}}”.',
   },
   arrange: {
     placeholder: 'Toca las frases en orden',
@@ -146,6 +152,8 @@ export default {
     placedHint: 'Toca dos veces para quitar esta frase',
     phrase: 'Frase: {{phrase}}',
     phraseHint: 'Toca dos veces para colocar esta frase a continuación',
+    removed: 'Quitada: {{phrase}}',
+    allPlaced: 'Todas las frases colocadas. Revisar orden está al final.',
     check: 'Revisar orden',
   },
   type: {

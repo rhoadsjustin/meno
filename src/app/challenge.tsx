@@ -5,7 +5,14 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { closeModal } from '@/components/close-modal';
@@ -13,6 +20,7 @@ import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
 import { t as translate } from '@/i18n';
 import { Button } from '@/components/button';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import {
   availableTranslations,
@@ -39,7 +47,10 @@ import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
 type JoinState =
   | { kind: 'loading' }
+  /** The link itself is wrong (parse errors only). */
   | { kind: 'invalid'; message: string }
+  /** The link is fine; reading its passage failed and can be tried again. */
+  | { kind: 'failed' }
   | { kind: 'joined'; goal: Goal }
   | { kind: 'ready'; preview: GoalPreview };
 
@@ -82,6 +93,10 @@ function ChallengeScreen() {
   // synchronous reset in the effect.
   const [state, setState] = useState<{ code: string; result: JoinState } | null>(null);
   const [busy, setBusy] = useState(false);
+  // The code whose join just failed: Join stays up with a line under it.
+  const [joinFailedFor, setJoinFailedFor] = useState<string | null>(null);
+  // Bumped by Try again to read the passage once more.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!challenge) return;
@@ -99,12 +114,19 @@ function ChallengeScreen() {
       const preview = await previewGoal(translationId, challenge.range);
       put({ kind: 'ready', preview });
     })().catch(() => {
-      put({ kind: 'invalid', message: translate('challenge:errors.passageNotFound') });
+      // The link parsed, so this is not a bad link: the passage or the
+      // database could not be read just now.
+      put({ kind: 'failed' });
     });
     return () => {
       cancelled = true;
     };
-  }, [challenge, translationId]);
+  }, [challenge, translationId, attempt]);
+
+  const retry = () => {
+    setState(null);
+    setAttempt((n) => n + 1);
+  };
 
   // A parse error always wins over whatever the async check last produced.
   const view: JoinState =
@@ -117,6 +139,7 @@ function ChallengeScreen() {
   const accept = async () => {
     if (!challenge || busy) return;
     setBusy(true);
+    setJoinFailedFor(null);
     try {
       const goal = await createGoal({
         translationId,
@@ -127,11 +150,9 @@ function ChallengeScreen() {
       });
       router.replace(`/practice/${goal.id}`);
     } catch {
+      // Stay on the preview so Join can be tapped again.
       setBusy(false);
-      setState({
-        code: challenge.code,
-        result: { kind: 'invalid', message: translate('challenge:joinFailed') },
-      });
+      setJoinFailedFor(challenge.code);
     }
   };
 
@@ -160,6 +181,15 @@ function ChallengeScreen() {
               {view.message}
             </Text>
           </>
+        )}
+
+        {view.kind === 'failed' && (
+          <Unavailable
+            kind="failed"
+            title={tr('failedHeading')}
+            message={tr('failedBody')}
+            action={{ label: tr('common:retry'), onPress: retry }}
+          />
         )}
 
         {view.kind === 'joined' && (
@@ -207,6 +237,7 @@ function ChallengeScreen() {
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {tr('joinNote')}
             </Text>
+            {joinFailedFor === challenge.code && <JoinFailedNote message={tr('joinFailed')} />}
           </>
         )}
       </ScrollView>
@@ -235,6 +266,22 @@ function ChallengeScreen() {
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+/** Under the preview after a failed join; spoken when it appears. */
+function JoinFailedNote({ message }: { message: string }) {
+  const colors = useThemeColors();
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
+  return (
+    <Text
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
+      style={[styles.body, { color: colors.error, fontFamily: fonts?.ui }]}>
+      {message}
+    </Text>
   );
 }
 

@@ -2,7 +2,7 @@
  * Review items + sessions (docs/03 §6): modified SM-2 retention of
  * memorized chunks. Pure scheduling math lives in services/scheduler.
  */
-import { asc, eq, lte } from 'drizzle-orm';
+import { asc, eq, inArray, lte } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 
 import { db, tables } from '@/services/db';
@@ -62,6 +62,21 @@ export async function reviewItemForChunk(chunkId: string): Promise<ReviewItem | 
     .where(eq(tables.reviewItems.chunkId, chunkId))
     .limit(1);
   return rows[0];
+}
+
+/** Review items for many chunks in one read per batch, keyed by chunk id. */
+export async function reviewItemsForChunks(chunkIds: string[]): Promise<Map<string, ReviewItem>> {
+  const byChunk = new Map<string, ReviewItem>();
+  // Well under SQLite's bound-parameter limit.
+  const BATCH = 500;
+  for (let i = 0; i < chunkIds.length; i += BATCH) {
+    const rows = await db
+      .select()
+      .from(tables.reviewItems)
+      .where(inArray(tables.reviewItems.chunkId, chunkIds.slice(i, i + BATCH)));
+    for (const row of rows) byChunk.set(row.chunkId, row);
+  }
+  return byChunk;
 }
 
 /** Applies one review result via SM-2 and persists the new state. */

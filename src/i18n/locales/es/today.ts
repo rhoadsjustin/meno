@@ -8,6 +8,11 @@ export default {
   streakSecured_other: 'Racha de {{count}} días, asegurada hoy',
   focusLabel: 'En tus widgets',
   nowOnWidgets: '{{title}} ya está en tus widgets.',
+  widgetsFailed: 'No se pudo poner {{title}} en tus widgets',
+  loadFailed: {
+    title: 'No se pudo cargar Hoy',
+    body: 'Tus pasajes y tu progreso siguen en este dispositivo.',
+  },
 
   empty: {
     titleFirst: 'Aún no has memorizado nada',
@@ -21,6 +26,7 @@ export default {
     bodyAgainChoose:
       'No tienes nada en curso. Elige un versículo y empiézalo ahora, o elige tu propio pasaje.',
     startFailed: 'No se pudo empezar ese versículo. Inténtalo de nuevo o elige tu propio pasaje.',
+    startersFailed: 'No se pudieron cargar los versículos para empezar.',
     chooseOwn: 'Elegir mi propio pasaje',
   },
 

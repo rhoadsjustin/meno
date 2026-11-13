@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -15,9 +15,11 @@ import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { MIN_TOUCH_TARGET } from '@/components/button';
+import { Unavailable } from '@/components/unavailable';
 import { Screen } from '@/components/screen';
 import { TextLink } from '@/components/text-link';
 import { DeleteGoalButton } from '@/features/goals/DeleteGoalButton';
+import { goalAction, progressFor, type GoalAction } from '@/services/goals/progress';
 import { removeGoal, stopPassage } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
@@ -30,7 +32,7 @@ import {
   type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
-import { itemHealth, reviewItemForChunk } from '@/services/db/repos/reviews';
+import { itemHealth, reviewItemsForChunks } from '@/services/db/repos/reviews';
 import { deleteGoalPrompt, goalRemoval, stopGoalPrompt } from '@/services/goals/deletion';
 import type { Health } from '@/services/scheduler';
 import { showGoalOnWidgets } from '@/services/widgets';
@@ -46,7 +48,7 @@ type GoalWithChunks = { goal: Goal; chunks: Chunk[] };
 
 export default function LibraryScreen() {
   const colors = useThemeColors();
-  const { t } = useTranslation(['library', 'app']);
+  const { t } = useTranslation(['library', 'app', 'common']);
   // Wide windows (iPhone Duo opened, Split View) show both shelves side by
   // side — In progress on the left, Memorized on the right — instead of the
   // segmented control (HIG: show the next level of hierarchy when it fits).
@@ -55,7 +57,14 @@ export default function LibraryScreen() {
   const [segment, setSegment] = useState<Segment>('inProgress');
   const [items, setItems] = useState<GoalWithChunks[]>([]);
   const [healthByChunk, setHealthByChunk] = useState<Record<string, Health>>({});
+  // What each passage in progress offers next (the same step Today names).
+  const [actions, setActions] = useState<Record<string, GoalAction | null>>({});
   const [loaded, setLoaded] = useState(false);
+  // The first load threw: said as a failure, never as empty shelves. Once a
+  // load has succeeded, a later failure keeps what is on screen instead.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const everLoaded = useRef(false);
   // The passage on the widgets (services/focus).
   const [focusId, setFocusId] = useState<string | null>(null);
 
@@ -65,30 +74,61 @@ export default function LibraryScreen() {
     const withChunks = await Promise.all(
       goals.map(async (goal) => ({ goal, chunks: await chunksForGoal(goal.id) })),
     );
+    const memorizedIds = withChunks.flatMap(({ chunks }) =>
+      chunks.filter((c) => c.status === 'memorized').map((c) => c.id),
+    );
+    // One read for every memorized chunk's health, beside the next steps.
+    const [reviewItems, progress] = await Promise.all([
+      reviewItemsForChunks(memorizedIds),
+      Promise.all(goals.filter((g) => g.status === 'active').map(progressFor)),
+    ]);
     const health: Record<string, Health> = {};
-    for (const { chunks } of withChunks) {
-      for (const c of chunks.filter((c) => c.status === 'memorized')) {
-        const item = await reviewItemForChunk(c.id);
-        if (item) health[c.id] = itemHealth(item);
-      }
-    }
+    for (const [chunkId, item] of reviewItems) health[chunkId] = itemHealth(item);
+    const next: Record<string, GoalAction | null> = {};
+    for (const p of progress) next[p.goal.id] = goalAction(p);
     if (!isCancelled()) {
       setItems(withChunks);
       setFocusId(focus?.id ?? null);
       setHealthByChunk(health);
+      setActions(next);
       setLoaded(true);
     }
   }, []);
 
+  // `load` with its outcome recorded. Never rejects.
+  const reload = useCallback(
+    (isCancelled: () => boolean) =>
+      load(isCancelled).then(
+        () => {
+          if (isCancelled()) return;
+          everLoaded.current = true;
+          setLoadFailed(false);
+        },
+        () => {
+          if (isCancelled()) return;
+          // Stale shelves stay on screen; with none, say the load failed.
+          if (!everLoaded.current) setLoadFailed(true);
+          setLoaded(true);
+        },
+      ),
+    [load],
+  );
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      load(() => cancelled).catch(() => setLoaded(true));
+      void reload(() => cancelled);
       return () => {
         cancelled = true;
       };
-    }, [load]),
+    }, [reload]),
   );
+
+  const retryLoad = useCallback(async () => {
+    setRetrying(true);
+    await reload(() => false);
+    setRetrying(false);
+  }, [reload]);
 
   const showOnWidgets = useCallback(
     async (goal: Goal) => {
@@ -96,11 +136,13 @@ export default function LibraryScreen() {
       try {
         await showGoalOnWidgets(goal.id);
         AccessibilityInfo.announceForAccessibility(t('nowOnWidgets', { title: goal.title }));
+      } catch {
+        Alert.alert(t('widgetsFailed', { title: goal.title }), t('common:tryAgainSoon'));
       } finally {
-        await load(() => false);
+        await reload(() => false);
       }
     },
-    [load, t],
+    [reload, t],
   );
 
   const remove = useCallback(
@@ -111,10 +153,10 @@ export default function LibraryScreen() {
       } catch {
         Alert.alert(t('remove.delete.failed', { title: goal.title }), t('remove.tryAgain'));
       } finally {
-        await load(() => false);
+        await reload(() => false);
       }
     },
-    [load, t],
+    [reload, t],
   );
 
   const stop = useCallback(
@@ -125,10 +167,10 @@ export default function LibraryScreen() {
       } catch {
         Alert.alert(t('remove.stop.failed', { title: goal.title }), t('remove.tryAgain'));
       } finally {
-        await load(() => false);
+        await reload(() => false);
       }
     },
-    [load, t],
+    [reload, t],
   );
 
   /** The trash button. Memorized Scripture is never deleted
@@ -217,11 +259,34 @@ export default function LibraryScreen() {
                 ))}
               </View>
               <View style={styles.actionsRow}>
-                <TextLink
-                  weight="semibold"
-                  label={t('goal.practice')}
-                  onPress={() => router.push(`/practice/${goal.id}`)}
-                />
+                {(() => {
+                  // The step Today would name for this passage: Start,
+                  // Continue, Seal or Stitch. A resting verse has a status
+                  // in place of a link, as there is nothing to open today.
+                  const action = actions[goal.id];
+                  if (!action) return null;
+                  if (action.kind === 'resting') {
+                    return (
+                      <Text
+                        accessibilityLabel={action.spoken}
+                        style={[
+                          styles.actionCell,
+                          styles.focusNote,
+                          { color: colors.inkFaint, fontFamily: fonts?.ui },
+                        ]}>
+                        {action.label}
+                      </Text>
+                    );
+                  }
+                  return (
+                    <TextLink
+                      weight="semibold"
+                      label={action.label}
+                      accessibilityLabel={action.spoken}
+                      onPress={() => router.push(action.href)}
+                    />
+                  );
+                })()}
                 <TextLink
                   weight="semibold"
                   label={t('goal.share')}
@@ -255,16 +320,18 @@ export default function LibraryScreen() {
         </View>
       )}
       {loaded && active.length === 0 && (
+        // The way forward sits inside the empty state, not detached below it.
         <Card>
-          <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            {t('emptyInProgressTitle')}
-          </Text>
-          <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('emptyInProgressBody')}
-          </Text>
+          <Unavailable
+            kind="empty"
+            symbol={{ ios: 'books.vertical', android: 'library_books' }}
+            title={t('emptyInProgressTitle')}
+            message={t('emptyInProgressBody')}
+            action={{ label: t('choosePassage'), onPress: () => router.push('/goal-wizard') }}
+          />
         </Card>
       )}
-      {loaded && (
+      {loaded && active.length > 0 && (
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/goal-wizard')}
@@ -274,7 +341,7 @@ export default function LibraryScreen() {
             pressed && styles.pressed,
           ]}>
           <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {active.length > 0 ? t('practiceAnother') : t('choosePassage')}
+            {t('practiceAnother')}
           </Text>
         </Pressable>
       )}
@@ -325,12 +392,12 @@ export default function LibraryScreen() {
       )}
       {loaded && memorizedChunks.length === 0 && (
         <Card>
-          <Text style={[styles.goalTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            {t('emptyMemorizedTitle')}
-          </Text>
-          <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('emptyMemorizedBody')}
-          </Text>
+          <Unavailable
+            kind="empty"
+            symbol={{ ios: 'checkmark.seal', android: 'verified' }}
+            title={t('emptyMemorizedTitle')}
+            message={t('emptyMemorizedBody')}
+          />
         </Card>
       )}
     </>
@@ -338,7 +405,16 @@ export default function LibraryScreen() {
 
   return (
     <Screen title={t('app:tabs.library')} wide>
-      {isWide ? (
+      {loadFailed ? (
+        // In place of both shelves: "No passages yet" here would read as
+        // lost data, and the add prompt would be beside the point.
+        <Unavailable
+          kind="failed"
+          title={t('loadFailed.title')}
+          message={t('loadFailed.body')}
+          action={{ label: t('common:retry'), busy: retrying, onPress: () => void retryLoad() }}
+        />
+      ) : isWide ? (
         <FoldAwareRow>
           <>
             {header(t('inProgress'))}

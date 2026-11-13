@@ -2,6 +2,7 @@
 export default {
   title: 'Stitch',
   nothingYet: 'Nothing to stitch yet',
+  nothingYetBody: 'A stitch opens once two chunks of this passage are under way.',
   intro: 'Stitch it together — recite everything you’ve learned so far as one passage.',
   goalCompleted: 'The whole passage is hidden in your heart.',
   passed: 'Stitched — it holds together.',

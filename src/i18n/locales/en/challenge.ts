@@ -12,7 +12,10 @@ export default {
     'Joining creates this goal on your device. Your progress stays private; only you see it for now.',
   join: 'Join challenge',
   practice: 'Practice',
-  joinFailed: 'Something went wrong joining this challenge. Try the link again.',
+  joinFailed: 'Couldn’t join this challenge. Try again.',
+  // The link is fine but its passage could not be read just now.
+  failedHeading: 'Couldn’t load this passage',
+  failedBody: 'The link is fine. Try again in a moment.',
   errors: {
     malformed: 'This challenge link is missing or malformed.',
     newerVersion: 'This challenge needs a newer version of Meno. Update the app and try the link again.',

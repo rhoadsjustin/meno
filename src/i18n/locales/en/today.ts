@@ -7,6 +7,12 @@ export default {
   streakSecured_other: '{{count}} day streak, secured today',
   focusLabel: 'On your widgets',
   nowOnWidgets: '{{title}} is now on your widgets.',
+  widgetsFailed: 'Couldn’t put {{title}} on your widgets',
+  // The first load failed, so there is nothing to show (never the empty state).
+  loadFailed: {
+    title: 'Couldn’t load Today',
+    body: 'Your passages and progress are still on this device.',
+  },
 
   empty: {
     titleFirst: 'Nothing memorized yet',
@@ -20,6 +26,7 @@ export default {
     bodyAgainChoose:
       'Nothing is in progress. Choose a verse and start it now, or choose your own passage.',
     startFailed: 'That verse couldn’t be started. Try again, or choose your own passage.',
+    startersFailed: 'The starter verses couldn’t be loaded.',
     chooseOwn: 'Choose my own passage',
   },
 

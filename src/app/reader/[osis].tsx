@@ -8,7 +8,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { useBarIcon } from '@/components/bar-icon';
+import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ScreenHeader } from '@/components/screen-header';
+import { LoadingState, Unavailable } from '@/components/unavailable';
 import { BookSpread } from '@/features/reader/BookSpread';
 import { useTranslation } from '@/i18n/react';
 import {
@@ -17,6 +19,7 @@ import {
   getBook,
   getChapter,
   getTranslation,
+  loadFailureMessage,
   parseOsisRef,
   type Verse,
 } from '@/services/bible';
@@ -26,7 +29,7 @@ import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@
 export default function ReaderRoute() {
   const { osis, translation } = useLocalSearchParams<{ osis: string; translation?: string }>();
   const colors = useThemeColors();
-  const { t } = useTranslation('reader');
+  const { t } = useTranslation(['reader', 'common']);
   const previousIcon = useBarIcon('chevron.left', 'chevron_left');
   const nextIcon = useBarIcon('chevron.right', 'chevron_right');
   // Wide windows (iPhone Duo opened): a chapter sidebar beside the text.
@@ -37,9 +40,13 @@ export default function ReaderRoute() {
   const book = isWide && foldAxis === 'vertical';
 
   const translationId = translation ?? DEFAULT_TRANSLATION_ID;
-  const [verses, setVerses] = useState<Verse[]>([]);
-  // The chapter that failed to load, if any; the message is worded at render.
-  const [failed, setFailed] = useState<string | null>(null);
+  // What the last finished load produced, tagged with the chapter it was
+  // for: `verses: null` is a failure. Anything tagged for another chapter
+  // counts as still loading, so a slow chapter never shows the previous
+  // one's text (or its error) under the new title.
+  const [loaded, setLoaded] = useState<{ key: string; verses: Verse[] | null } | null>(null);
+  // Bumped by Try again to fetch the same chapter once more.
+  const [attempt, setAttempt] = useState(0);
 
   let ref;
   try {
@@ -49,21 +56,42 @@ export default function ReaderRoute() {
   }
   const bookInfo = getBook(ref.bookId);
   const title = t('title', { book: bookName(ref.bookId), chapter: ref.chapter });
-  const error = failed === title ? t('loadFailed', { chapter: title }) : null;
+  const chapterKey = `${translationId}:${ref.bookId}:${ref.chapter}`;
+  const current = loaded?.key === chapterKey ? loaded : null;
+  const verses = current?.verses ?? [];
+  const failed = current !== null && current.verses === null;
 
   useEffect(() => {
     let cancelled = false;
-    const chapterTitle = t('title', { book: bookName(ref.bookId), chapter: ref.chapter });
-    (async () => {
-      const rows = await getChapter(translationId, ref.bookId, ref.chapter);
-      if (!cancelled) setVerses(rows);
-    })().catch(() => {
-      if (!cancelled) setFailed(chapterTitle);
-    });
+    getChapter(translationId, ref.bookId, ref.chapter)
+      .then((rows) => {
+        if (!cancelled) setLoaded({ key: chapterKey, verses: rows });
+      })
+      .catch(() => {
+        if (!cancelled) setLoaded({ key: chapterKey, verses: null });
+      });
     return () => {
       cancelled = true;
     };
-  }, [translationId, ref.bookId, ref.chapter, t]);
+  }, [translationId, ref.bookId, ref.chapter, chapterKey, attempt]);
+
+  // In place of the passage: what failed (and whether it needs a
+  // connection), with a way to try again.
+  const failure = failed && (
+    <Unavailable
+      kind="failed"
+      layout={book ? 'fill' : 'inline'}
+      title={t('loadFailedTitle')}
+      message={loadFailureMessage(translationId, title)}
+      action={{
+        label: t('common:retry'),
+        onPress: () => {
+          setLoaded(null);
+          setAttempt((n) => n + 1);
+        },
+      }}
+    />
+  );
 
   const goToChapter = (chapter: number) => {
     router.setParams({ osis: `${ref.bookId}.${chapter}.1` });
@@ -102,17 +130,14 @@ export default function ReaderRoute() {
       </ScreenHeader>
 
       {book ? (
-        <>
-          {error && (
-            <Text
-              style={[
-                styles.attribution,
-                styles.bookError,
-                { color: colors.error, fontFamily: fonts?.ui },
-              ]}>
-              {error}
-            </Text>
-          )}
+        failure ? (
+          // On the left page, clear of the crease, and centred in the page's
+          // height so it sits below the clear navigation bar.
+          <FoldAwareRow fill>
+            {failure}
+            <View />
+          </FoldAwareRow>
+        ) : (
           <BookSpread
             translationId={translationId}
             bookId={ref.bookId}
@@ -120,7 +145,7 @@ export default function ReaderRoute() {
             chapterCount={chapters[chapters.length - 1] ?? bookInfo.chapters}
             onChapterChange={goToChapter}
           />
-        </>
+        )
       ) : (
         <View style={isWide ? styles.split : styles.flex}>
           {isWide && (
@@ -157,14 +182,15 @@ export default function ReaderRoute() {
             </ScrollView>
           )}
           <ScrollView style={styles.flex} contentContainerStyle={[styles.content, contentColumn]}>
-            {error && (
-              <Text style={[styles.attribution, { color: colors.error, fontFamily: fonts?.ui }]}>
-                {error}
+            {failure}
+            {current === null && (
+              <LoadingState layout="inline" label={t('loadingChapter', { chapter: title })} />
+            )}
+            {verses.length > 0 && (
+              <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                {renderVerses(verses, colors.inkFaint)}
               </Text>
             )}
-            <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-              {renderVerses(verses, colors.inkFaint)}
-            </Text>
             {verses.length > 0 && (
               <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {getTranslation(translationId).attribution}
@@ -218,5 +244,4 @@ const styles = StyleSheet.create({
   },
   verseNum: { fontSize: 13 },
   attribution: { fontSize: 13, marginTop: spacing.xxl },
-  bookError: { marginTop: 0, paddingHorizontal: layout.screenMargin },
 });

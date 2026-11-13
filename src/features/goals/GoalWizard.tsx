@@ -13,7 +13,7 @@ import {
 
 import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
-import { loadFailureMessage, PassageStep } from '@/features/goals/PassageStep';
+import { PassageStep } from '@/features/goals/PassageStep';
 import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import {
@@ -21,6 +21,7 @@ import {
   DEFAULT_TRANSLATION_ID,
   availableTranslations,
   formatRange,
+  loadFailureMessage,
   getTranslation,
   translationHasBook,
 } from '@/services/bible';

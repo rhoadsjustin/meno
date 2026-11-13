@@ -9,6 +9,8 @@ export default {
   nextPage: 'Next page',
   page: 'Page {{page}}',
   loadFailed: 'Couldn’t load {{chapter}}.',
+  loadFailedTitle: 'This chapter didn’t load',
+  loadingChapter: 'Loading {{chapter}}',
   /** Footer for the bundled public-domain translations. */
   // A catalog version whose details haven't loaded; named by number only.
   placeholderAbbrev: 'Bible {{n}}',

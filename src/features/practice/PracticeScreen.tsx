@@ -9,15 +9,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { LoadingState, Unavailable } from '@/components/unavailable';
 import { Card } from '@/components/card';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
-import { t as translate } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
-import { formatRange, getPassage, getTranslation } from '@/services/bible';
+import { formatRange, getPassage, getTranslation, loadFailureMessage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
   applyTierCleared,
@@ -65,7 +65,9 @@ import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
-  | { kind: 'error'; message: string }
+  /** Nothing to practice. `failed` is a load that threw (retryable), `gone`
+   * a goal that is no longer on the device, `allMemorized` a finished one. */
+  | { kind: 'unavailable'; reason: 'failed' | 'gone' | 'allMemorized'; message?: string }
   | { kind: 'round' }
   /** Speak is cleared and today's mastery day is banked — only a second day
    * can seal the chunk, so there is nothing left to practice here today. */
@@ -139,66 +141,81 @@ export function PracticeScreen({
   const finishing = useRef(false);
   const railShown = showRail && !!session && !!chunk && !!goal;
 
+  // Reads the goal's next step and its text. Never rejects: a failure becomes
+  // the `unavailable` phase, worded here rather than from the thrown error.
   const load = useCallback(async () => {
-    const g = await getGoal(goalId);
-    if (!g) throw new Error(translate('practice:errors.goalNotFound'));
-    const { plan, chunks } = await practicePlan(goalId);
-    setTotalChunks(chunks.length);
-    // A requested chunk is honoured only while it has something to do today.
-    // Once it is sealed (or resting) the reload after a cleared tier falls
-    // through to the goal's next step, like any other session.
-    const requested = chunkId
-      ? plan.steps.find((s) => s.chunkId === chunkId && s.kind !== 'rest')
-      : undefined;
-    const step = requested ?? plan.next;
-    const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
-    if (!step || !c) {
-      setPhase({ kind: 'error', message: translate('practice:errors.allMemorized') });
-      setGoal(g);
-      return;
-    }
-    const verses = await getPassage(g.translationId, {
-      start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
-      end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
-    });
-    const chunkText = verses.map((v) => v.text).join(' ');
-    setSealing(step.kind === 'seal' || (step.kind === 'continue' && !!step.seals));
+    const failure: { message?: string } = {};
+    try {
+      const g = await getGoal(goalId);
+      if (!g) {
+        setPhase({ kind: 'unavailable', reason: 'gone' });
+        return;
+      }
+      const { plan, chunks } = await practicePlan(goalId);
+      setTotalChunks(chunks.length);
+      // A requested chunk is honoured only while it has something to do today.
+      // Once it is sealed (or resting) the reload after a cleared tier falls
+      // through to the goal's next step, like any other session.
+      const requested = chunkId
+        ? plan.steps.find((s) => s.chunkId === chunkId && s.kind !== 'rest')
+        : undefined;
+      const step = requested ?? plan.next;
+      const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
+      if (!step || !c) {
+        setPhase({ kind: 'unavailable', reason: 'allMemorized' });
+        setGoal(g);
+        return;
+      }
+      const range = {
+        start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+        end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+      };
+      // From here the likely failure is the text itself (licensed text is
+      // fetched): say which passage, and whether it needs a connection.
+      failure.message = loadFailureMessage(g.translationId, formatRange(range));
+      const verses = await getPassage(g.translationId, range);
+      const chunkText = verses.map((v) => v.text).join(' ');
+      setSealing(step.kind === 'seal' || (step.kind === 'continue' && !!step.seals));
 
-    // Topped the ladder and already banked today: serving Speak again would
-    // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
-    if (step.kind === 'rest') {
+      // Topped the ladder and already banked today: serving Speak again would
+      // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
+      if (step.kind === 'rest') {
+        setGoal(g);
+        setChunk(c);
+        setText(chunkText);
+        setPhase({ kind: 'sealsTomorrow' });
+        return;
+      }
+
+      // Resume a persisted session for this chunk, else start fresh
+      // (M2 acceptance: killing the app mid-session resumes correctly).
+      const saved = await loadActiveSession();
+      const s =
+        saved && saved.chunkId === c.id && saved.roundIndex < saved.rounds.length
+          ? saved
+          : startSession({ goalId, chunkId: c.id, highestClearedTier: c.tier, now: Date.now() });
+      await saveActiveSession(s);
+
       setGoal(g);
       setChunk(c);
       setText(chunkText);
-      setPhase({ kind: 'sealsTomorrow' });
-      return;
+      setSession(s);
+      setPhase({ kind: 'round' });
+      setRoundStartedAt(Date.now());
+    } catch {
+      setPhase({ kind: 'unavailable', reason: 'failed', message: failure.message });
     }
-
-    // Resume a persisted session for this chunk, else start fresh
-    // (M2 acceptance: killing the app mid-session resumes correctly).
-    const saved = await loadActiveSession();
-    const s =
-      saved && saved.chunkId === c.id && saved.roundIndex < saved.rounds.length
-        ? saved
-        : startSession({ goalId, chunkId: c.id, highestClearedTier: c.tier, now: Date.now() });
-    await saveActiveSession(s);
-
-    setGoal(g);
-    setChunk(c);
-    setText(chunkText);
-    setSession(s);
-    setPhase({ kind: 'round' });
-    setRoundStartedAt(Date.now());
   }, [goalId, chunkId]);
 
   useEffect(() => {
     void (async () => {
-      try {
-        await load();
-      } catch (e) {
-        setPhase({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
-      }
+      await load();
     })();
+  }, [load]);
+
+  const retryLoad = useCallback(() => {
+    setPhase({ kind: 'loading' });
+    void load();
   }, [load]);
 
   const writeRound = useCallback(
@@ -362,10 +379,6 @@ export function PracticeScreen({
     setRoundStartedAt(Date.now());
   }, [session]);
 
-  if (phase.kind === 'loading') {
-    return <View style={[styles.root, { backgroundColor: colors.surface }]} />;
-  }
-
   const reference = chunk
     ? formatRange({
         start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
@@ -395,18 +408,33 @@ export function PracticeScreen({
       key={phase.kind}
       style={styles.flex}
       contentContainerStyle={[styles.content, contentColumn]}>
-      {phase.kind === 'error' && (
-        <>
-          <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            {phase.message}
-          </Text>
-          <Button
-            label={t('common:done')}
-            onPress={() => router.back()}
-            style={styles.primaryButton}
+      {/* Blank for a moment, then a spinner: bundled text is instant,
+          licensed text is a network round trip. */}
+      {phase.kind === 'loading' && <LoadingState layout="inline" />}
+
+      {phase.kind === 'unavailable' &&
+        (phase.reason === 'allMemorized' ? (
+          <Unavailable
+            kind="empty"
+            title={t('errors.allMemorized')}
+            action={{ label: t('common:done'), onPress: () => router.back() }}
           />
-        </>
-      )}
+        ) : phase.reason === 'gone' ? (
+          <Unavailable
+            kind="failed"
+            title={t('common:passageUnavailable')}
+            message={t('common:passageGone')}
+            action={{ label: t('common:done'), onPress: () => router.back() }}
+          />
+        ) : (
+          <Unavailable
+            kind="failed"
+            title={t('common:passageUnavailable')}
+            message={phase.message ?? t('common:tryAgainSoon')}
+            action={{ label: t('common:retry'), onPress: retryLoad }}
+            secondaryAction={{ label: t('common:done'), onPress: () => router.back() }}
+          />
+        ))}
 
       {phase.kind === 'sealsTomorrow' && (
         <>

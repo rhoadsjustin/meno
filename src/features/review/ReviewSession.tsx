@@ -13,6 +13,7 @@ import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/button';
+import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
 import { db, tables } from '@/services/db';
@@ -46,6 +47,8 @@ const REVIEW_PASS = 0.9;
 type Phase =
   | { kind: 'loading' }
   | { kind: 'empty' }
+  /** The queue or a passage's text could not be read: not the same as nothing due. */
+  | { kind: 'failed' }
   | { kind: 'round'; index: number }
   | { kind: 'feedback'; index: number; accuracy: number; result: GradeResult }
   | { kind: 'summary'; reviewed: number; averageAccuracy: number };
@@ -60,7 +63,11 @@ export function ReviewSession() {
   const [accuracies, setAccuracies] = useState<number[]>([]);
   const [startedAt, setStartedAt] = useState(0);
 
+  // Bumped by Try again to read the queue once more.
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       try {
         const items = await dueReviewItems();
@@ -102,13 +109,23 @@ export function ReviewSession() {
                   : 'type',
           });
         }
+        if (cancelled) return;
         setQueue(entries);
         setPhase(entries.length === 0 ? { kind: 'empty' } : { kind: 'round', index: 0 });
         setStartedAt(Date.now());
       } catch {
-        setPhase({ kind: 'empty' });
+        // A due review hidden behind "Nothing due" would be a false statement.
+        if (!cancelled) setPhase({ kind: 'failed' });
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
+
+  const retryLoad = useCallback(() => {
+    setPhase({ kind: 'loading' });
+    setAttempt((n) => n + 1);
   }, []);
 
   const finishRound = useCallback(
@@ -186,20 +203,27 @@ export function ReviewSession() {
 
       <View style={styles.flex}>
         <KeyboardScroll contentContainerStyle={[styles.content, contentColumn]}>
+          {/* Blank for a moment, then a spinner: licensed text is fetched. */}
+          {phase.kind === 'loading' && <LoadingState layout="inline" />}
+
           {phase.kind === 'empty' && (
-            <>
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {t('emptyTitle')}
-              </Text>
-              <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {t('emptyBody')}
-              </Text>
-              <Button
-                label={t('common:done')}
-                onPress={() => router.back()}
-                style={styles.button}
-              />
-            </>
+            <Unavailable
+              kind="empty"
+              symbol={{ ios: 'checkmark.circle', android: 'check_circle' }}
+              title={t('emptyTitle')}
+              message={t('emptyBody')}
+              action={{ label: t('common:done'), onPress: () => router.back() }}
+            />
+          )}
+
+          {phase.kind === 'failed' && (
+            <Unavailable
+              kind="failed"
+              title={t('loadFailedTitle')}
+              message={t('loadFailedBody')}
+              action={{ label: t('common:retry'), onPress: retryLoad }}
+              secondaryAction={{ label: t('common:done'), onPress: () => router.back() }}
+            />
           )}
 
           {phase.kind === 'round' && queue[phase.index] && (
@@ -309,7 +333,6 @@ const styles = StyleSheet.create({
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   reference: { fontSize: 14, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  body: { fontSize: 15, lineHeight: 20 },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
   button: { marginTop: spacing.xxl },
 });

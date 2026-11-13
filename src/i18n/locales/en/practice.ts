@@ -15,7 +15,6 @@ export default {
   /** Sub-line copy like "Chunk 4 of 12 · Blanks 50". */
   chunkProgress: 'Chunk {{index}} of {{total}} · {{tier}}',
   errors: {
-    goalNotFound: 'Goal not found',
     allMemorized: 'Every chunk in this passage is memorized. Well done.',
   },
   /** What tapping Practice does next (src/services/practice/plan.ts). */
@@ -143,6 +142,15 @@ export default {
     revealHint: 'Long-press to reveal the word — it will be counted as missed',
     choice: 'Choice: {{choice}}',
     choiceHint: 'Double-tap to fill the current blank',
+    // VoiceOver custom actions on the active blank: each choice, then this.
+    answerWith: 'Answer: {{choice}}',
+    reveal: 'Reveal the word (counts as missed)',
+    // Spoken after each answer (VoiceOver), then where the next blank is.
+    saidCorrect: 'Correct.',
+    saidWrong: 'Wrong. The word was {{word}}.',
+    saidMissed: 'Revealed. The word was {{word}}.',
+    nextBlank: 'Blank {{index}} of {{total}}.',
+    nextBlankAfter: 'Blank {{index}} of {{total}}, after “{{words}}”.',
   },
   arrange: {
     placeholder: 'Tap the phrases in order',
@@ -150,6 +158,8 @@ export default {
     placedHint: 'Double-tap to remove this phrase',
     phrase: 'Phrase: {{phrase}}',
     phraseHint: 'Double-tap to place this phrase next',
+    removed: 'Removed: {{phrase}}',
+    allPlaced: 'All phrases placed. Check order is at the end.',
     check: 'Check order',
   },
   type: {
