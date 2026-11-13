@@ -11,6 +11,8 @@ export const palette = {
     ink: '#1A1D26',
     inkFaint: '#6E7280',
     lapis: '#2244AA',
+    // Label and glyph colour on a `lapis` (or `error`) fill: 8.5:1.
+    onLapis: '#FFFFFF',
     lapisWash: '#E9EEFA',
     // Dark enough for body-size text on both light surfaces (4.6:1).
     gold: '#8F6C1F',
@@ -27,6 +29,8 @@ export const palette = {
     ink: '#E9E7E1',
     inkFaint: '#8B8F9C',
     lapis: '#5B7FE8',
+    // White on the dark-mode lapis is 3.7:1; the night surface is 5.0:1.
+    onLapis: '#10131A',
     lapisWash: '#1A2440',
     gold: '#D4AF37',
     error: '#E06A56',

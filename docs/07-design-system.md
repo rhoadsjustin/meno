@@ -23,6 +23,7 @@ The overall feel: a quiet, serious reading instrument that happens to be delight
 | `ink` | #1A1D26 | #E9E7E1 | Primary text |
 | `inkFaint` | #6E7280 | #8B8F9C | Secondary text, dissolved letters |
 | `lapis` | #2244AA | #5B7FE8 | Accent: actions, progress, selection, streak ember |
+| `onLapis` | #FFFFFF | #10131A | Labels, spinners and glyphs on a `lapis` (or `error`) fill: filled buttons. White on the dark-mode lapis is only 3.7:1 |
 | `lapisWash` | #E9EEFA | #1A2440 | Tinted fills, active states |
 | `gold` | #8F6C1F | #D4AF37 | Memorized state ONLY: medallions, memorized checkmarks, stitch-complete moments |
 | `error` | #B3402E | #E06A56 | Wrong words in feedback |
