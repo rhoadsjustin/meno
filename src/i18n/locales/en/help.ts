@@ -14,7 +14,7 @@ export default {
     ready: 'Ready',
     notYet: 'Not set up yet',
     openSettings: 'Needs permission in iPhone Settings',
-    unavailable: 'Needs a real iPhone',
+    unavailable: 'Not available on this device',
     manual: 'Add it yourself — steps below',
   },
   overviewLabel: '{{title}}: {{status}}',
@@ -80,7 +80,7 @@ export default {
   lock: {
     body: 'Optional. Pick the apps that eat your time; before one opens, Meno asks you to recite your verse. Override is always one tap away, and you can switch it off anytime.',
     unavailable:
-      'This uses Apple’s Screen Time, which only works on a real iPhone — not in the simulator.',
+      'Recite to Unlock relies on Apple’s Screen Time, which isn’t available on this device.',
     readyTip:
       'It’s on. To turn it off completely, go to Settings → Turn off and clear all shields now.',
     steps: {

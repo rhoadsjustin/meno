@@ -17,7 +17,7 @@ export default {
   failedHeading: 'No se pudo cargar este pasaje',
   failedBody: 'El enlace está bien. Inténtalo de nuevo en un momento.',
   errors: {
-    malformed: 'Este enlace de desafío está incompleto o dañado.',
+    malformed: 'Está incompleto o ya no sirve. Pide uno nuevo.',
     newerVersion:
       'Este desafío necesita una versión más reciente de Meno. Actualiza la app y vuelve a abrir el enlace.',
     unknownTranslation: 'Este desafío usa una traducción que esta versión de Meno no conoce.',

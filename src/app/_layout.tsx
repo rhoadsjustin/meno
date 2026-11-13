@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Observe, ObserveRoot, useObserve } from 'expo-observe';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Updates from 'expo-updates';
 import React, { useEffect, useState } from 'react';
 import { AppState, Pressable, StyleSheet, useColorScheme, Text, View } from 'react-native';
 
@@ -178,13 +179,30 @@ function RootLayout() {
     };
   }, [success]);
 
+  // The exception's own words go to diagnostics, never the screen.
+  useEffect(() => {
+    if (!error) return;
+    try {
+      Observe.logEvent('app.migration_error', {
+        severity: 'fatal',
+        body: `${error.name}: ${error.message}`,
+        attributes: { stack: error.stack ?? '' },
+      });
+    } catch {
+      // reporting must never rethrow
+    }
+  }, [error]);
+
   if (error) {
-    // A failed migration means user data is unreadable — surface it rather
-    // than rendering screens against a broken schema.
+    // A failed migration means user data is unreadable — say so in plain
+    // words rather than rendering screens against a broken schema. Plain RN
+    // on the palette, so it renders when nothing else has.
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <Text accessibilityRole="alert">{t('migrationError', { message: error.message })}</Text>
-      </View>
+      <RecoveryScreen
+        title={t('migrationError.title')}
+        body={t('migrationError.body')}
+        onRetry={() => void Updates.reloadAsync().catch(() => {})}
+      />
     );
   }
   if (!success || !catalogReady) return null;
@@ -247,16 +265,27 @@ function RootLayout() {
 }
 
 /** Render-error fallback: quiet, recoverable, on-surface — never a dead app. */
-function RecoveryScreen({ onRetry }: { onRetry: () => void }) {
+function RecoveryScreen({
+  onRetry,
+  title,
+  body,
+}: {
+  onRetry: () => void;
+  /** Defaults to the render-error copy. */
+  title?: string;
+  body?: string;
+}) {
   const scheme = useColorScheme();
   const colors = scheme === 'dark' ? palette.dark : palette.light;
   const { t } = useTranslation(['app', 'common']);
   return (
     <View style={[styles.recovery, { backgroundColor: colors.surface }]}>
       <Text accessibilityRole="alert" style={[styles.recoveryTitle, { color: colors.ink }]}>
-        {t('recovery.title')}
+        {title ?? t('recovery.title')}
       </Text>
-      <Text style={[styles.recoveryBody, { color: colors.inkFaint }]}>{t('recovery.body')}</Text>
+      <Text style={[styles.recoveryBody, { color: colors.inkFaint }]}>
+        {body ?? t('recovery.body')}
+      </Text>
       <Pressable
         accessibilityRole="button"
         onPress={onRetry}

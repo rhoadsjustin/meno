@@ -1,9 +1,9 @@
 /** Recite to Unlock: setup flow, the unlock quiz, and the Screen Time shield. */
 export default {
   setup: {
-    unavailableTitle: 'Recite to Unlock needs your iPhone',
+    unavailableTitle: 'Recite to Unlock isn’t available on this device',
     unavailableBody:
-      'Apple’s Screen Time features only work on a physical device — the simulator can’t shield apps. Everything else in Meno works here as usual.',
+      'It relies on Apple’s Screen Time, which this device doesn’t provide. Everything else in Meno works here as usual.',
     explainerTitle: 'Recite to unlock',
     explainerBody:
       'Choose apps that tend to pull you away. When you open one, Meno asks you to recite your current verse first — then gets out of the way.',
@@ -28,7 +28,7 @@ export default {
     turnOn: 'Turn on',
     doneTitle: 'You’re set',
     doneBody:
-      'The next time you open a shielded app, Meno will ask for your verse. Override is always one tap away, and the kill switch in Settings clears everything instantly.',
+      'Meno will ask for your verse the next time you open a shielded app. Override is always one tap away, and “Turn off and clear all shields now” in Settings clears everything.',
     cancelSetup: 'Cancel setup',
   },
   unlock: {

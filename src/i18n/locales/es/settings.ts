@@ -27,7 +27,7 @@ export default {
     hintWide: 'Muestra los pasos de configuración junto a esta lista',
     onSummary: 'Activado · esta semana: {{recitations}}, {{overrides}}',
     offBody: 'Pide un versículo antes de que se abran tus apps que más te distraen.',
-    unavailable: 'Disponible en tu iPhone (no en el simulador).',
+    unavailable: 'No disponible en este dispositivo.',
     killSwitch: 'Desactivar y quitar todos los bloqueos ahora',
     killSwitchDone: 'Recitar para desbloquear está desactivado. Se quitaron todos los bloqueos.',
   },

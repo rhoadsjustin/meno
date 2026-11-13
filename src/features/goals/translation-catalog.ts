@@ -30,13 +30,15 @@ type CatalogStatus = 'loading' | 'ready' | 'error';
 
 /**
  * A refresh of the version list over a cached catalog, shown at the top of
- * the picker: checking, then how many versions it added, or why it failed.
+ * the picker: checking, then how many versions it added, or that it failed.
+ * The error's own words are never shown: they are developer text, in
+ * English, and name the Platform (02 §5).
  */
 export type CatalogRefreshState =
   | { state: 'idle' }
   | { state: 'checking' }
   | { state: 'done'; added: number }
-  | { state: 'failed'; reason: string | null };
+  | { state: 'failed' };
 
 type LoadOptions = { force?: boolean; versionsMaxAge?: number };
 
@@ -54,11 +56,6 @@ type CatalogState = {
  * The refresh button passes zero.
  */
 export const PICKER_VERSIONS_MAX_AGE = 5 * 60 * 1000;
-
-/** The error's own words when it has any; the row adds a connection hint otherwise. */
-function reasonOf(error: unknown): string | null {
-  return error instanceof Error && error.message.trim() ? error.message.trim() : null;
-}
 
 export const useTranslationCatalog = create<CatalogState>((set, get) => ({
   status: youversionKeyConfigured() && !catalogFetched() ? 'loading' : 'ready',
@@ -84,10 +81,11 @@ export const useTranslationCatalog = create<CatalogState>((set, get) => ({
         refresh: hadCatalog && result.fetched ? { state: 'done', added: result.added } : s.refresh,
       }));
     } catch (error) {
+      if (__DEV__) console.warn('Translation catalog refresh failed', error);
       set((s) => ({
         status: catalogFetched() ? 'ready' : 'error',
         version: s.version + 1,
-        refresh: hadCatalog ? { state: 'failed', reason: reasonOf(error) } : s.refresh,
+        refresh: hadCatalog ? { state: 'failed' } : s.refresh,
       }));
     }
   },

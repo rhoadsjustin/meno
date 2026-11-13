@@ -33,8 +33,7 @@ export default {
     previewLabel:
       'Vista previa: una app bloqueada que te pide recitar tu versículo antes de abrirse, con un botón Omitir que siempre funciona',
     body: 'Opcional, y un poco atrevido: bloquea las apps que te roban el tiempo. Para abrir una, recita de memoria tu versículo actual. Omitir siempre está disponible: nunca te quedarás sin acceso a tu propio teléfono.',
-    simulatorHint:
-      'Funciona en tu iPhone (no en el simulador). Encuéntralo cuando quieras en Ajustes → Recitar para desbloquear.',
+    unavailableHint: 'Recitar para desbloquear no está disponible en este dispositivo.',
     tryStarter: 'Pruébalo con {{passage}}',
     chooseOwn: 'Elegir mi propio pasaje',
     setUpLock: 'Configurar Recitar para desbloquear',

@@ -25,7 +25,7 @@ export default {
     refreshAdded_other: 'Se agregaron {{count}} traducciones nuevas',
     refreshUpToDate: 'Las traducciones están al día',
     refreshFailed: 'No se pudo buscar traducciones nuevas.',
-    refreshHint: 'Revisa tu conexión y toca el botón de actualizar.',
+    refreshHint: 'Revisa tu conexión e inténtalo de nuevo.',
     noResults: 'Sin resultados para «{{query}}»',
     noResultsHint: 'Revisa la ortografía o busca por idioma o abreviatura.',
     empty: 'No hay traducciones disponibles.',

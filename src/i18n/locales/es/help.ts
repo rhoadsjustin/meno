@@ -16,7 +16,7 @@ export default {
     ready: 'Listo',
     notYet: 'Aún sin configurar',
     openSettings: 'Necesita permiso en Ajustes del iPhone',
-    unavailable: 'Requiere un iPhone real',
+    unavailable: 'No disponible en este dispositivo',
     manual: 'Agrégalo tú mismo: los pasos están abajo',
   },
   overviewLabel: '{{title}}: {{status}}',
@@ -85,7 +85,7 @@ export default {
   lock: {
     body: 'Opcional. Elige las apps que te roban el tiempo; antes de que una se abra, Meno te pide recitar tu versículo. Omitir siempre está a un toque, y puedes desactivarlo cuando quieras.',
     unavailable:
-      'Esto usa Tiempo en pantalla de Apple, que solo funciona en un iPhone real, no en el simulador.',
+      'Recitar para desbloquear depende de Tiempo en pantalla de Apple, que no está disponible en este dispositivo.',
     readyTip:
       'Está activado. Para desactivarlo por completo, ve a Ajustes → Desactivar y quitar todos los bloqueos ahora.',
     steps: {

@@ -31,8 +31,8 @@ export default {
     previewLabel:
       'Preview: a shielded app asking you to recite your verse before it opens, with an Override button that always works',
     body: 'Optional, and a little audacious: shield the apps that eat your time. To open one, recite your current verse from memory. Override is always there — you’re never locked out of your own phone.',
-    simulatorHint:
-      'Works on your iPhone (not in the simulator). Find it anytime in Settings → Recite to Unlock.',
+    // The Screen Time module is missing, so setup isn't offered here.
+    unavailableHint: 'Recite to Unlock isn’t available on this device.',
     tryStarter: 'Try it with {{passage}}',
     chooseOwn: 'Choose my own passage',
     setUpLock: 'Set up recite-to-unlock',

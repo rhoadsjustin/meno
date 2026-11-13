@@ -230,21 +230,27 @@ export function SpeakRound({
       case 'not-allowed':
       case 'service-not-allowed':
         setPermission('denied');
+        AccessibilityInfo.announceForAccessibility(t('speak.permissionOff'));
         return;
       case 'audio-capture':
       case 'busy':
         setSpeechError(t('speak.micBusy'));
+        AccessibilityInfo.announceForAccessibility(t('speak.micBusy'));
         return;
       case 'language-not-supported':
         if (Platform.OS === 'android') {
           setPack('missing');
+          AccessibilityInfo.announceForAccessibility(t('speak.packMissing'));
           return;
         }
         // The patched iOS recognizer refuses rather than going online.
         setUnavailable('offline');
         return;
     }
-    setSpeechError(t('speak.error', { error: event.error }));
+    // The recognizer's code is for the log; the screen says what to do.
+    if (__DEV__) console.warn('Speech recognition error', event.error);
+    setSpeechError(t('speak.error'));
+    AccessibilityInfo.announceForAccessibility(t('speak.error'));
   });
 
   const downloadPack = useCallback(async () => {
@@ -277,6 +283,7 @@ export function SpeakRound({
     const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!result.granted) {
       setPermission('denied');
+      AccessibilityInfo.announceForAccessibility(t('speak.permissionOff'));
       return;
     }
     setPermission('granted');
@@ -286,6 +293,7 @@ export function SpeakRound({
     if (Platform.OS === 'android') {
       if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
         setSpeechError(t('speak.offlineUnsupported'));
+        AccessibilityInfo.announceForAccessibility(t('speak.offlineUnsupported'));
         return;
       }
       const installed = await ExpoSpeechRecognitionModule.getSupportedLocales({})
@@ -295,6 +303,7 @@ export function SpeakRound({
       const base = lang.split('-')[0].toLowerCase();
       if (installed.length > 0 && !installed.some((l) => l.toLowerCase().startsWith(base))) {
         setPack('missing');
+        AccessibilityInfo.announceForAccessibility(t('speak.packMissing'));
         return;
       }
       setPack('ok');
@@ -378,13 +387,17 @@ export function SpeakRound({
       </Text>
 
       {permission === 'denied' && (
-        <Text style={[styles.error, { color: colors.error, fontFamily: fonts?.ui }]}>
+        <Text
+          accessibilityRole="alert"
+          style={[styles.error, { color: colors.error, fontFamily: fonts?.ui }]}>
           {t('speak.permissionOff')}
         </Text>
       )}
       {pack !== 'ok' && (
         <View style={styles.packArea}>
-          <Text style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          <Text
+            accessibilityRole="alert"
+            style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t(pack === 'missing' ? 'speak.packMissing' : 'speak.packDownloading')}
           </Text>
           {pack === 'missing' && (
@@ -399,7 +412,8 @@ export function SpeakRound({
       )}
       {speechError && (
         <Animated.Text
-          entering={FadeIn.duration(150)}
+          accessibilityRole="alert"
+          entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
           style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {speechError}
         </Animated.Text>

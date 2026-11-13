@@ -162,7 +162,7 @@ export default {
     check: 'Revisar',
   },
   speak: {
-    error: 'El reconocimiento de voz tuvo un problema ({{error}}). Puedes escribirlo.',
+    error: 'No se pudo escuchar. Inténtalo de nuevo, o escríbelo.',
     micBusy: 'Otra app está usando el micrófono. Ciérrala e inténtalo de nuevo, o escríbelo.',
     packMissing:
       'Para recitar en voz alta, este teléfono necesita el paquete de voz sin conexión del idioma del versículo, así tu voz nunca sale del dispositivo. Descárgalo e inténtalo de nuevo, o escríbelo.',
@@ -171,7 +171,7 @@ export default {
     unavailableLanguage:
       'Este iPhone no reconoce la voz en el idioma de esta traducción, así que esta ronda se escribe.',
     unavailableOffline:
-      'Este iPhone no reconoce este idioma sin internet, y Meno mantiene tu voz en el teléfono, así que esta ronda se escribe. Activar el dictado en un teclado de este idioma puede añadirlo.',
+      'Este iPhone no reconoce este idioma sin internet, y Meno mantiene tu voz en el teléfono, así que esta ronda se escribe.',
     offlineUnsupported:
       'Este teléfono no puede reconocer la voz sin conexión, y Meno mantiene tu voz en el dispositivo. Escribe tu recitación.',
     pausedAnnouncement: 'En pausa. Tus palabras se conservan — edítalas o sigue.',

@@ -168,7 +168,7 @@ export default {
     check: 'Check',
   },
   speak: {
-    error: 'Speech recognition hit a snag ({{error}}). You can type instead.',
+    error: 'Couldn’t hear that. Try again, or type instead.',
     micBusy: 'Another app is using the microphone. Close it and try again, or type instead.',
     // Android: recognition stays on the phone, so it needs the offline pack.
     packMissing:
@@ -178,7 +178,7 @@ export default {
     unavailableLanguage:
       'This iPhone can’t recognize speech in this translation’s language, so this round is typed.',
     unavailableOffline:
-      'This iPhone can’t recognize this language without the internet, and Meno keeps your voice on the phone — so this round is typed. Turning on Dictation for a keyboard in this language may add it.',
+      'This iPhone can’t recognize this language offline, and Meno keeps your voice on the phone, so this round is typed.',
     offlineUnsupported:
       'This phone can’t recognize speech offline, and Meno keeps your voice on the device. Type your recitation instead.',
     pausedAnnouncement: 'Paused. Your words are kept — edit them or keep going.',

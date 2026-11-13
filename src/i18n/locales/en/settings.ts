@@ -26,7 +26,7 @@ export default {
     // {{recitations}} / {{overrides}} are stats:recitationCount / overrideCount.
     onSummary: 'On · this week: {{recitations}}, {{overrides}}',
     offBody: 'Ask for a verse before your distracting apps open.',
-    unavailable: 'Available on your iPhone (not in the simulator).',
+    unavailable: 'Not available on this device.',
     killSwitch: 'Turn off and clear all shields now',
     killSwitchDone: 'Recite to Unlock is off. All shields are cleared.',
   },

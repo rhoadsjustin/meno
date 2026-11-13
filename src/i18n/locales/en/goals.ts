@@ -24,7 +24,7 @@ export default {
     refreshAdded_other: 'Added {{count}} new translations',
     refreshUpToDate: 'Translations are up to date',
     refreshFailed: 'Couldn’t check for new translations.',
-    refreshHint: 'Check your connection, then tap the refresh button.',
+    refreshHint: 'Check your connection, then try again.',
     noResults: 'No results for “{{query}}”',
     noResultsHint: 'Check the spelling, or search by a language or abbreviation.',
     empty: 'No translations available.',
