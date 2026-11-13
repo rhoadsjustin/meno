@@ -10,7 +10,6 @@ import {
   BackHandler,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +22,8 @@ import { contentColumn, contentColumnWide, useContentLayout } from '@/components
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ModalSafeArea } from '@/components/modal-safe-area';
+import { Button } from '@/components/button';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { DEFAULT_STARTER, formatRange, formatRef } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
@@ -160,12 +161,11 @@ function Onboarding() {
       </>
     ),
     actions: (
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label={t('common:continue')}
         onPress={() => setStep('notifications')}
-        style={[styles.primary, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
-      </Pressable>
+        style={styles.primary}
+      />
     ),
   };
 
@@ -183,19 +183,18 @@ function Onboarding() {
     ),
     actions: (
       <>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={t('notifications.optIn')}
           onPress={() => void optIn()}
-          style={[styles.primary, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-            {t('notifications.optIn')}
-          </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setStep(afterNotifications)}>
-          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('notifications.later')}
-          </Text>
-        </Pressable>
+          style={styles.primary}
+        />
+        <TextLink
+          tone="quiet"
+          label={t('notifications.later')}
+          onPress={() => setStep(afterNotifications)}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
       </>
     ),
   };
@@ -220,19 +219,18 @@ function Onboarding() {
     ),
     actions: (
       <>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={t('notificationsBlocked.openSettings')}
           onPress={() => void Linking.openSettings()}
-          style={[styles.primary, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-            {t('notificationsBlocked.openSettings')}
-          </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setStep(afterNotifications)}>
-          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('common:notNow')}
-          </Text>
-        </Pressable>
+          style={styles.primary}
+        />
+        <TextLink
+          tone="quiet"
+          label={t('common:notNow')}
+          onPress={() => setStep(afterNotifications)}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
       </>
     ),
   };
@@ -263,12 +261,11 @@ function Onboarding() {
       </>
     ),
     actions: (
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label={t('common:continue')}
         onPress={() => setStep('lock')}
-        style={[styles.primary, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
-      </Pressable>
+        style={styles.primary}
+      />
     ),
   };
 
@@ -297,37 +294,33 @@ function Onboarding() {
     ),
     actions: (
       <>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: starting, busy: starting }}
+        <Button
+          label={t('lock.tryStarter', { passage: formatRange(DEFAULT_STARTER.range) })}
           disabled={starting}
           onPress={() => void tryStarter()}
-          style={[
-            styles.primary,
-            { backgroundColor: colors.lapis },
-            starting && styles.primaryBusy,
-          ]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-            {t('lock.tryStarter', { passage: formatRange(DEFAULT_STARTER.range) })}
-          </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => void finish('goal-wizard')}>
-          <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('lock.chooseOwn')}
-          </Text>
-        </Pressable>
+          style={styles.primary}
+        />
+        <TextLink
+          label={t('lock.chooseOwn')}
+          onPress={() => void finish('goal-wizard')}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
         {isLockAvailable() && (
-          <Pressable accessibilityRole="button" onPress={() => void finish('lock-setup')}>
-            <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('lock.setUpLock')}
-            </Text>
-          </Pressable>
+          <TextLink
+            label={t('lock.setUpLock')}
+            onPress={() => void finish('lock-setup')}
+            style={styles.quiet}
+            labelStyle={styles.quietLabel}
+          />
         )}
-        <Pressable accessibilityRole="button" onPress={() => void finish()}>
-          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('lock.exploreFirst')}
-          </Text>
-        </Pressable>
+        <TextLink
+          tone="quiet"
+          label={t('lock.exploreFirst')}
+          onPress={() => void finish()}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
       </>
     ),
   };
@@ -445,13 +438,11 @@ const styles = StyleSheet.create({
   hint: { fontSize: 13, lineHeight: 19 },
   primary: {
     marginTop: spacing.xl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
   },
-  primaryBusy: { opacity: 0.5 },
-  primaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  quiet: { fontSize: 15, textAlign: 'center', marginTop: spacing.md },
+  // A 44pt target in the 32pt the text row took: it reaches 6pt into the
+  // gaps around it, so a step with three of these is no taller.
+  quiet: { marginVertical: -6 },
+  quietLabel: { textAlign: 'center' },
 
   shotStack: { gap: spacing.sm },
   shieldMock: {

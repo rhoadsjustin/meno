@@ -14,7 +14,9 @@ import {
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
+import { MIN_TOUCH_TARGET } from '@/components/button';
 import { Screen } from '@/components/screen';
+import { TextLink } from '@/components/text-link';
 import { DeleteGoalButton } from '@/features/goals/DeleteGoalButton';
 import { removeGoal, stopPassage } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
@@ -215,58 +217,37 @@ export default function LibraryScreen() {
                 ))}
               </View>
               <View style={styles.actionsRow}>
-                <Pressable
-                  accessibilityRole="button"
+                <TextLink
+                  weight="semibold"
+                  label={t('goal.practice')}
                   onPress={() => router.push(`/practice/${goal.id}`)}
-                  style={[styles.practiceLink]}>
-                  <Text
-                    style={[
-                      styles.practiceLinkText,
-                      { color: colors.lapis, fontFamily: fonts?.ui },
-                    ]}>
-                    {t('goal.practice')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
+                />
+                <TextLink
+                  weight="semibold"
+                  label={t('goal.share')}
                   accessibilityLabel={t('goal.shareSpoken', { title: goal.title })}
                   onPress={() => shareGoalChallenge(goal).catch(() => {})}
-                  style={[styles.practiceLink]}>
-                  <Text
-                    style={[
-                      styles.practiceLinkText,
-                      { color: colors.lapis, fontFamily: fonts?.ui },
-                    ]}>
-                    {t('goal.share')}
-                  </Text>
-                </Pressable>
+                />
                 {activeCount > 1 &&
                   (goal.id === focusId ? (
                     <Text
                       style={[
-                        styles.practiceLink,
+                        styles.actionCell,
                         styles.focusNote,
                         { color: colors.inkFaint, fontFamily: fonts?.ui },
                       ]}>
                       {t('goal.onWidgets')}
                     </Text>
                   ) : (
-                    <Pressable
-                      accessibilityRole="button"
+                    <TextLink
+                      weight="semibold"
+                      label={t('goal.showOnWidgets')}
                       accessibilityLabel={t('goal.showOnWidgetsSpoken', { title: goal.title })}
                       onPress={() => void showOnWidgets(goal)}
-                      style={[styles.practiceLink]}>
-                      <Text
-                        style={[
-                          styles.practiceLinkText,
-                          { color: colors.lapis, fontFamily: fonts?.ui },
-                        ]}>
-                        {t('goal.showOnWidgets')}
-                      </Text>
-                    </Pressable>
+                    />
                   ))}
                 {buttonBelow && goalRemoval(goal, chunks) && (
-                  <View style={styles.practiceLink}>{removalButton(goal, chunks)}</View>
+                  <View style={styles.actionCell}>{removalButton(goal, chunks)}</View>
                 )}
               </View>
             </Card>
@@ -287,7 +268,11 @@ export default function LibraryScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/goal-wizard')}
-          style={[styles.newGoal, { borderColor: colors.lapis }]}>
+          style={({ pressed }) => [
+            styles.newGoal,
+            { borderColor: colors.lapis },
+            pressed && styles.pressed,
+          ]}>
           <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
             {active.length > 0 ? t('practiceAnother') : t('choosePassage')}
           </Text>
@@ -455,16 +440,28 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   cell: { width: 16, height: 16, borderRadius: 4 },
-  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.xl },
+  // The links are 44pt targets whose text sits where it did: the target
+  // reaches into the card's bottom padding rather than making the card taller.
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    columnGap: spacing.xl,
+    marginBottom: -spacing.md,
+  },
+  pressed: { opacity: 0.6 },
   focusNote: { fontSize: 15, fontWeight: '600' },
-  practiceLink: { marginTop: spacing.md, alignSelf: 'flex-start' },
+  // The note and the trash button, padded to line up with the 44pt links.
+  actionCell: { paddingVertical: spacing.md, alignSelf: 'flex-start' },
   newGoal: {
     borderWidth: 1.5,
     borderRadius: radius.capsule,
     borderCurve: 'continuous',
     borderStyle: 'dashed',
     paddingVertical: spacing.md,
+    minHeight: MIN_TOUCH_TARGET,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   practiceLinkText: { fontSize: 15, fontWeight: '600' },
   memorizedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

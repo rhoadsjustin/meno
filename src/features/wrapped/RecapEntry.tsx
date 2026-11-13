@@ -63,7 +63,8 @@ export function RecapTodayCard({ offer }: { offer: RecapOffer | null }) {
       accessibilityRole="button"
       accessibilityLabel={t('todayCard', { year: offer.year })}
       accessibilityHint={t('todayCardHint')}
-      onPress={() => open(offer.year)}>
+      onPress={() => open(offer.year)}
+      style={({ pressed }) => pressed && styles.pressed}>
       <Card>
         <View style={styles.row}>
           <View style={styles.text}>
@@ -89,7 +90,8 @@ export function RecapStatsRow({ offer }: { offer: RecapOffer | null }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={t('statsRow', { year: offer.year })}
-      onPress={() => open(offer.year)}>
+      onPress={() => open(offer.year)}
+      style={({ pressed }) => pressed && styles.pressed}>
       <Card>
         <View style={styles.row}>
           <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -103,6 +105,7 @@ export function RecapStatsRow({ offer }: { offer: RecapOffer | null }) {
 }
 
 const styles = StyleSheet.create({
+  pressed: { opacity: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   text: { flex: 1, gap: spacing.xs },
   title: { fontSize: 19, fontWeight: '600' },
