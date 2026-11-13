@@ -115,6 +115,7 @@ export default {
   dissolution: {
     memorizedLabel: 'Memorizaste {{reference}} — ahora el texto vive en ti.',
     dissolvingLabel: 'El versículo se desvanece mientras pasa a tu memoria.',
+    skipHint: 'Omite la animación.',
     sealNote: 'Guardado en tu corazón.',
   },
   read: {

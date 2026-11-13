@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Button, MIN_TOUCH_TARGET } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { buildArrangeRound, gradeArrangement, isPlacementCorrect } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
@@ -64,7 +65,11 @@ export function ArrangeRound({
             accessibilityLabel={t('arrange.placed', { position: i + 1, phrase: round.phrases[tile] })}
             accessibilityHint={t('arrange.placedHint')}
             onPress={() => unplace(i)}
-            style={[styles.tile, { backgroundColor: colors.lapisWash, borderColor: colors.lapis }]}>
+            style={({ pressed }) => [
+              styles.tile,
+              { backgroundColor: colors.lapisWash, borderColor: colors.lapis },
+              pressed && styles.pressed,
+            ]}>
             <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {round.phrases[tile]}
             </Text>
@@ -80,7 +85,11 @@ export function ArrangeRound({
             accessibilityLabel={t('arrange.phrase', { phrase: round.phrases[tile] })}
             accessibilityHint={t('arrange.phraseHint')}
             onPress={() => place(tile)}
-            style={[styles.tile, { backgroundColor: colors.surfaceRaised, borderColor: colors.separator }]}>
+            style={({ pressed }) => [
+              styles.tile,
+              { backgroundColor: colors.surfaceRaised, borderColor: colors.separator },
+              pressed && styles.pressed,
+            ]}>
             <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {round.phrases[tile]}
             </Text>
@@ -89,12 +98,7 @@ export function ArrangeRound({
       </View>
 
       {remaining.length === 0 && (
-        <Pressable
-          accessibilityRole="button"
-          onPress={submit}
-          style={[styles.button, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('arrange.check')}</Text>
-        </Pressable>
+        <Button label={t('arrange.check')} onPress={submit} style={styles.button} />
       )}
     </>
   );
@@ -115,15 +119,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.card,
     borderCurve: 'continuous',
+    // A full touch target without more padding: the round is already long
+    // on a short window.
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
+  pressed: { opacity: 0.6 },
   tileText: { fontSize: 17, lineHeight: 24 },
-  button: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  button: { marginTop: spacing.xxl },
 });

@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_TOUCH_TARGET } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { displayTokens, hashSeed, mulberry32, selectBlanks, shuffle } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
@@ -147,7 +148,11 @@ export function BlanksRound({
               accessibilityLabel={t('blanks.choice', { choice })}
               accessibilityHint={t('blanks.choiceHint')}
               onPress={() => settle(choice === tokens[activeIndex].word ? 'correct' : 'wrong')}
-              style={[styles.chip, { borderColor: colors.lapis }]}>
+              style={({ pressed }) => [
+                styles.chip,
+                { borderColor: colors.lapis },
+                pressed && styles.pressed,
+              ]}>
               <Text style={[styles.chipText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
                 {choice}
               </Text>
@@ -181,8 +186,14 @@ const styles = StyleSheet.create({
   chip: {
     borderWidth: 1.5,
     borderRadius: radius.capsule,
+    // A wrong chip is graded as a miss, so each is a full touch target.
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
+  pressed: { opacity: 0.6 },
   chipText: { fontSize: 17, fontWeight: '600' },
 });

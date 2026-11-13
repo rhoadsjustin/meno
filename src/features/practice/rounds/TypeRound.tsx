@@ -5,7 +5,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -14,6 +13,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { useRevealAboveKeyboard } from '@/components/keyboard-scroll';
 
@@ -110,18 +110,13 @@ export function TypeRound({
           { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.scripture },
         ]}
       />
-      <Pressable
+      <Button
         ref={check}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: input.trim().length === 0 }}
+        label={t('type.check')}
         disabled={input.trim().length === 0}
         onPress={submit}
-        style={[
-          styles.button,
-          { backgroundColor: colors.lapis, opacity: input.trim().length === 0 ? 0.5 : 1 },
-        ]}>
-        <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('type.check')}</Text>
-      </Pressable>
+        style={styles.button}
+      />
     </>
   );
 }
@@ -141,11 +136,5 @@ const styles = StyleSheet.create({
     lineHeight: scriptureType.defaultLineHeight,
     textAlignVertical: 'top',
   },
-  button: {
-    marginTop: spacing.xl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  button: { marginTop: spacing.xl },
 });

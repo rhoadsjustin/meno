@@ -6,8 +6,9 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
@@ -60,7 +61,7 @@ import { FirstLettersRound } from '@/features/practice/rounds/FirstLettersRound'
 import { ReadRound } from '@/features/practice/rounds/ReadRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
@@ -399,12 +400,11 @@ export function PracticeScreen({
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {phase.message}
           </Text>
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label={t('common:done')}
             onPress={() => router.back()}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-          </Pressable>
+            style={styles.primaryButton}
+          />
         </>
       )}
 
@@ -416,12 +416,11 @@ export function PracticeScreen({
           <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('restingBody', { tier: tierName(6) })}
           </Text>
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label={t('common:done')}
             onPress={() => router.back()}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-          </Pressable>
+            style={styles.primaryButton}
+          />
         </>
       )}
 
@@ -539,16 +538,9 @@ export function PracticeScreen({
               {t('feedback.suggestDrop', { tier: tierName(session.tier) })}
             </Text>
           )}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void (phase.restPoint ? finishSession() : continueSession())}
-            style={[
-              styles.primaryButton,
-              short && styles.primaryButtonShort,
-              { backgroundColor: colors.lapis },
-            ]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-              {phase.sealsTomorrow
+          <Button
+            label={
+              phase.sealsTomorrow
                 ? t('feedback.finish')
                 : phase.needsCleanPass
                   ? t('common:retry')
@@ -558,53 +550,37 @@ export function PracticeScreen({
                       ? t('common:continue')
                       : phase.passed
                         ? t('feedback.nextRound')
-                        : t('common:retry')}
-            </Text>
-          </Pressable>
+                        : t('common:retry')
+            }
+            onPress={() => void (phase.restPoint ? finishSession() : continueSession())}
+            style={[styles.primaryButton, short && styles.primaryButtonShort]}
+          />
           {phase.restPoint && (
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              variant="plain"
+              label={t('feedback.keepGoing')}
               accessibilityHint={t('feedback.keepGoingHint', { tier: tierName(REST_TIER + 1) })}
               onPress={() => void continueSession()}
-              style={styles.secondaryButton}>
-              <Text
-                style={[
-                  styles.secondaryButtonText,
-                  { color: colors.lapis, fontFamily: fonts?.ui },
-                ]}>
-                {t('feedback.keepGoing')}
-              </Text>
-            </Pressable>
+              style={styles.secondaryButton}
+            />
           )}
           {phase.needsCleanPass && (
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              variant="plain"
+              label={t('feedback.stopForToday')}
               accessibilityHint={t('feedback.stopForTodayHint', { tier: tierName(6) })}
               onPress={() => void finishSession()}
-              style={styles.secondaryButton}>
-              <Text
-                style={[
-                  styles.secondaryButtonText,
-                  { color: colors.lapis, fontFamily: fonts?.ui },
-                ]}>
-                {t('feedback.stopForToday')}
-              </Text>
-            </Pressable>
+              style={styles.secondaryButton}
+            />
           )}
           {phase.suggestDropTier && (
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              variant="plain"
+              label={t('feedback.rebuildAt', { tier: tierName(Math.max(0, session.tier - 1)) })}
               accessibilityHint={t('feedback.rebuildHint')}
               onPress={() => void dropToLowerTier()}
-              style={styles.secondaryButton}>
-              <Text
-                style={[
-                  styles.secondaryButtonText,
-                  { color: colors.lapis, fontFamily: fonts?.ui },
-                ]}>
-                {t('feedback.rebuildAt', { tier: tierName(Math.max(0, session.tier - 1)) })}
-              </Text>
-            </Pressable>
+              style={styles.secondaryButton}
+            />
           )}
         </>
       )}
@@ -831,12 +807,7 @@ function SessionSummary({
               : t('summary.pickUp', { tier: tierName(nextTier(standing)) })}
         </Text>
       )}
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.back()}
-        style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-      </Pressable>
+      <Button label={t('common:done')} onPress={() => router.back()} style={styles.primaryButton} />
     </>
   );
 }
@@ -873,14 +844,9 @@ const styles = StyleSheet.create({
   accuracy: { fontSize: 56, marginTop: spacing.xl },
   accuracyShort: { fontSize: 44, marginTop: 0 },
   suggestion: { fontSize: 15, lineHeight: 20, marginTop: spacing.md },
-  primaryButton: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
+  primaryButton: { marginTop: spacing.xxl },
   primaryButtonShort: { marginTop: spacing.lg },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  secondaryButton: { marginTop: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center' },
-  secondaryButtonText: { fontSize: 16, fontWeight: '600' },
+  // The plain button is 44pt tall where the old text row was about 36pt, so
+  // the gap gives the difference back: the pair is no taller on a short window.
+  secondaryButton: { marginTop: spacing.sm },
 });
