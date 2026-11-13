@@ -119,6 +119,9 @@ export default {
   notYet: 'Your Year in the Word opens once you’ve practiced on 3 days.',
   todayCard: 'Your {{year}} in the Word is ready',
   todayCardHint: 'A look back at the Scripture you carried',
+  todayCardDismiss: 'Hide this card',
+  todayCardDismissed: 'Hidden. Your Year in the Word is still on the Stats tab.',
+  notYetDismissed: 'Hidden',
   statsRow: '{{year}} in the Word',
   /** Stats group listing finished years' recaps (docs/10 §5.4). */
   pastYears: 'Year in the Word',
