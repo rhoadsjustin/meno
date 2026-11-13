@@ -6,7 +6,7 @@ export default {
   intro:
     'Meno funciona mejor con algunas cosas activadas. Cada una toma más o menos un minuto. Toca cualquier opción para ir directo a sus pasos.',
   sections: {
-    quizzes: 'Recordatorios y pruebas sorpresa',
+    quizzes: 'Recordatorios',
     homeWidget: 'Widget de la pantalla de inicio',
     lockWidget: 'Widget de la pantalla de bloqueo',
     speak: 'Recitar en voz alta',
@@ -46,7 +46,7 @@ export default {
     askTip: 'Tu iPhone te preguntará si Meno puede enviarte notificaciones: toca Permitir.',
   },
   homeWidget: {
-    body: 'Muestra tu versículo actual en la pantalla de inicio. A medida que lo aprendes, algunas palabras desaparecen: una invitación amable a completarlas de memoria.',
+    body: 'Muestra tu versículo actual en la pantalla de inicio. A medida que lo aprendes, algunas palabras desaparecen, para que las completes de memoria.',
     imageLabel:
       'Ejemplo: el widget de Meno en una pantalla de inicio, mostrando {{ref}} con algunas palabras ocultas',
     steps: {
@@ -83,7 +83,7 @@ export default {
       'Tu iPhone te preguntará por el micrófono y el reconocimiento de voz: toca Permitir en ambos.',
   },
   lock: {
-    body: 'Opcional. Elige las apps que te roban el tiempo; antes de que una se abra, Meno te pide recitar tu versículo. Omitir siempre está a un toque, y puedes desactivarlo cuando quieras.',
+    body: 'Opcional. Elige las apps que te distraen; antes de que una se abra, Meno te pide recitar tu versículo. Omitir siempre está a un toque, y puedes desactivarlo cuando quieras.',
     unavailable:
       'Recitar para desbloquear depende de Tiempo en pantalla de Apple, que no está disponible en este dispositivo.',
     readyTip:
@@ -100,7 +100,7 @@ export default {
   faq: {
     multiple: {
       q: '¿Puedo aprender más de un pasaje a la vez?',
-      a: 'Sí. Toca “+ Practicar otro pasaje” en Hoy (o en Biblioteca). Cada pasaje guarda su propio progreso, y Hoy los muestra todos, con el que está en tus widgets hasta arriba.',
+      a: 'Sí. Toca “Agregar pasaje” en Hoy (o en Biblioteca). Cada pasaje guarda su propio progreso, y Hoy los muestra todos, con el que está en tus widgets hasta arriba.',
     },
     widgetVerse: {
       q: '¿Cómo elijo qué versículo muestran mis widgets?',
@@ -115,7 +115,7 @@ export default {
       a: 'Es a propósito cuando ya conoces bien un versículo: ¡intenta recitarlo de memoria! Para mostrar más, mantén presionado el widget, toca Editar widget y cambia “Mostrar versículo como”.',
     },
     noReminders: {
-      q: 'No me llegan recordatorios ni pruebas sorpresa.',
+      q: 'No me llegan los recordatorios.',
       a: 'Abre Ajustes → Recordatorios. Cada tipo de recordatorio indica cuándo llega el próximo, o por qué todavía no llegará ninguno. El recordatorio diario llega a la hora que elegiste y se salta los días en que ya practicaste. Las pruebas sorpresa empiezan cuando ya memorizaste un versículo, y solo llegan entre las 9 a. m. y las 9 p. m. Si todo ahí se ve bien, revisa tu iPhone: un modo de Enfoque como Sueño o No molestar retiene las notificaciones hasta que termina, y el Resumen programado las guarda para ciertas horas del día. Meno no puede ver ninguno de los dos.',
     },
     shielded: {

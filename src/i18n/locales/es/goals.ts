@@ -4,7 +4,7 @@ import type en from '@/i18n/locales/en/goals';
 export default {
   picker: {
     onDevice: 'En este dispositivo',
-    savedForGoals: 'Guardada para tus metas',
+    savedForGoals: 'Guardada para tus pasajes',
     needsConnection: 'Necesita conexión',
     otherLanguages: 'Otros idiomas',
     translations: 'Traducciones',

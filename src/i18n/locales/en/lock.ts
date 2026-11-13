@@ -4,7 +4,7 @@ export default {
     unavailableTitle: 'Recite to Unlock isn’t available on this device',
     unavailableBody:
       'It relies on Apple’s Screen Time, which this device doesn’t provide. Everything else in Meno works here as usual.',
-    explainerTitle: 'Recite to unlock',
+    explainerTitle: 'Recite to Unlock',
     explainerBody:
       'Choose apps that tend to pull you away. When you open one, Meno asks you to recite your current verse first — then gets out of the way.',
     explainerPrivacy:

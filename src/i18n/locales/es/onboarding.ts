@@ -9,14 +9,14 @@ export default {
       'A medida que un versículo se afianza en tu memoria, su texto se va desvaneciendo de la pantalla. De eso se trata: que viva en ti, no en la app.',
   },
   notifications: {
-    title: '¿Podemos ponerte a prueba cuando menos lo esperes?',
-    body: 'Ese es el ingrediente secreto. Un recordatorio diario para practicar y, de vez en cuando, pruebas sorpresa sobre los versículos que ya memorizaste: nunca más de dos al día, y cada uno toma unos 30 segundos.',
-    optIn: 'Sí, ponme a prueba',
-    later: 'Más tarde',
+    title: '¿Activar los recordatorios?',
+    body: 'Un recordatorio diario para practicar, y pruebas sorpresa sobre los versículos que ya memorizaste. Nunca más de dos al día, de unos 30 segundos cada uno.',
+    optIn: 'Activar recordatorios',
+    later: 'Ahora no',
   },
   notificationsBlocked: {
     title: 'Los recordatorios aún no pueden llegarte',
-    body: 'Tu iPhone no está permitiendo notificaciones de Meno, así que no te llegarán recordatorios ni pruebas sorpresa. Para recibirlos, abre Ajustes del iPhone, toca Notificaciones y activa Permitir notificaciones.',
+    body: 'Tu iPhone no está permitiendo notificaciones de Meno, así que los recordatorios no pueden llegarte. Para recibirlos, abre Ajustes del iPhone, toca Notificaciones y activa Permitir notificaciones.',
     hint: 'También está bien dejarlo para después. En Meno, Ajustes → Recordatorios siempre te muestra si están llegando.',
     openSettings: 'Abrir Ajustes del iPhone',
   },
@@ -32,7 +32,7 @@ export default {
     title: 'Abre tus apps de memoria',
     previewLabel:
       'Vista previa: una app bloqueada que te pide recitar tu versículo antes de abrirse, con un botón Omitir que siempre funciona',
-    body: 'Opcional, y un poco atrevido: bloquea las apps que te roban el tiempo. Para abrir una, recita de memoria tu versículo actual. Omitir siempre está disponible: nunca te quedarás sin acceso a tu propio teléfono.',
+    body: 'Opcional: bloquea las apps que te distraen y recita de memoria tu versículo actual para abrir una. Omitir siempre está disponible: nunca te quedarás sin acceso a tu propio teléfono.',
     unavailableHint: 'Recitar para desbloquear no está disponible en este dispositivo.',
     tryStarter: 'Pruébalo con {{passage}}',
     chooseOwn: 'Elegir mi propio pasaje',

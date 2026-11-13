@@ -85,10 +85,8 @@ export default {
     restPoint:
       'Este es un buen lugar para detenerte hoy. {{first}}, {{second}} y {{third}} te estarán esperando — o sigue si tienes tiempo.',
     suggestDrop:
-      '¿Quieres reforzar la base? Baja un nivel — sin penalización, y {{tier}} te estará esperando cuando vuelvas a subir.',
-    finish: 'Terminar',
+      'Bajar un nivel puede ayudar — sin penalización, y {{tier}} te estará esperando cuando vuelvas a subir.',
     doneForToday: 'Listo por hoy',
-    nextRound: 'Siguiente ronda',
     keepGoing: 'Seguir',
     keepGoingHint: 'Continúa con {{tier}}',
     stopForToday: 'Parar por hoy',

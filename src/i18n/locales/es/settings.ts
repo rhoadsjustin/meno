@@ -4,14 +4,14 @@ import type en from '@/i18n/locales/en/settings';
 export default {
   guide: {
     title: 'Cómo configurar Meno',
-    body: 'Paso a paso: pruebas, widgets, recitar en voz alta y Recitar para desbloquear, además de preguntas frecuentes.',
+    body: 'Paso a paso: recordatorios, widgets, recitar en voz alta y Recitar para desbloquear, además de preguntas frecuentes.',
     hintWide: 'Muestra la guía junto a esta lista',
     hint: 'Abre una guía paso a paso',
   },
   reminders: {
     title: 'Recordatorios',
-    body: 'Un empujoncito diario para practicar, y pruebas sorpresa sobre los versículos que ya memorizaste. Nunca más de dos al día.',
-    hintWide: 'Muestra cómo funcionan las pruebas junto a esta lista',
+    body: 'Un recordatorio diario para practicar, y pruebas sorpresa sobre los versículos que ya memorizaste. Nunca más de dos al día.',
+    hintWide: 'Muestra cómo funcionan los recordatorios junto a esta lista',
     off: 'Desactivados. Meno no te enviará nada hasta que los actives.',
     remindAt: 'Recordarme a las',
     timeLabel: 'Hora del recordatorio diario',

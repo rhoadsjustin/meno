@@ -24,13 +24,11 @@ export default {
   },
 
   emptyInProgressTitle: 'Aún no hay pasajes',
-  emptyInProgressBody: 'Elige un pasaje para memorizar y aparecerá aquí mientras lo aprendes.',
-  practiceAnother: '+ Practicar otro pasaje',
-  choosePassage: 'Elegir un pasaje',
+  emptyInProgressBody: 'Agrega un pasaje y aparecerá aquí mientras lo aprendes.',
+  addPassage: 'Agregar pasaje',
 
   emptyMemorizedTitle: 'Aún no has memorizado nada',
-  emptyMemorizedBody:
-    'Aquí aparecen los fragmentos que ya guardaste por completo en tu corazón, con su estado.',
+  emptyMemorizedBody: 'Aquí aparecen los fragmentos que ya memorizaste, con su estado.',
   memorizedDetail: '{{translation}} · {{health}}',
   health: {
     fresh: 'fresco',

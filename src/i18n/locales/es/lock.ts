@@ -48,7 +48,7 @@ export default {
     subtitleFallback: 'Recita tu versículo para continuar.',
     primaryButton: 'Recitar para desbloquear',
     secondaryButton: 'Omitir',
-    notificationTitle: 'Recita para desbloquear',
+    notificationTitle: 'Recitar para desbloquear',
     notificationBody: 'Toca aquí para recitar y continuar.',
   },
 } satisfies Catalog<typeof en>;

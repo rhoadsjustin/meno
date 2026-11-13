@@ -569,7 +569,7 @@ export function PracticeScreen({
           <Button
             label={
               phase.sealsTomorrow
-                ? t('feedback.finish')
+                ? t('feedback.doneForToday')
                 : phase.needsCleanPass
                   ? t('common:retry')
                   : phase.restPoint
@@ -577,7 +577,7 @@ export function PracticeScreen({
                     : phase.tierCleared
                       ? t('common:continue')
                       : phase.passed
-                        ? t('feedback.nextRound')
+                        ? t('common:continue')
                         : t('common:retry')
             }
             onPress={() => void (phase.restPoint ? finishSession() : continueSession())}

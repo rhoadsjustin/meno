@@ -3,7 +3,7 @@ export default {
   // The translation picker opened from the passage step.
   picker: {
     onDevice: 'On this device',
-    savedForGoals: 'Saved for your goals',
+    savedForGoals: 'Saved for your passages',
     needsConnection: 'Needs a connection',
     otherLanguages: 'Other languages',
     translations: 'Translations',

@@ -9,7 +9,7 @@ appId: com.rhoadsdev.meno
     timeout: 30000
 - tapOn: "Continue"
 # Notifications step — decline so no OS permission dialog appears.
-- tapOn: "Later"
+- tapOn: "Not now"
 # Widget step. Its captures push the button below the fold on short screens
 # (the iPhone Duo's cover panel), so scroll to it rather than assume it shows.
 - scrollUntilVisible:
@@ -23,5 +23,5 @@ appId: com.rhoadsdev.meno
     direction: DOWN
 - tapOn: "Explore first"
 - extendedWaitUntil:
-    visible: "Nothing memorized yet"
+    visible: "Start with one verse"
     timeout: 10000

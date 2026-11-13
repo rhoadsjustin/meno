@@ -28,7 +28,7 @@ export default {
     first_book: { name: 'First book', hint: 'Memorize an entire book' },
     perfect_speak: { name: 'Word perfect', hint: '100% on a spoken recitation' },
     century_reviews: { name: 'Century', hint: 'Complete 100 reviews' },
-    dawn_reciter: { name: 'Dawn reciter', hint: '10 recite-to-unlock successes' },
+    dawn_reciter: { name: 'Dawn reciter', hint: '10 Recite to Unlock successes' },
     steady_30: { name: 'Steady 30', hint: 'A 30-day streak' },
     steady_100: { name: 'Steady 100', hint: 'A 100-day streak' },
     steady_365: { name: 'Steady 365', hint: 'A full year' },

@@ -9,7 +9,7 @@ export default {
   swapped:
     'Shared in {{shared}}, which isn’t set up on this device — you’ll memorize in {{local}} instead.',
   joinNote:
-    'Joining creates this goal on your device. Your progress stays private; only you see it for now.',
+    'Joining adds this passage to your device. Your progress stays private; only you see it for now.',
   join: 'Join challenge',
   practice: 'Practice',
   joinFailed: 'Couldn’t join this challenge. Try again.',

@@ -21,7 +21,7 @@ export default {
   },
   onboarding: {
     notificationsBlocked: {
-      body: 'Tu teléfono no está permitiendo notificaciones de Meno, así que no te llegarán recordatorios ni pruebas sorpresa. Para recibirlos, abre Ajustes, toca Notificaciones y activa Todas las notificaciones de Meno.',
+      body: 'Tu teléfono no está permitiendo notificaciones de Meno, así que los recordatorios no pueden llegarte. Para recibirlos, abre Ajustes, toca Notificaciones y activa Todas las notificaciones de Meno.',
       openSettings: 'Abrir Ajustes',
     },
     lock: {
@@ -31,7 +31,7 @@ export default {
   },
   settings: {
     guide: {
-      body: 'Paso a paso: pruebas y recitar en voz alta, además de preguntas frecuentes.',
+      body: 'Paso a paso: recordatorios y recitar en voz alta, además de preguntas frecuentes.',
     },
     reminders: {
       focusNote:
@@ -88,7 +88,7 @@ export default {
     },
     faq: {
       multiple: {
-        a: 'Sí. Toca “+ Practicar otro pasaje” en Hoy (o en Biblioteca). Cada pasaje guarda su propio progreso, y Hoy los muestra todos, con tu pasaje actual hasta arriba.',
+        a: 'Sí. Toca “Agregar pasaje” en Hoy (o en Biblioteca). Cada pasaje guarda su propio progreso, y Hoy los muestra todos, con tu pasaje actual hasta arriba.',
       },
       noReminders: {
         a: 'Abre Ajustes → Recordatorios. Cada tipo de recordatorio indica cuándo llega el próximo, o por qué todavía no llegará ninguno. El recordatorio diario llega a la hora que elegiste y se salta los días en que ya practicaste. Las pruebas sorpresa empiezan cuando ya memorizaste un versículo, y solo llegan entre las 9 a. m. y las 9 p. m. Si todo ahí se ve bien, revisa tu teléfono: No molestar o el modo Descanso retienen las notificaciones hasta que terminan, y el Ahorro de batería puede retrasarlas. Meno no puede ver ninguno de ellos.',

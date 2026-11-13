@@ -11,7 +11,7 @@ export default {
     streakBodyDue_other: 'Un repaso rápido la mantiene: {{count}} versículos están listos.',
     streakBody: 'Un minuto de práctica la mantiene.',
     popQuizTitle: 'Prueba sorpresa',
-    popQuizBody: 'Un versículo que guardaste está listo para brillar. ¿30 segundos?',
+    popQuizBody: '¿Todavía recuerdas un versículo que memorizaste? 30 segundos.',
   },
   status: {
     titlePractice: 'Recordatorio diario',
@@ -34,7 +34,7 @@ export default {
     blockedCanAsk:
       'Aún no pueden llegar. Tu iPhone todavía no ha preguntado si permites las notificaciones de Meno.',
     blocked: 'No pueden llegar. Las notificaciones de Meno están desactivadas en Ajustes del iPhone.',
-    nextQuiz: 'Próxima prueba {{day}}, a una hora sorpresa (entre {{from}} y {{to}}).',
+    nextQuiz: 'Próxima prueba sorpresa {{day}}, entre {{from}} y {{to}}.',
     streakSafe_one:
       'Tu racha de {{count}} día está a salvo por hoy. El próximo recordatorio ({{day}}, {{time}}) la mencionará.',
     streakSafe_other:
@@ -59,7 +59,7 @@ export default {
   },
   prompt: {
     titleBlocked: 'Los recordatorios aún no te llegan',
-    titleOff: '¿Un recordatorio para volver?',
+    titleOff: '¿Quieres un recordatorio diario?',
     bodyViaSettings:
       'Están activados en Meno, pero las notificaciones de Meno están desactivadas en este iPhone. Activa Permitir notificaciones y empezarán solas.',
     bodyBlocked: 'Están activados en Meno, pero tu iPhone todavía no ha preguntado si los permites.',

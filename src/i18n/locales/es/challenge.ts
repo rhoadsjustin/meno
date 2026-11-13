@@ -10,7 +10,7 @@ export default {
   swapped:
     'Se compartió en {{shared}}, que no está configurada en este dispositivo; memorizarás en {{local}}.',
   joinNote:
-    'Al unirte, se crea esta meta en tu dispositivo. Tu progreso es privado; por ahora solo tú lo ves.',
+    'Al unirte, este pasaje se agrega a tu dispositivo. Tu progreso es privado; por ahora solo tú lo ves.',
   join: 'Unirme al desafío',
   practice: 'Practicar',
   joinFailed: 'No se pudo unir a este desafío. Inténtalo de nuevo.',

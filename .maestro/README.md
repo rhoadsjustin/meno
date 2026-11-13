@@ -124,7 +124,7 @@ simulator builds.
 - Cold start renders a blank frame until SQLite migrations finish, and
   first-launch redirect to onboarding fires from the Today tab's focus
   effect — always open with a generous `extendedWaitUntil`.
-- Avoid flows that trigger OS permission dialogs (notifications: tap "Later";
+- Avoid flows that trigger OS permission dialogs (notifications: tap "Not now";
   recitation: use "Type instead") or share sheets ("Share challenge").
 - Speech, widgets, and Screen Time lock are device-only and can't be covered
   in simulator E2E.

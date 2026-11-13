@@ -327,7 +327,7 @@ export default function LibraryScreen() {
             symbol={{ ios: 'books.vertical', android: 'library_books' }}
             title={t('emptyInProgressTitle')}
             message={t('emptyInProgressBody')}
-            action={{ label: t('choosePassage'), onPress: () => router.push('/goal-wizard') }}
+            action={{ label: t('addPassage'), onPress: () => router.push('/goal-wizard') }}
           />
         </Card>
       )}
@@ -341,7 +341,7 @@ export default function LibraryScreen() {
             pressed && styles.pressed,
           ]}>
           <Text style={[styles.practiceLinkText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('practiceAnother')}
+            {t('addPassage')}
           </Text>
         </Pressable>
       )}

@@ -88,10 +88,8 @@ export default {
     restPoint:
       'This is a good place to stop for today. {{first}}, {{second}} and {{third}} will be waiting — or keep going if you have the time.',
     suggestDrop:
-      'Want to rebuild the foundation? Drop back a tier — no penalty, and {{tier}} will be waiting when you come back up.',
-    finish: 'Finish',
+      'Dropping back a tier can help — no penalty, and {{tier}} will be waiting when you come back up.',
     doneForToday: 'Done for today',
-    nextRound: 'Next round',
     keepGoing: 'Keep going',
     keepGoingHint: 'Carries on to {{tier}}',
     stopForToday: 'Stop for today',
