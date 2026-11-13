@@ -1,5 +1,8 @@
 /** First-launch onboarding (src/app/onboarding.tsx). */
 export default {
+  // The native bar: the way out on every step, and the page dots' spoken label.
+  skip: 'Skip',
+  progress: 'Step {{current}} of {{total}}',
   welcome: {
     title: 'Let the Word remain in you.',
     body: 'Meno helps you hide Scripture in your heart: pick a passage, climb from reading it to reciting it, and keep it fresh — a few minutes a day.',
@@ -32,7 +35,6 @@ export default {
     body: 'Optional: shield the apps that distract you, and recite your current verse from memory to open one. Override is always there — you’re never locked out of your own phone.',
     // The Screen Time module is missing, so setup isn't offered here.
     unavailableHint: 'Recite to Unlock isn’t available on this device.',
-    tryStarter: 'Try it with {{passage}}',
     chooseOwn: 'Choose my own passage',
     setUpLock: 'Set up Recite to Unlock',
     exploreFirst: 'Explore first',

@@ -2,9 +2,10 @@
  * First-launch onboarding (docs/08 M6): the thesis, the notification
  * opt-in ("Can we quiz you out of the blue?"), a visual tour of the widget
  * (Home + Lock Screen) and recite-to-unlock, then straight into practicing
- * a first verse. Skippable at every step, never guilt (06 §6).
+ * a first verse. Skippable at every step, never guilt (06 §6): the native
+ * bar carries Back and Skip on each one, and dots for where you are.
  */
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   BackHandler,
@@ -18,22 +19,25 @@ import {
 } from 'react-native';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
+import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
 import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ModalSafeArea } from '@/components/modal-safe-area';
+import { ScreenHeader } from '@/components/screen-header';
 import { announce } from '@/components/screen-reader';
 import { Button } from '@/components/button';
 import { TextLink } from '@/components/text-link';
+import { useStartStarter } from '@/features/goals/useStartStarter';
 import { useTranslation } from '@/i18n/react';
 import { DEFAULT_STARTER, formatRange, formatRef } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
-import { startStarterGoal } from '@/services/db/repos/goals';
+import type { Goal } from '@/services/db/repos/goals';
 import { isLockAvailable } from '@/services/lock';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { setNotificationsEnabled } from '@/services/notifications';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, radius, spacing, textStyle } from '@/theme';
 
 /** `notificationsBlocked`: said yes in Meno, then no to the iOS prompt. */
 type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'lock';
@@ -45,7 +49,7 @@ type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'l
 const onIos = Platform.OS === 'ios';
 const afterNotifications: Step = onIos ? 'widget' : 'lock';
 
-/** Where the Android back button goes from each step. */
+/** Where Back (the bar's, and Android's hardware button) goes from each step. */
 const previous: Record<Step, Step | null> = {
   welcome: null,
   notifications: 'welcome',
@@ -53,6 +57,11 @@ const previous: Record<Step, Step | null> = {
   widget: 'notifications',
   lock: onIos ? 'widget' : 'notifications',
 };
+
+/** The steps the dots count. The blocked step is part of the reminders one. */
+const pages: Step[] = onIos
+  ? ['welcome', 'notifications', 'widget', 'lock']
+  : ['welcome', 'notifications', 'lock'];
 
 /**
  * A full-screen modal takes the root view out of the window, and with it the
@@ -79,7 +88,9 @@ const PREVIEW_REF = { bookId: 'Phil', chapter: 4, verse: 4 };
 
 function Onboarding() {
   const colors = useThemeColors();
-  const { t } = useTranslation(['onboarding', 'common']);
+  const { t } = useTranslation(['onboarding', 'common', 'goals', 'today']);
+  const backIcon = useBarIcon('chevron.left', 'arrow_back');
+  const skipIcon = useBarIcon('xmark', 'close');
   const { insets, sides, fold, foldAxis, isWide, twoPane } = useContentLayout();
   const { fontScale } = useWindowDimensions();
   // iPhone Duo half-open: a centred column would put its buttons on the
@@ -126,32 +137,25 @@ function Onboarding() {
     return () => sub.remove();
   }, [step]);
 
-  const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
+  const finish = useCallback(async (then?: '/goal-wizard' | '/lock-setup') => {
     await markOnboardingDone();
     closeModal();
-    if (then) router.push(`/${then}`);
+    if (then) router.push(then);
   }, []);
 
-  // "Try it" skips every decision: the default starter verse becomes the
-  // first passage and practice opens on it. One tap only — the ref covers
-  // the gap before the disabled button renders.
-  const [starting, setStarting] = useState(false);
-  const startBusy = useRef(false);
-  const tryStarter = useCallback(async () => {
-    if (startBusy.current) return;
-    startBusy.current = true;
-    setStarting(true);
-    try {
-      const goal = await startStarterGoal(DEFAULT_STARTER);
-      await markOnboardingDone();
-      // Replace, not back-then-push: Today's empty state showed for a moment
-      // between the two.
-      router.replace(`/practice/${goal.id}`);
-    } catch {
-      // Couldn't set it up — Today offers the same verses and the picker.
-      await finish();
-    }
-  }, [finish]);
+  // The quick start skips every decision: the default starter verse becomes
+  // the first passage and practice opens on it (the same path as Today's
+  // starter cards). A failure stays on this step and says so.
+  const openPractice = useCallback(async (goal: Goal) => {
+    await markOnboardingDone();
+    // Replace, not back-then-push: Today's empty state showed for a moment
+    // between the two.
+    router.replace(`/practice/${goal.id}`);
+  }, []);
+  const { startingId, failed: startFailed, start } = useStartStarter(openPractice);
+  // Up to four seconds (the ESV fetch timeout): every way out of the step
+  // waits, or the pending replace would land on whatever was opened instead.
+  const starting = startingId !== null;
 
   // A yes here that iOS then declines must not pass silently: the user
   // would leave onboarding believing reminders are coming.
@@ -325,22 +329,41 @@ function Onboarding() {
     ),
     actions: (
       <>
+        {startFailed && (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.failed, { color: colors.error, fontFamily: fonts?.ui }]}>
+            {t('today:empty.startFailed')}
+          </Text>
+        )}
+        {/* The one filled button starts the verse, named as on Today. */}
         <Button
-          label={t('lock.tryStarter', { passage: formatRange(DEFAULT_STARTER.range) })}
-          disabled={starting}
-          onPress={() => void tryStarter()}
-          style={styles.primary}
+          label={
+            starting
+              ? t('goals:starter.starting')
+              : t('goals:starter.practiceReference', {
+                  reference: formatRange(DEFAULT_STARTER.range),
+                })
+          }
+          busy={starting}
+          onPress={() => void start(DEFAULT_STARTER)}
+          style={startFailed ? undefined : styles.primary}
         />
         <TextLink
           label={t('lock.chooseOwn')}
-          onPress={() => void finish('goal-wizard')}
+          disabled={starting}
+          onPress={() => void finish('/goal-wizard')}
           style={styles.quiet}
           labelStyle={styles.quietLabel}
         />
+        {/* The lock is the step's subject, not its next move: quiet, and
+            after the two ways to start a passage. */}
         {isLockAvailable() && (
           <TextLink
+            tone="quiet"
             label={t('lock.setUpLock')}
-            onPress={() => void finish('lock-setup')}
+            disabled={starting}
+            onPress={() => void finish('/lock-setup')}
             style={styles.quiet}
             labelStyle={styles.quietLabel}
           />
@@ -348,6 +371,7 @@ function Onboarding() {
         <TextLink
           tone="quiet"
           label={t('lock.exploreFirst')}
+          disabled={starting}
           onPress={() => void finish()}
           style={styles.quiet}
           labelStyle={styles.quietLabel}
@@ -368,6 +392,7 @@ function Onboarding() {
     lock,
   };
   const current = steps[step];
+  const back = previous[step];
 
   // Two panes: a step with a picture and a title, on a window wider than tall.
   const split = twoPane && !!current.visual && !!current.title;
@@ -419,6 +444,35 @@ function Onboarding() {
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+      <ScreenHeader
+        backHidden
+        titleView={
+          <PageDots
+            count={pages.length}
+            current={pages.indexOf(step === 'notificationsBlocked' ? 'notifications' : step)}
+          />
+        }>
+        {back && (
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              icon={backIcon}
+              accessibilityLabel={t('common:back')}
+              disabled={starting}
+              onPress={() => setStep(back)}>
+              {t('common:back')}
+            </Stack.Toolbar.Button>
+          </Stack.Toolbar>
+        )}
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            icon={skipIcon}
+            accessibilityLabel={t('skip')}
+            disabled={starting}
+            onPress={() => void finish()}>
+            {t('skip')}
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
       <ScrollView
         contentContainerStyle={
           isWide
@@ -449,6 +503,25 @@ function Onboarding() {
   );
 }
 
+/** Which step this is, as dots in the bar's title slot. */
+function PageDots({ count, current }: { count: number; current: number }) {
+  const colors = useThemeColors();
+  const { t } = useTranslation('onboarding');
+  return (
+    <View
+      accessible
+      accessibilityLabel={t('progress', { current: current + 1, total: count })}
+      style={styles.dots}>
+      {Array.from({ length: count }, (_, i) => (
+        <View
+          key={i}
+          style={[styles.dot, { backgroundColor: i === current ? colors.ink : colors.separator }]}
+        />
+      ))}
+    </View>
+  );
+}
+
 /**
  * Screen Time shields can't render in the simulator, so the shield stays a
  * drawn preview (the widget previews are real captures).
@@ -463,7 +536,8 @@ function ShieldMock() {
         {t('shieldMock.verse', { ref: formatRef(PREVIEW_REF) })}
       </Text>
       <View style={styles.shieldMockButtons}>
-        <View style={[styles.shieldMockPill, { backgroundColor: colors.lapis }]}>
+        {/* Drawn flat and neutral: a lapis pill read as a second button. */}
+        <View style={styles.shieldMockPill}>
           <Text style={[styles.shieldMockPillText, { fontFamily: fonts?.ui }]}>
             {t('shieldMock.recite')}
           </Text>
@@ -480,7 +554,8 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: {
     padding: layout.screenMargin,
-    paddingTop: spacing.xxxl * 2,
+    // The native bar above takes the rest of what was a 64pt top margin.
+    paddingTop: spacing.xl,
     gap: spacing.lg,
   },
   // Wide windows are short (669pt on iPhone Duo opened): no tall top margin,
@@ -493,9 +568,12 @@ const styles = StyleSheet.create({
   narrowColumn: { width: '100%', maxWidth: 520, gap: spacing.lg },
   centred: { alignSelf: 'center' },
   mark: { fontSize: 64 },
-  title: { fontSize: 28, lineHeight: 36, fontWeight: '600' },
-  body: { fontSize: 16, lineHeight: 23 },
-  hint: { fontSize: 13, lineHeight: 19 },
+  title: { ...textStyle.title1, fontWeight: '600' },
+  body: textStyle.body,
+  hint: textStyle.footnote,
+  failed: { ...textStyle.subheadline, textAlign: 'center', marginTop: spacing.xl },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  dot: { width: 7, height: 7, borderRadius: 3.5 },
   primary: {
     marginTop: spacing.xl,
   },
@@ -523,10 +601,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   shieldMockPill: {
+    backgroundColor: '#2A3038',
     borderRadius: radius.capsule,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  shieldMockPillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  shieldMockPillText: { color: '#C9CED6', fontSize: 14, fontWeight: '600' },
   shieldMockOverride: { color: '#8A919B', fontSize: 14 },
 });

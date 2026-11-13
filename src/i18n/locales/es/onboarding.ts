@@ -2,6 +2,9 @@ import type { Catalog } from '@/i18n/catalog';
 import type en from '@/i18n/locales/en/onboarding';
 
 export default {
+  // The native bar: the way out on every step, and the page dots' spoken label.
+  skip: 'Saltar',
+  progress: 'Paso {{current}} de {{total}}',
   welcome: {
     title: 'Que la Palabra permanezca en ti.',
     body: 'Meno te ayuda a guardar la Escritura en tu corazón: elige un pasaje, avanza de leerlo a recitarlo y mantenlo fresco, con unos minutos al día.',
@@ -34,7 +37,6 @@ export default {
       'Vista previa: una app bloqueada que te pide recitar tu versículo antes de abrirse, con un botón Omitir que siempre funciona',
     body: 'Opcional: bloquea las apps que te distraen y recita de memoria tu versículo actual para abrir una. Omitir siempre está disponible: nunca te quedarás sin acceso a tu propio teléfono.',
     unavailableHint: 'Recitar para desbloquear no está disponible en este dispositivo.',
-    tryStarter: 'Pruébalo con {{passage}}',
     chooseOwn: 'Elegir mi propio pasaje',
     setUpLock: 'Configurar Recitar para desbloquear',
     exploreFirst: 'Explorar primero',

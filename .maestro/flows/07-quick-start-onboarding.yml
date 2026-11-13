@@ -19,10 +19,10 @@ tags:
     direction: DOWN
 - tapOn: "Continue"
 - scrollUntilVisible:
-    element: "Try it with John 3:16"
+    element: "Practice John 3:16"
     direction: DOWN
 - assertVisible: "Choose my own passage"
-- tapOn: "Try it with John 3:16"
+- tapOn: "Practice John 3:16"
 # Round header is "<reference> · <tier name>". Generous: with an ESV key the
 # start may wait on the network before falling back to KJV.
 - extendedWaitUntil:
