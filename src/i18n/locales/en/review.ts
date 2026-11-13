@@ -10,6 +10,14 @@ export default {
   roundHeader: 'Review · {{reference}}',
   almost: 'Almost',
   almostMarked: 'Almost — the slipped words are marked below',
+  // Under the score after each review: what the schedule did with the verse.
+  outcome: {
+    kept: 'Kept fresh',
+    held: 'Still holding, with some slips',
+    heldMarked: 'Still holding — the slipped words are marked below',
+    reset: 'Slipped — it comes back tomorrow',
+  },
+  averageAccuracyLabel: 'Average accuracy {{value}} percent',
   // Verses whose review held (SM-2 quality 3 or better); the rest were reset.
   keptFresh_one: '{{count}} verse kept fresh',
   keptFresh_other: '{{count}} verses kept fresh',

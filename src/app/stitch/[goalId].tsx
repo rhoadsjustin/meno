@@ -13,6 +13,7 @@ import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
 import { Button } from '@/components/button';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
@@ -44,7 +45,7 @@ type Phase =
 export default function StitchRoute() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
   const colors = useThemeColors();
-  const { t } = useTranslation(['stitch', 'common']);
+  const { t } = useTranslation(['stitch', 'practice', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
   // A short window (iPhone Duo opened is 669pt high): the score takes less
   // room, as on practice's feedback screen.
@@ -152,6 +153,23 @@ export default function StitchRoute() {
     [data, goalId],
   );
 
+  const accuracyLabel =
+    phase.kind === 'result'
+      ? t('practice:feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })
+      : null;
+  const verdict =
+    phase.kind !== 'result'
+      ? null
+      : phase.goalCompleted
+        ? t('goalCompleted')
+        : phase.passed
+          ? t('passed')
+          : t('failed');
+  // The recitation is replaced by its result in place: tell VoiceOver.
+  useEffect(() => {
+    if (phase.kind === 'result') announce(`${accuracyLabel}. ${verdict}`);
+  }, [phase, accuracyLabel, verdict]);
+
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       {/* Native bar: Close, titled Stitch. */}
@@ -159,7 +177,7 @@ export default function StitchRoute() {
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon={closeIcon}
-            accessibilityLabel={t('common:close')}
+            accessibilityLabel={t('closeLabel')}
             onPress={closeModal}>
             {t('common:close')}
           </Stack.Toolbar.Button>
@@ -212,6 +230,7 @@ export default function StitchRoute() {
           {phase.kind === 'result' && (
             <>
               <Text
+                accessibilityLabel={accuracyLabel ?? undefined}
                 style={[
                   styles.accuracy,
                   short && styles.accuracyShort,
@@ -227,15 +246,12 @@ export default function StitchRoute() {
                 {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
               </Text>
               <Text
+                accessibilityRole="header"
                 style={[
                   styles.heading,
                   { color: phase.goalCompleted ? colors.gold : colors.ink, fontFamily: fonts?.ui },
                 ]}>
-                {phase.goalCompleted
-                  ? t('goalCompleted')
-                  : phase.passed
-                    ? t('passed')
-                    : t('failed')}
+                {verdict}
               </Text>
               <WordFeedback result={phase.result} />
             </>

@@ -120,7 +120,7 @@ export default {
     done: 'Ya lo leí dos veces',
   },
   firstLetters: {
-    label: 'Primeras letras del pasaje',
+    spoken: 'Primeras letras del pasaje: {{letters}}',
     hint: 'Recita a partir de las letras — en voz alta o mentalmente — y luego compruébalo.',
     reveal: 'Mostrar',
     howDidItGo: '¿Cómo te fue?',

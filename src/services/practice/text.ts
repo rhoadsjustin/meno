@@ -67,6 +67,15 @@ export function firstLetters(text: string): string {
     .join(' ');
 }
 
+/**
+ * The same letters for a screen reader, one per word and no punctuation:
+ * joined with commas they are spoken one by one, where the cipher itself
+ * ("D n b a,") would be read as a word or skipped.
+ */
+export function firstLetterList(text: string): string[] {
+  return displayTokens(text).map((t) => firstGrapheme(t.word));
+}
+
 /** Words-only view of the display tokens. */
 export function displayWords(text: string): string[] {
   return displayTokens(text).map((t) => t.word);

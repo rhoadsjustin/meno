@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
-import { firstLetters } from '@/services/practice';
+import { firstLetterList, firstLetters } from '@/services/practice';
 import { useThemeColors, fonts, spacing, scriptureType } from '@/theme';
+
+const STACK_TEXT_SCALE = 1.4;
 
 /** Tier 1: first-letter prompt, recite, self-check against the reveal. */
 export function FirstLettersRound({
@@ -17,11 +19,18 @@ export function FirstLettersRound({
   const colors = useThemeColors();
   const { t } = useTranslation('practice');
   const [revealed, setRevealed] = useState(false);
+  // Side by side the two answers are half a row each; at large text sizes
+  // their labels need the whole width (the switch Library uses).
+  const stacked = useWindowDimensions().fontScale >= STACK_TEXT_SCALE;
 
   return (
     <>
       <Text
-        accessibilityLabel={t('firstLetters.label')}
+        // The label replaces the content for VoiceOver, so it carries the
+        // letters themselves — they are the whole prompt of this tier.
+        accessibilityLabel={t('firstLetters.spoken', {
+          letters: firstLetterList(text).join(', '),
+        })}
         style={[styles.cipher, { color: colors.ink, fontFamily: fonts?.mono }]}>
         {firstLetters(text)}
       </Text>
@@ -38,23 +47,24 @@ export function FirstLettersRound({
         </>
       ) : (
         <>
-          <Text style={[styles.scripture, { color: colors.inkFaint, fontFamily: fonts?.scripture }]}>
+          <Text
+            style={[styles.scripture, { color: colors.inkFaint, fontFamily: fonts?.scripture }]}>
             {text}
           </Text>
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('firstLetters.howDidItGo')}
           </Text>
-          <View style={styles.row}>
+          <View style={[styles.row, stacked && styles.rowStacked]}>
             <Button
               variant="secondary"
               label={t('firstLetters.notYet')}
               onPress={() => onResult(false)}
-              style={styles.choice}
+              style={stacked ? undefined : styles.choice}
             />
             <Button
               label={t('firstLetters.mostly')}
               onPress={() => onResult(true)}
-              style={styles.choice}
+              style={stacked ? undefined : styles.choice}
             />
           </View>
         </>
@@ -73,6 +83,8 @@ const styles = StyleSheet.create({
   hint: { fontSize: 15, marginTop: spacing.lg },
   button: { marginTop: spacing.xxl },
   row: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
+  // Primary first, as everywhere a pair of actions stacks.
+  rowStacked: { flexDirection: 'column-reverse' },
   // Even halves of the row.
   choice: { flex: 1 },
 });

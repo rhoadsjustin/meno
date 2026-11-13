@@ -124,7 +124,8 @@ export default {
     done: 'I’ve read it twice',
   },
   firstLetters: {
-    label: 'First letters of the passage',
+    // VoiceOver: the cipher itself, letter by letter.
+    spoken: 'First letters of the passage: {{letters}}',
     hint: 'Recite from the letters — aloud or in your head — then check yourself.',
     reveal: 'Reveal',
     howDidItGo: 'How did it go?',

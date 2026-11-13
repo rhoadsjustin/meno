@@ -3,6 +3,7 @@
  * native app picker → mode + override style → done. Only reachable on a
  * physical iOS device with the native module present.
  */
+import { SymbolView } from 'expo-symbols';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -96,7 +97,11 @@ export function LockSetup() {
         const chunk = await currentChunk(goal.id);
         if (chunk) {
           const range = {
-            start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
+            start: {
+              bookId: chunk.startBookId,
+              chapter: chunk.startChapter,
+              verse: chunk.startVerse,
+            },
             end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
           };
           reference = formatRange(range);
@@ -125,9 +130,11 @@ export function LockSetup() {
   if (!available) {
     return (
       <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
-      {header}
+        {header}
         <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
-          <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {t('setup.unavailableTitle')}
           </Text>
           <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -147,7 +154,9 @@ export function LockSetup() {
       <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         {step === 'explainer' && (
           <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {t('setup.explainerTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -166,13 +175,13 @@ export function LockSetup() {
 
         {step === 'authorize' && (
           <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {t('setup.authTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {authStatus === 'denied'
-                ? t('setup.authDenied')
-                : t('setup.authBody')}
+              {authStatus === 'denied' ? t('setup.authDenied') : t('setup.authBody')}
             </Text>
             <Button
               label={authStatus === 'denied' ? t('common:retry') : t('setup.grantPermission')}
@@ -185,7 +194,9 @@ export function LockSetup() {
 
         {step === 'pick' && (
           <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {t('setup.pickTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -210,8 +221,7 @@ export function LockSetup() {
                 onDismissRequest={() => setPickerVisible(false)}
                 onSelectionChange={(event) => {
                   const m = event.nativeEvent;
-                  const anySelected =
-                    m.applicationCount + m.categoryCount + m.webDomainCount > 0;
+                  const anySelected = m.applicationCount + m.categoryCount + m.webDomainCount > 0;
                   setHasSelection(anySelected);
                   if (anySelected) {
                     // Token lives natively under LOCK_SELECTION_ID; we store
@@ -226,43 +236,67 @@ export function LockSetup() {
 
         {step === 'configure' && (
           <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {t('setup.configureTitle')}
             </Text>
-            {(
-              [
-                ['firstPickup', t('setup.modeFirstPickup'), t('setup.modeFirstPickupDetail')],
+            <View accessibilityRole="radiogroup" style={styles.options}>
+              {(
                 [
-                  'everyPickup',
-                  t('setup.modeEveryPickup'),
-                  t('setup.modeEveryPickupDetail', { count: relockMinutes }),
-                ],
-                ['schedule', t('setup.modeSchedule'), t('setup.modeScheduleDetail')],
-              ] as const
-            ).map(([value, label, sub]) => {
-              const selected = mode === value;
-              return (
-                <Pressable
-                  key={value}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  onPress={() => setMode(value)}
-                  style={[
-                    styles.option,
-                    {
-                      backgroundColor: selected ? colors.lapisWash : 'transparent',
-                      borderColor: selected ? colors.lapis : colors.separator,
-                    },
-                  ]}>
-                  <Text style={[styles.optionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                    {label}
-                  </Text>
-                  <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                    {sub}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                  ['firstPickup', t('setup.modeFirstPickup'), t('setup.modeFirstPickupDetail')],
+                  [
+                    'everyPickup',
+                    t('setup.modeEveryPickup'),
+                    t('setup.modeEveryPickupDetail', { count: relockMinutes }),
+                  ],
+                  ['schedule', t('setup.modeSchedule'), t('setup.modeScheduleDetail')],
+                ] as const
+              ).map(([value, label, sub]) => {
+                const selected = mode === value;
+                return (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    onPress={() => setMode(value)}
+                    style={[
+                      styles.option,
+                      {
+                        backgroundColor: selected ? colors.lapisWash : 'transparent',
+                        borderColor: selected ? colors.lapis : colors.separator,
+                      },
+                    ]}>
+                    <View style={styles.optionText}>
+                      <Text
+                        style={[styles.optionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                        {label}
+                      </Text>
+                      <Text
+                        style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                        {sub}
+                      </Text>
+                    </View>
+                    {/* The choice is marked by more than its tint (07 §6, never
+                      colour alone). The slot is always there so the text does
+                      not re-wrap as the mark moves; the selected state already
+                      tells VoiceOver. */}
+                    <View style={styles.optionMark}>
+                      {selected && (
+                        <SymbolView
+                          name={{ ios: 'checkmark', android: 'check', web: 'check' }}
+                          tintColor={colors.lapis}
+                          size={18}
+                          weight="semibold"
+                          accessibilityElementsHidden
+                          importantForAccessibility="no-hide-descendants"
+                        />
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
             <Button
               label={t('setup.turnOn')}
               disabled={busy}
@@ -274,17 +308,15 @@ export function LockSetup() {
 
         {step === 'done' && (
           <>
-            <Text style={[styles.heading, { color: colors.gold, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.gold, fontFamily: fonts?.ui }]}>
               {t('setup.doneTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {t('setup.doneBody')}
             </Text>
-            <Button
-              label={t('common:done')}
-              onPress={closeModal}
-              style={styles.primary}
-            />
+            <Button label={t('common:done')} onPress={closeModal} style={styles.primary} />
           </>
         )}
 
@@ -316,8 +348,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderCurve: 'continuous',
     padding: spacing.lg,
-    gap: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
+  options: { gap: spacing.lg },
+  optionText: { flex: 1, gap: spacing.xs },
+  optionMark: { width: 18, alignItems: 'center' },
   optionTitle: { fontSize: 17, fontWeight: '600' },
   primary: { marginTop: spacing.md },
   // The 44pt target supplies 12pt of the 20pt the text used to sit below.
