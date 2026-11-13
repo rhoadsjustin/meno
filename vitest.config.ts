@@ -16,6 +16,8 @@ export default defineConfig({
       'src/theme/**/__tests__/**/*.test.ts',
       // window-layout.ts is pure: which window sizes split into two panes.
       'src/components/**/__tests__/**/*.test.ts',
+      // The Reader's pagination, chapter stepping and text size are pure.
+      'src/features/reader/__tests__/**/*.test.ts',
       'scripts/**/__tests__/**/*.test.ts'],
   },
 });
