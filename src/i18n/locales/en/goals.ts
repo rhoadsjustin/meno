@@ -29,7 +29,7 @@ export default {
     noResultsHint: 'Check the spelling, or search by a language or abbreviation.',
     empty: 'No translations available.',
     footnote:
-      'Translations that need a connection are read online each time; Meno doesn’t store their text.',
+      'Translations not marked “On this device” or “Saved for your passages” need a connection. They are read online each time; Meno doesn’t store their text.',
   },
   wizard: {
     choosePassage: 'Choose a passage',

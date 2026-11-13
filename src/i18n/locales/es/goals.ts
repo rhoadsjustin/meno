@@ -30,7 +30,7 @@ export default {
     noResultsHint: 'Revisa la ortografía o busca por idioma o abreviatura.',
     empty: 'No hay traducciones disponibles.',
     footnote:
-      'Las traducciones que necesitan conexión se leen en línea cada vez; Meno no guarda su texto.',
+      'Las traducciones sin la nota “En este dispositivo” o “Guardada para tus pasajes” necesitan conexión. Se leen en línea cada vez; Meno no guarda su texto.',
   },
   wizard: {
     choosePassage: 'Elige un pasaje',

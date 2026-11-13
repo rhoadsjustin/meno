@@ -9,9 +9,10 @@
  * search on Android) and searches every translation and language at once,
  * so nothing has to be opened before it can be found.
  *
- * Opening the picker checks for new translations (see its layout); the row
- * at the top says so, then how many arrived or why it failed, and the
- * refresh button in the bar checks again on demand.
+ * Opening the picker checks for new translations without saying so (see its
+ * layout): anything new simply appears. The refresh button in the bar checks
+ * on demand, and only then does a row at the top say what it is doing, then
+ * how many arrived or that it failed.
  *
  * A modal over the goal wizard's sheet; the choice travels back through
  * features/goals/translation-choice.
@@ -55,7 +56,7 @@ export function TranslationPicker() {
   const status = useTranslationCatalog((s) => s.status);
   const load = useTranslationCatalog((s) => s.load);
   const refresh = useTranslationCatalog((s) => s.refresh);
-  const checking = status === 'loading' || refresh.state === 'checking';
+  const checking = useTranslationCatalog((s) => s.checking) || status === 'loading';
   const { sections, featured } = useCatalogSections(selected);
   const [query, setQuery] = useState('');
 
@@ -151,9 +152,9 @@ export function TranslationPicker() {
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon={closeIcon}
-            accessibilityLabel={t('common:cancel')}
+            accessibilityLabel={t('common:close')}
             onPress={close}>
-            {t('common:cancel')}
+            {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
         {youversionKeyConfigured() && (
@@ -162,7 +163,7 @@ export function TranslationPicker() {
               icon={refreshIcon}
               accessibilityLabel={t('picker.refresh')}
               disabled={checking}
-              onPress={() => void load({ versionsMaxAge: 0 })}>
+              onPress={() => void load({ versionsMaxAge: 0, report: true })}>
               {t('picker.refresh')}
             </Stack.Toolbar.Button>
           </Stack.Toolbar>
@@ -195,7 +196,7 @@ export function TranslationPicker() {
             {status !== 'ready' && (
               <CatalogStatusRow status={status} onRetry={() => void load({ force: true })} />
             )}
-            {!searching && <GroupFooter>{t('picker.footnote')}</GroupFooter>}
+            {listSections.length > 0 && <GroupFooter>{t('picker.footnote')}</GroupFooter>}
           </View>
         }
         contentInsetAdjustmentBehavior="automatic"

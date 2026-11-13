@@ -217,3 +217,21 @@ export function translationCoverage(t: Pick<Translation, 'books'>): Coverage {
   if (allOt && has.size === OT_IDS.length) return { kind: 'ot' };
   return { kind: 'books', count: has.size };
 }
+
+/**
+ * A section with the current choice moved to the top, so its check mark is
+ * on screen when the picker opens; the rest keep their order. The section
+ * itself when the choice is not in it, or already leads.
+ */
+export function selectedFirst(
+  section: TranslationSection,
+  selected: string | undefined,
+): TranslationSection {
+  const at = section.translations.findIndex((tr) => tr.id === selected);
+  if (at <= 0) return section;
+  const chosen = section.translations[at];
+  return {
+    ...section,
+    translations: [chosen, ...section.translations.filter((tr) => tr !== chosen)],
+  };
+}
