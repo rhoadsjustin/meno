@@ -9,8 +9,8 @@
  * let apps see which widgets are placed, so the widget sections are numbered
  * steps beside a real capture. Common questions close the guide.
  *
- * Rendered whole by the Help modal, and in part by Settings' detail pane on
- * wide windows (iPhone Duo opened), where each row shows its own section.
+ * Rendered whole by the Help modal and by Settings' detail pane on wide
+ * windows (iPhone Duo opened), where the reminders row shows its own section.
  */
 import { router } from 'expo-router';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
@@ -34,7 +34,6 @@ import { useTranslation } from '@/i18n/react';
 import { formatRef } from '@/services/bible';
 import { loadLockConfig } from '@/services/db/repos/lock';
 import { getAuthorizationStatus, isLockAvailable } from '@/services/lock';
-import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import {
   reminderSummary,
@@ -145,8 +144,8 @@ export type HelpGuideProps = {
   /**
    * Settings' detail pane sits beside the reminders row, which already has
    * the switch, each reminder's status and the way to allow notifications.
-   * The reminders section then only explains: no status under its title, no
-   * per-reminder lines and no button repeating the row's switch.
+   * The reminders section then only explains: no status under its title and
+   * no button repeating the row's switch.
    */
   remindersBeside?: boolean;
 };
@@ -308,10 +307,9 @@ export function HelpGuide({
               <Button label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.quizzes === 'ready' ? (
-            <>
-              {!remindersBeside && reminders && <ReminderStatusList status={reminders} />}
-              <Text style={[styles.tip, faint]}>{t('quizzes.readyTip')}</Text>
-            </>
+            // One line of status under the title; each reminder's own line
+            // lives in Settings → Reminders, where the tip sends people.
+            <Text style={[styles.tip, faint]}>{t('quizzes.readyTip')}</Text>
           ) : (
             <>
               <Text style={[styles.tip, faint]}>
@@ -413,8 +411,8 @@ export function HelpGuide({
           {statuses.lock === 'unavailable' ? (
             <Text style={[styles.tip, faint]}>{t('lock.unavailable')}</Text>
           ) : statuses.lock === 'ready' ? (
-            // Settings' wide pane shows only this section for the lock row,
-            // so it must lead back into setup once the lock is on.
+            // The guide leads back into setup once the lock is on, as
+            // Settings' own row does.
             <>
               <Text style={[styles.tip, faint]}>{t('lock.readyTip')}</Text>
               <Button
@@ -518,13 +516,14 @@ function Section({
   );
 }
 
-/** Status is always spelled out, never color alone. */
+/** Status is always spelled out, never color alone. Ready is lapis: 07 §3
+ * keeps `success` for grading. */
 function StatusText({ status, label }: { status: Status; label?: string }) {
   const colors = useThemeColors();
   const { t } = useTranslation('help');
   const color =
     status === 'ready'
-      ? colors.success
+      ? colors.lapis
       : status === 'openSettings'
         ? colors.error
         : colors.inkFaint;
@@ -576,7 +575,7 @@ const styles = StyleSheet.create({
   tip: { fontSize: 15, lineHeight: 21 },
   overviewRow: { paddingVertical: spacing.sm, gap: 2 },
   overviewTitle: { fontSize: 17, fontWeight: '600' },
-  status: { fontSize: 14, lineHeight: 19, fontWeight: '600', flexShrink: 1 },
+  status: { ...textStyle.subheadline, fontWeight: '600', flexShrink: 1 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   section: { gap: spacing.md },
   sectionHeader: { gap: spacing.xs },

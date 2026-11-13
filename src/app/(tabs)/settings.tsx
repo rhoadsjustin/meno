@@ -1,29 +1,19 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, Linking, Platform, Switch, useColorScheme } from 'react-native';
 
-import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
-import { TextLink } from '@/components/text-link';
 import { TimeField } from '@/components/time-field';
 import { HelpGuide } from '@/features/help/HelpGuide';
 import { locale } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
+import { PRIVACY_POLICY_URL, SUPPORT_URL } from '@/features/settings/links';
+import { SettingsBlock, SettingsRow, SettingsSection } from '@/features/settings/SettingsList';
 import { availableTranslations } from '@/services/bible';
 import { loadLockConfig, lockEventCounts, saveLockConfig } from '@/services/db/repos/lock';
 import { isLockAvailable, killSwitch } from '@/services/lock';
@@ -35,10 +25,15 @@ import {
   type ReminderTime,
 } from '@/services/notifications';
 import { restartIntoUpdate, useUpdateStatus } from '@/services/updates';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors } from '@/theme';
+
+/** Leaves for the browser; with none to open it, the row does nothing. */
+function openLink(url: string) {
+  Linking.openURL(url).catch(() => {});
+}
 
 /** Which row's detail the right pane shows on wide windows. */
-type Detail = 'guide' | 'reminders' | 'lock';
+type Detail = 'guide' | 'reminders';
 
 export default function SettingsScreen() {
   const colors = useThemeColors();
@@ -48,10 +43,10 @@ export default function SettingsScreen() {
   const update = useUpdateStatus();
   // Windows wider than tall (iPhone Duo opened, Split View): a split view.
   // The rows become a selectable list on the left and the right pane shows
-  // what the row leads to — the whole setup guide, or just the section that
-  // explains the row — instead of pushing a modal (HIG: list and detail side
-  // by side). Opened and rotated (669×951) is one column that pushes the
-  // guide and lock setup, as on a phone.
+  // the guide — whole, or just the section that explains reminders — instead
+  // of pushing a modal (HIG: list and detail side by side). Lock setup is a
+  // flow of its own and opens from its row in every layout. Opened and
+  // rotated (669×951) is one column that pushes the guide, as on a phone.
   const { twoPane } = useContentLayout();
   const [detail, setDetail] = useState<Detail>('guide');
   // Whether each reminder will arrive, and why not (the guide reads the same).
@@ -87,7 +82,7 @@ export default function SettingsScreen() {
     }, []),
   );
 
-  // Asked for, and iOS said no: the switch stays on and the card says what
+  // Asked for, and iOS said no: the switch stays on and the group says what
   // is in the way, instead of silently snapping back.
   const toggleNotifications = useCallback(
     async (value: boolean) => {
@@ -110,15 +105,8 @@ export default function SettingsScreen() {
   }, [t]);
 
   const selected = (d: Detail) => twoPane && detail === d;
-  const rowCard = (d: Detail) =>
-    selected(d) ? { backgroundColor: colors.lapisWash, borderColor: colors.lapisWash } : undefined;
-  // On the selection wash, inkFaint (light) and lapis (dark) fall to 4.1:1,
-  // so a selected row's text steps up to ink there; the wash is the cue.
-  const titleColor = (d: Detail) =>
-    selected(d) && scheme === 'light' ? colors.lapis : colors.ink;
-  const subColor = (d: Detail) => (selected(d) ? colors.ink : colors.inkFaint);
 
-  // The footer credits whatever the wizard offers, so a licensed translation
+  // About credits whatever the wizard offers, so a licensed translation
   // (ESV, when its key is configured) is never listed as public domain.
   const translations = availableTranslations();
   const publicDomain = translations
@@ -131,213 +119,173 @@ export default function SettingsScreen() {
     (tr) => tr.licenseType !== 'public_domain' && tr.source !== 'youversion',
   );
   const catalogCount = translations.filter((tr) => tr.source === 'youversion').length;
+  const appVersion = Constants.expoConfig?.version ?? '';
+
+  const lockAvailable = isLockAvailable();
 
   const rows = (
     <>
-      <Card style={rowCard('guide')}>
-        <Pressable
-          accessibilityRole="button"
+      <SettingsSection>
+        <SettingsRow
+          label={t('guide.title')}
+          // Beside the list on wide windows, so nothing is disclosed.
+          disclosure={twoPane ? undefined : 'chevron'}
+          selected={selected('guide')}
           accessibilityState={twoPane ? { selected: detail === 'guide' } : undefined}
           accessibilityHint={twoPane ? t('guide.hintWide') : t('guide.hint')}
           onPress={() => (twoPane ? setDetail('guide') : router.push('/help'))}
-          style={styles.rowText}>
-          <Text style={[styles.rowTitle, { color: titleColor('guide'), fontFamily: fonts?.ui }]}>
-            {t('guide.title')}
-          </Text>
-          <Text style={[styles.rowSub, { color: subColor('guide'), fontFamily: fonts?.ui }]}>
-            {t('guide.body')}
-          </Text>
-        </Pressable>
-      </Card>
+        />
+      </SettingsSection>
 
-      <Card style={rowCard('reminders')}>
-        <View style={styles.row}>
-          <Pressable
-            accessibilityRole={twoPane ? 'button' : undefined}
-            accessibilityState={twoPane ? { selected: detail === 'reminders' } : undefined}
-            accessibilityHint={twoPane ? t('reminders.hintWide') : undefined}
-            disabled={!twoPane}
-            // In one column this is only the switch's caption: VoiceOver
-            // would read it as a dimmed element with the switch a separate,
-            // undescribed stop. The switch carries both lines instead.
-            accessibilityElementsHidden={!twoPane}
-            importantForAccessibility={twoPane ? 'auto' : 'no-hide-descendants'}
-            onPress={() => setDetail('reminders')}
-            style={styles.rowText}>
-            <Text
-              style={[styles.rowTitle, { color: titleColor('reminders'), fontFamily: fonts?.ui }]}>
-              {t('reminders.title')}
-            </Text>
-            <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
-              {t('reminders.body')}
-            </Text>
-          </Pressable>
-          <Switch
-            value={notifsOn}
-            onValueChange={(v) => void toggleNotifications(v)}
-            trackColor={{ true: colors.lapis }}
-            accessibilityLabel={t('reminders.title')}
-            accessibilityHint={twoPane ? undefined : t('reminders.body')}
-          />
-        </View>
-        {reminders && reminders.overall === 'off' && (
-          <View style={[styles.subRow, { borderTopColor: colors.separator }]}>
-            <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
-              {t('reminders.off')}
-            </Text>
-          </View>
-        )}
-        {reminders && reminders.overall !== 'off' && (
-          <View style={[styles.subRow, { borderTopColor: colors.separator }]}>
-            <ReminderStatusList status={reminders} />
-          </View>
-        )}
+      {/* One footnote under the group: what reminders are while they are
+          off, what is in the way while they are blocked, and what Meno
+          can't see once they are on. */}
+      <SettingsSection
+        footer={
+          !reminders || reminders.overall === 'off'
+            ? t('reminders.body')
+            : notifsBlocked
+              ? reminders.canAsk
+                ? t('reminders.askNote')
+                : t('reminders.blockedNote')
+              : t('reminders.focusNote')
+        }>
+        <SettingsRow
+          label={t('reminders.title')}
+          // In one column the label is only the switch's caption, and the
+          // switch carries the name. On wide windows it selects the pane
+          // that explains reminders.
+          labelHidden={!twoPane}
+          selected={selected('reminders')}
+          accessibilityState={twoPane ? { selected: detail === 'reminders' } : undefined}
+          accessibilityHint={twoPane ? t('reminders.hintWide') : undefined}
+          onPress={twoPane ? () => setDetail('reminders') : undefined}
+          trailing={
+            <Switch
+              value={notifsOn}
+              onValueChange={(v) => void toggleNotifications(v)}
+              trackColor={{ true: colors.lapis }}
+              accessibilityLabel={t('reminders.title')}
+            />
+          }
+        />
         {reminders?.overall === 'on' && (
-          <>
-            <View style={[styles.row, styles.subRow, { borderTopColor: colors.separator }]}>
-              <Text style={[styles.rowLabel, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {t('reminders.remindAt')}
-              </Text>
+          <SettingsRow
+            label={t('reminders.remindAt')}
+            // The picker names itself ("Daily reminder time, 8:00 AM").
+            labelHidden
+            trailing={
               <TimeField
                 hour={remindAt.hour}
                 minute={remindAt.minute}
                 onChange={(time) => void changeReminderTime(time)}
                 accessibilityLabel={t('reminders.timeLabel')}
               />
-            </View>
-            <Text
-              style={[
-                styles.rowSub,
-                styles.footnote,
-                { color: subColor('reminders'), fontFamily: fonts?.ui },
-              ]}>
-              {t('reminders.focusNote')}
-            </Text>
-          </>
+            }
+          />
         )}
+        {reminders && reminders.overall !== 'off' && (
+          <SettingsBlock>
+            <ReminderStatusList status={reminders} />
+          </SettingsBlock>
+        )}
+        {/* Asked for, and iOS said no (or was never asked): the way through. */}
         {notifsBlocked &&
           (reminders.canAsk ? (
-            <Pressable
-              accessibilityRole="button"
+            <SettingsRow
+              tone="accent"
+              label={t('reminders.allow')}
               onPress={() => void toggleNotifications(true)}
-              style={[styles.subRow, { borderTopColor: colors.separator }]}>
-              <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
-                {t('reminders.askNote')}
-              </Text>
-              <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                {t('reminders.allow')}
-              </Text>
-            </Pressable>
+            />
           ) : (
-            <Pressable
+            <SettingsRow
+              tone="accent"
               accessibilityRole="link"
+              label={t('reminders.openSettings')}
               onPress={() => void Linking.openSettings()}
-              style={[styles.subRow, { borderTopColor: colors.separator }]}>
-              <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
-                {t('reminders.blockedNote')}
-              </Text>
-              <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                {t('reminders.openSettings')}
-              </Text>
-            </Pressable>
+            />
           ))}
-      </Card>
+      </SettingsSection>
 
       {/* Recite to Unlock is built on Apple's Screen Time; Android has no
-          equivalent yet, so the row isn't offered there at all. */}
+          equivalent yet, so the group isn't offered there at all. */}
       {Platform.OS === 'ios' && (
-        <Card style={rowCard('lock')}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={twoPane ? { selected: detail === 'lock' } : undefined}
-            accessibilityHint={twoPane ? t('lock.hintWide') : undefined}
-            onPress={() => (twoPane ? setDetail('lock') : router.push('/lock-setup'))}
-            style={styles.rowText}>
-            <Text style={[styles.rowTitle, { color: titleColor('lock'), fontFamily: fonts?.ui }]}>
-              {t('lock.title')}
-            </Text>
-            <Text style={[styles.rowSub, { color: subColor('lock'), fontFamily: fonts?.ui }]}>
-              {isLockAvailable()
-                ? lockEnabled
-                  ? t('lock.onSummary', {
-                      recitations: t('stats:recitationCount', { count: lockStats.recitations }),
-                      overrides: t('stats:overrideCount', { count: lockStats.overrides }),
-                    })
-                  : t('lock.offBody')
-                : t('lock.unavailable')}
-            </Text>
-          </Pressable>
+        <SettingsSection
+          footer={
+            !lockAvailable
+              ? t('lock.unavailable')
+              : lockEnabled
+                ? t('lock.usage', {
+                    recitations: t('stats:recitationCount', { count: lockStats.recitations }),
+                    overrides: t('stats:overrideCount', { count: lockStats.overrides }),
+                  })
+                : t('lock.offBody')
+          }>
+          {/* Always opens setup, in one column and beside the guide alike. */}
+          <SettingsRow
+            label={t('lock.title')}
+            value={lockAvailable ? (lockEnabled ? t('lock.on') : t('lock.off')) : undefined}
+            disclosure="chevron"
+            onPress={() => router.push('/lock-setup')}
+          />
           {lockEnabled && (
             // The escape of 04 §6: its own row and a full-size target.
-            <View style={[styles.killSwitch, { borderTopColor: colors.separator }]}>
-              <TextLink
-                tone="destructive"
-                weight="semibold"
-                label={t('lock.killSwitch')}
-                onPress={() => void disableLock()}
-              />
-            </View>
+            <SettingsRow
+              tone="destructive"
+              label={t('lock.killSwitch')}
+              onPress={() => void disableLock()}
+            />
           )}
-        </Card>
+        </SettingsSection>
       )}
 
       {update.pending && (
-        <Card>
-          <Pressable
-            accessibilityRole="button"
+        <SettingsSection title={t('update.title')} footer={t('update.body')}>
+          <SettingsRow
+            tone="accent"
+            label={t('update.restart')}
             accessibilityHint={t('update.hint')}
             onPress={() => void restartIntoUpdate(scheme)}
-            style={styles.rowText}>
-            <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {t('update.title')}
-            </Text>
-            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t('update.body')}
-            </Text>
-            <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('update.restart')}
-            </Text>
-          </Pressable>
-        </Card>
+          />
+        </SettingsSection>
       )}
 
-      <Card>
-        <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          {t('footer', {
-            version: update.runningUpdateDate
-              ? t('updatedVersion', {
-                  version: Constants.expoConfig?.version ?? '',
+      <SettingsSection
+        title={t('about.title')}
+        footer={[
+          t('about.credits', { translations: publicDomain }),
+          ...licensed.map((tr) => tr.attribution),
+          ...(catalogCount > 0 ? [t('catalogCredit')] : []),
+        ]}>
+        <SettingsRow
+          label={t('about.version')}
+          value={
+            update.runningUpdateDate
+              ? t('about.updatedVersion', {
+                  version: appVersion,
                   date: update.runningUpdateDate.toLocaleDateString(locale(), {
                     month: 'short',
                     day: 'numeric',
                   }),
                 })
-              : (Constants.expoConfig?.version ?? ''),
-            translations: publicDomain,
-          })}
-        </Text>
-        {licensed.map((tr) => (
-          <Text
-            key={tr.id}
-            style={[
-              styles.rowSub,
-              styles.credit,
-              { color: colors.inkFaint, fontFamily: fonts?.ui },
-            ]}>
-            {tr.attribution}
-          </Text>
-        ))}
-        {catalogCount > 0 && (
-          <Text
-            style={[
-              styles.rowSub,
-              styles.credit,
-              { color: colors.inkFaint, fontFamily: fonts?.ui },
-            ]}>
-            {t('catalogCredit')}
-          </Text>
-        )}
-      </Card>
+              : appVersion
+          }
+        />
+        <SettingsRow
+          accessibilityRole="link"
+          label={t('about.privacy')}
+          disclosure="external"
+          accessibilityHint={t('about.linkHint')}
+          onPress={() => openLink(PRIVACY_POLICY_URL)}
+        />
+        <SettingsRow
+          accessibilityRole="link"
+          label={t('about.support')}
+          disclosure="external"
+          accessibilityHint={t('about.linkHint')}
+          onPress={() => openLink(SUPPORT_URL)}
+        />
+      </SettingsSection>
     </>
   );
 
@@ -347,12 +295,10 @@ export default function SettingsScreen() {
       // No checklist: the rows beside it are the index, and nothing here
       // scrolls the pane to a section.
       <HelpGuide overview={false} />
-    ) : detail === 'reminders' ? (
+    ) : (
       // The row beside it has the switch, the status and the way to allow
       // notifications, so the pane only explains.
       <HelpGuide sections={['quizzes']} overview={false} faq={false} remindersBeside />
-    ) : (
-      <HelpGuide sections={['lock']} overview={false} faq={false} />
     );
 
   return (
@@ -367,24 +313,3 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  rowText: { flex: 1, gap: spacing.xs },
-  rowTitle: { fontSize: 17, fontWeight: '600' },
-  rowSub: { fontSize: 14, lineHeight: 19 },
-  rowLabel: { flex: 1, fontSize: 16 },
-  credit: { marginTop: spacing.sm },
-  footnote: { marginTop: spacing.md },
-  rowAction: { fontSize: 15, fontWeight: '600', marginTop: spacing.xs },
-  subRow: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  // The 44pt link reaches into the card's bottom padding.
-  killSwitch: {
-    marginTop: spacing.md,
-    marginBottom: -spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-});

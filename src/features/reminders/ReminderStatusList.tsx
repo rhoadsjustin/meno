@@ -7,9 +7,8 @@ import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 /**
  * One line per kind of reminder: when the next one comes, or why none will
- * (services/notifications/status). Shared by Settings and the setup guide
- * so the two can never disagree. Status is words plus a mark, never color
- * alone.
+ * (services/notifications/status), under the switch in Settings. Status is
+ * words plus a mark, never color alone.
  */
 export function ReminderStatusList({ status }: { status: ReminderStatus }) {
   const colors = useThemeColors();
@@ -19,8 +18,9 @@ export function ReminderStatusList({ status }: { status: ReminderStatus }) {
     <View style={styles.list}>
       {lines.map((line) => {
         const markColor =
+          // Lapis, not `success`: 07 §3 keeps that for grading.
           line.tone === 'ok'
-            ? colors.success
+            ? colors.lapis
             : line.tone === 'problem'
               ? colors.error
               : colors.inkFaint;
@@ -73,5 +73,5 @@ const styles = StyleSheet.create({
   mark: { paddingTop: 2 },
   text: { flex: 1, gap: 2 },
   title: { ...textStyle.subheadline, fontWeight: '600' },
-  detail: { fontSize: 14, lineHeight: 19 },
+  detail: { ...textStyle.footnote },
 });
