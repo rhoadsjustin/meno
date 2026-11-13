@@ -5,6 +5,7 @@
  * without spaces is split into words (or letters) the same way grading
  * splits it, so blanks and tiles line up with graded tokens.
  */
+import { tokenize, type TokenizeOptions } from '@/services/grading/normalize';
 import { firstGrapheme, splitUnspaced, UNSPACED_SCRIPT } from '@/services/grading/script';
 
 export type DisplayToken = {
@@ -79,4 +80,33 @@ export function firstLetterList(text: string): string[] {
 /** Words-only view of the display tokens. */
 export function displayWords(text: string): string[] {
   return displayTokens(text).map((t) => t.word);
+}
+
+/**
+ * The display token behind each graded word, for marking a result in the
+ * verse's own casing and punctuation. Graded words carry only the normalized
+ * token and its index in the normalized reference; this maps that index back
+ * to the original text, in the order `words` came in.
+ *
+ * The two tokenizations do not always line up: grading splits a hyphenated
+ * word in two and folds English number words into digits. An entry is null
+ * wherever the display token cannot be shown to be that graded word, and the
+ * caller prints the graded word itself there — never a neighbour's.
+ */
+export function displayTokensForGraded(
+  text: string,
+  words: readonly { word: string; index: number }[],
+  options: TokenizeOptions = {},
+): (DisplayToken | null)[] {
+  const byIndex = new Map<number, { token: DisplayToken; normalized: string }>();
+  let cursor = 0;
+  for (const token of displayTokens(text)) {
+    const normalized = tokenize(token.word, options);
+    if (normalized.length === 1) byIndex.set(cursor, { token, normalized: normalized[0] });
+    cursor += normalized.length;
+  }
+  return words.map((w) => {
+    const hit = byIndex.get(w.index);
+    return hit && hit.normalized === w.word ? hit.token : null;
+  });
 }
