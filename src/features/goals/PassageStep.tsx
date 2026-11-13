@@ -243,7 +243,8 @@ export function PassageStep({
         {translation && (
           <TextLink
             size="large"
-            label={`${translation.abbrev} · ${translation.name} ›`}
+            label={`${translation.abbrev} · ${translation.name}`}
+            disclosure
             accessibilityLabel={t('passage.translationLabel', {
               name: translation.name,
               abbrev: translation.abbrev,

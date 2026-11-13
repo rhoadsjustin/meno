@@ -1,4 +1,5 @@
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -8,6 +9,7 @@ import {
 } from 'react-native';
 
 import { MIN_TOUCH_TARGET } from '@/components/button';
+import { Symbol } from '@/components/symbol';
 import { useThemeColors, fonts } from '@/theme';
 
 export type TextLinkProps = {
@@ -21,6 +23,11 @@ export type TextLinkProps = {
   size?: 'regular' | 'large';
   /** @default 'regular' */
   weight?: 'regular' | 'semibold';
+  /**
+   * The link opens another screen: on iOS it ends in a disclosure chevron.
+   * Material rows carry no chevron, so Android leaves it off.
+   */
+  disclosure?: boolean;
   disabled?: boolean;
   /** Work in flight: presses are ignored and VoiceOver reads it as busy. */
   busy?: boolean;
@@ -47,6 +54,7 @@ export function TextLink({
   tone = 'accent',
   size = 'regular',
   weight = 'regular',
+  disclosure = false,
   disabled = false,
   busy = false,
   accessibilityLabel,
@@ -58,6 +66,7 @@ export function TextLink({
 }: TextLinkProps) {
   const colors = useThemeColors();
   const inactive = disabled || busy;
+  const chevron = disclosure && Platform.OS === 'ios';
   const color =
     tone === 'destructive' ? colors.error : tone === 'quiet' ? colors.inkFaint : colors.lapis;
   return (
@@ -71,6 +80,7 @@ export function TextLink({
       testID={testID}
       style={({ pressed }) => [
         styles.target,
+        chevron && styles.row,
         disabled && styles.disabled,
         pressed && styles.pressed,
         style,
@@ -80,11 +90,22 @@ export function TextLink({
         style={[
           size === 'large' ? styles.largeLabel : styles.label,
           weight === 'semibold' && styles.semibold,
+          chevron && styles.shrink,
           { color, fontFamily: fonts?.ui },
           labelStyle,
         ]}>
         {label}
       </Text>
+      {chevron && (
+        <Symbol
+          ios="chevron.right"
+          android="chevron_right"
+          size={13}
+          weight="semibold"
+          color={colors.inkFaint}
+          maxFontSizeMultiplier={maxFontSizeMultiplier}
+        />
+      )}
     </Pressable>
   );
 }
@@ -98,6 +119,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 15 },
   largeLabel: { fontSize: 17 },
   semibold: { fontWeight: '600' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 6 },
+  shrink: { flexShrink: 1 },
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.5 },
 });

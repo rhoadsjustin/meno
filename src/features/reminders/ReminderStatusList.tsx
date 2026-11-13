@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Symbol } from '@/components/symbol';
 import { useTranslation } from '@/i18n/react';
 import { describeReminders, type ReminderStatus } from '@/services/notifications';
 import { useThemeColors, fonts, spacing } from '@/theme';
@@ -17,7 +18,6 @@ export function ReminderStatusList({ status }: { status: ReminderStatus }) {
   return (
     <View style={styles.list}>
       {lines.map((line) => {
-        const mark = line.tone === 'ok' ? '✓' : line.tone === 'problem' ? '!' : '–';
         const markColor =
           line.tone === 'ok'
             ? colors.success
@@ -30,12 +30,20 @@ export function ReminderStatusList({ status }: { status: ReminderStatus }) {
             accessible
             accessibilityLabel={t('status.lineLabel', { title: line.title, detail: line.detail })}
             style={styles.line}>
-            <Text
-              style={[styles.mark, { color: markColor, fontFamily: fonts?.ui }]}
-              importantForAccessibility="no"
-              accessibilityElementsHidden>
-              {mark}
-            </Text>
+            <View style={styles.mark}>
+              {line.tone === 'ok' ? (
+                <Symbol ios="checkmark.circle.fill" android="check_circle" size={15} color={markColor} />
+              ) : line.tone === 'problem' ? (
+                <Symbol
+                  ios="exclamationmark.circle.fill"
+                  android="error"
+                  size={15}
+                  color={markColor}
+                />
+              ) : (
+                <Symbol ios="minus.circle" android="do_not_disturb_on" size={15} color={markColor} />
+              )}
+            </View>
             <View style={styles.text}>
               <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {line.title}
@@ -61,7 +69,8 @@ export function ReminderStatusList({ status }: { status: ReminderStatus }) {
 const styles = StyleSheet.create({
   list: { gap: spacing.md },
   line: { flexDirection: 'row', gap: spacing.sm },
-  mark: { fontSize: 15, lineHeight: 20, fontWeight: '700', minWidth: 14, textAlign: 'center' },
+  // Centred on the title's first line.
+  mark: { paddingTop: 2 },
   text: { flex: 1, gap: 2 },
   title: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
   detail: { fontSize: 14, lineHeight: 19 },

@@ -95,6 +95,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 
 ## 7. Iconography & illustration
 - SF Symbols throughout (book.closed, flame, checkmark.seal for memorized — seal filled gold).
+- Icons inside the app's own views come from `src/components/symbol.tsx` (`Symbol`: the SF Symbol on iOS, its Material Symbol on Android; a theme colour; grows with Dynamic Type; hidden from VoiceOver because the row or button carries the words). Never an emoji or a typed character (`+`, `›`, `✓`) as an icon. A link that opens another screen takes `disclosure` on `TextLink`: a chevron on iOS, none on Android. The widget's inline flame is the one exception (05 §1: typographic, no images).
 - Badges: custom typographic medallions — circled monogram/numeral with an engraved double-rule border, flat, no gradients or 3D.
 - No mascots. No stock-spiritual imagery (doves, sunbeams).
 

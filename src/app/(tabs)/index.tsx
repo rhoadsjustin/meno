@@ -17,6 +17,7 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { useScreenReader } from '@/components/screen-reader';
 import { Screen } from '@/components/screen';
 import { Button } from '@/components/button';
+import { Symbol } from '@/components/symbol';
 import { TextLink } from '@/components/text-link';
 import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
@@ -248,16 +249,31 @@ export default function TodayScreen() {
   }, [t]);
 
   const ember = streak && streak.current > 0 && (
-    <Text
+    // 07 §6: a lapis flame, hollow until today is secured. The label says
+    // which, so the state never rests on the fill or the colour alone.
+    <View
+      accessible
       accessibilityLabel={t(streak.activeToday ? 'streakSecured' : 'streak', {
         count: streak.current,
       })}
-      style={[
-        styles.ember,
-        { color: streak.activeToday ? colors.lapis : colors.inkFaint, fontFamily: fonts?.ui },
-      ]}>
-      🔥 {streak.current}
-    </Text>
+      style={styles.ember}>
+      <Symbol
+        ios={streak.activeToday ? 'flame.fill' : 'flame'}
+        android="local_fire_department"
+        size={17}
+        weight="semibold"
+        color={streak.activeToday ? colors.lapis : colors.inkFaint}
+        maxFontSizeMultiplier={1.6}
+      />
+      <Text
+        maxFontSizeMultiplier={1.6}
+        style={[
+          styles.emberCount,
+          { color: streak.activeToday ? colors.lapis : colors.inkFaint, fontFamily: fonts?.ui },
+        ]}>
+        {streak.current}
+      </Text>
+    </View>
   );
 
   // Only worth saying which passage is on the widgets once there's a choice.
@@ -692,7 +708,8 @@ const styles = StyleSheet.create({
   // screen's gap, so they sit about as close together as they did as text.
   bottomLink: { marginVertical: -spacing.sm },
   reviewLink: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
-  ember: { fontSize: 17, fontWeight: '600' },
+  ember: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  emberCount: { fontSize: 17, fontWeight: '600' },
   focusLabel: {
     fontSize: 12,
     fontWeight: '600',
