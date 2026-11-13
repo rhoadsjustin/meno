@@ -13,8 +13,8 @@ import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
 /**
  * - `primary`: filled lapis capsule, the one main action of a screen or card (07 §6).
- * - `secondary`: outlined capsule, an equal-weight alternative beside a primary.
- * - `tinted`: `lapisWash` capsule, a quieter filled action.
+ * - `secondary`: lapis outline and label, an alternative beside or under a primary.
+ * - `tinted`: `lapisWash` capsule with an ink label, a quieter filled action.
  * - `plain`: label only, in lapis; still a full 44pt target.
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'tinted' | 'plain';
@@ -73,16 +73,17 @@ export function Button({
   const labelColor =
     variant === 'primary'
       ? colors.onLapis
-      : variant === 'plain' || role === 'destructive'
-        ? accent
-        : colors.ink;
+      : variant === 'tinted' && role === 'default'
+        ? // Lapis on its own wash is only 4.1:1 in dark mode.
+          colors.ink
+        : accent;
   const surface: ViewStyle =
     variant === 'primary'
       ? { backgroundColor: accent }
       : variant === 'tinted'
         ? { backgroundColor: colors.lapisWash }
         : variant === 'secondary'
-          ? { borderWidth: 1, borderColor: colors.separator }
+          ? { borderWidth: 1.5, borderColor: accent }
           : {};
 
   return (

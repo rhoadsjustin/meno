@@ -17,6 +17,8 @@ export type TextLinkProps = {
   accessibilityRole?: 'button' | 'link';
   /** `accent` is lapis, `quiet` is inkFaint, `destructive` is the error colour. @default 'accent' */
   tone?: 'accent' | 'quiet' | 'destructive';
+  /** `large` is 17pt, for a text button in a row of system controls. @default 'regular' */
+  size?: 'regular' | 'large';
   /** @default 'regular' */
   weight?: 'regular' | 'semibold';
   disabled?: boolean;
@@ -34,7 +36,7 @@ export type TextLinkProps = {
 };
 
 /**
- * A 15pt text action: a quiet link under a card or a caption-weight choice.
+ * A text action: a quiet link under a card or a caption-weight choice.
  * The label is one line of text, so the Pressable supplies the 44pt target
  * and the pressed state.
  */
@@ -43,6 +45,7 @@ export function TextLink({
   onPress,
   accessibilityRole = 'button',
   tone = 'accent',
+  size = 'regular',
   weight = 'regular',
   disabled = false,
   busy = false,
@@ -75,7 +78,7 @@ export function TextLink({
       <Text
         maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={[
-          styles.label,
+          size === 'large' ? styles.largeLabel : styles.label,
           weight === 'semibold' && styles.semibold,
           { color, fontFamily: fonts?.ui },
           labelStyle,
@@ -93,6 +96,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: { fontSize: 15 },
+  largeLabel: { fontSize: 17 },
   semibold: { fontWeight: '600' },
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.5 },

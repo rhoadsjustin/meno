@@ -48,6 +48,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 
 - 4pt base grid; screen margins 20pt; card padding 16pt.
 - Corner radius: continuous-corner 12pt cards, 24pt sheets (match iOS), capsule buttons.
+- Buttons come from `src/components/button.tsx` (`primary` filled lapis capsule with an `onLapis` label, `secondary` outlined, `tinted`, `plain`; `role="destructive"`; `busy` / `disabled`) and text actions from `src/components/text-link.tsx`. Both are at least 44pt tall, dim while pressed and carry their accessibility role and state — never restyle a bare `Pressable` as a button in a screen.
 - Elevation by material, not shadow: cards use `surfaceRaised` + hairline `separator`; sheets use native materials/glass where `@expo/ui/swift-ui` exposes them.
 
 ## 6. Screens

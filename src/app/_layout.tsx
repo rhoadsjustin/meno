@@ -260,8 +260,14 @@ function RecoveryScreen({ onRetry }: { onRetry: () => void }) {
       <Pressable
         accessibilityRole="button"
         onPress={onRetry}
-        style={[styles.recoveryButton, { backgroundColor: colors.lapis }]}>
-        <Text style={styles.recoveryButtonText}>{t('common:retry')}</Text>
+        style={({ pressed }) => [
+          styles.recoveryButton,
+          { backgroundColor: colors.lapis },
+          pressed && styles.recoveryButtonPressed,
+        ]}>
+        <Text style={[styles.recoveryButtonText, { color: colors.onLapis }]}>
+          {t('common:retry')}
+        </Text>
       </Pressable>
     </View>
   );
@@ -277,7 +283,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 32,
   },
-  recoveryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  recoveryButtonPressed: { opacity: 0.6 },
+  recoveryButtonText: { fontSize: 17, fontWeight: '600' },
 });
 
 export default ObserveRoot.wrap(RootLayout);
