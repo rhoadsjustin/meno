@@ -85,6 +85,5 @@ export default {
   starter: {
     practiceReference: 'Practice {{reference}}',
     practiceThisVerse: 'Practice this verse',
-    starting: 'Starting…',
   },
 } as const;

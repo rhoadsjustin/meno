@@ -111,6 +111,9 @@ export default {
   notYet: 'Tu año en la Palabra se abre cuando hayas practicado 3 días.',
   todayCard: 'Tu {{year}} en la Palabra está listo',
   todayCardHint: 'Un vistazo a las Escrituras que llevaste contigo',
+  todayCardDismiss: 'Ocultar esta tarjeta',
+  todayCardDismissed: 'Oculta. Tu año en la Palabra sigue en la pestaña Progreso.',
+  notYetDismissed: 'Oculta',
   statsRow: '{{year}} en la Palabra',
   pastYears: 'Año en la Palabra',
   notification: {

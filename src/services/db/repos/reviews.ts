@@ -55,6 +55,27 @@ export async function countDueReviews(now = new Date()): Promise<number> {
   return rows.length;
 }
 
+/** The chunks behind the most overdue items, in that order, for naming what
+ * is due (07 §6: count + up-to-3 references). */
+export async function dueReviewChunks(
+  limit = 3,
+  now = new Date(),
+): Promise<(typeof tables.chunks.$inferSelect)[]> {
+  const items = await dueReviewItems(limit, now);
+  if (items.length === 0) return [];
+  const chunks = await db
+    .select()
+    .from(tables.chunks)
+    .where(
+      inArray(
+        tables.chunks.id,
+        items.map((item) => item.chunkId),
+      ),
+    );
+  const byId = new Map(chunks.map((chunk) => [chunk.id, chunk]));
+  return items.flatMap((item) => byId.get(item.chunkId) ?? []);
+}
+
 export async function reviewItemForChunk(chunkId: string): Promise<ReviewItem | undefined> {
   const rows = await db
     .select()

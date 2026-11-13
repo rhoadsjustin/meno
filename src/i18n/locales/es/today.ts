@@ -44,14 +44,14 @@ export default {
   stitch: {
     title: 'Únelo todo',
     body: 'Recita todo lo que has aprendido hasta ahora como un solo pasaje.',
-    begin: 'Empezar a unir',
   },
 
   due: {
     title: 'Para repasar',
     body_one: '{{count}} versículo está listo para mantenerlo fresco.',
     body_other: '{{count}} versículos están listos para mantenerlos frescos.',
-    action: 'Repasar {{count}}',
+    refs: '{{count}} para mantener frescos: {{refs}}',
+    refsAndMore: '{{count}} para mantener frescos: {{refs}} y {{more}} más',
   },
 
   others: {
@@ -72,9 +72,5 @@ export default {
 
   ladder: {
     title: 'Cómo va',
-    withStreak_one: '{{progress}} · racha de {{count}} día',
-    withStreak_other: '{{progress}} · racha de {{count}} días',
-    withStreakSecured_one: '{{progress}} · racha de {{count}} día, asegurada hoy',
-    withStreakSecured_other: '{{progress}} · racha de {{count}} días, asegurada hoy',
   },
 } satisfies Catalog<typeof en>;

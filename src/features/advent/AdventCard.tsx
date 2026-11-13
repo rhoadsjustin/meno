@@ -8,12 +8,12 @@
  */
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Button } from '@/components/button';
+import { NavRow } from '@/components/nav-row';
 import { SectionHeader } from '@/components/section-header';
 import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
@@ -115,7 +115,10 @@ export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | nu
       <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {t('body', { passage: main })}
       </Text>
+      {/* Tinted, not filled: Today has one primary button, and it is the
+          practice card's (07 §6). */}
       <Button
+        variant="tinted"
         label={t('start', { passage: main })}
         onPress={() => join(offer, offer.plan.main, t('goalTitle', { passage: main }))}
         style={styles.button}
@@ -141,7 +144,6 @@ export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | nu
 
 /** Once started: which week it is and that week's verses; opens the passage. */
 export function AdventProgressCard({ offer }: { offer: AdventOffer | null }) {
-  const colors = useThemeColors();
   const { t } = useTranslation('advent');
   if (!offer?.joined || offer.joined.goal.status !== 'active') return null;
   const { plan, week, joined } = offer;
@@ -154,26 +156,14 @@ export function AdventProgressCard({ offer }: { offer: AdventOffer | null }) {
       ? t('progress.thisWeek', { passage: formatRange(plan.weeks[week - 1]) })
       : t('progress.byChristmas', { passage: whole });
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${detail}`}
-      accessibilityHint={t('progress.hint')}
-      onPress={() => router.push(`/practice/${joined.goal.id}`)}
-      style={({ pressed }) => pressed && styles.pressed}>
-      <Card>
-        <View style={styles.row}>
-          <View style={styles.text}>
-            <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>{title}</Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>{detail}</Text>
-          </View>
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={14}
-            tintColor={colors.inkFaint}
-          />
-        </View>
-      </Card>
-    </Pressable>
+    <Card>
+      <NavRow
+        title={title}
+        detail={detail}
+        accessibilityHint={t('progress.hint')}
+        onPress={() => router.push(`/practice/${joined.goal.id}`)}
+      />
+    </Card>
   );
 }
 
@@ -192,8 +182,4 @@ const styles = StyleSheet.create({
     // and between wrapped rows, and the card's padding absorbs the rest.
     marginBottom: -spacing.md,
   },
-  pressed: { opacity: 0.6 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  text: { flex: 1 },
-  rowTitle: { fontSize: 17, fontWeight: '600' },
 });

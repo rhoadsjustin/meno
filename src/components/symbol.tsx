@@ -1,4 +1,10 @@
-import { SymbolView, type AndroidSymbol, type SFSymbol, type SymbolWeight } from 'expo-symbols';
+import {
+  SymbolView,
+  type AndroidSymbol,
+  type AnimationSpec,
+  type SFSymbol,
+  type SymbolWeight,
+} from 'expo-symbols';
 import { useWindowDimensions, type ColorValue, type StyleProp, type ViewStyle } from 'react-native';
 
 export type SymbolProps = {
@@ -13,6 +19,12 @@ export type SymbolProps = {
   weight?: SymbolWeight;
   /** How far the symbol grows with Dynamic Type. @default 2 */
   maxFontSizeMultiplier?: number;
+  /**
+   * A symbol effect (iOS 17+; ignored elsewhere). It plays when it is set, so
+   * pass it for the moment and clear it afterwards, and never under Reduce
+   * Motion (`useMotion`).
+   */
+  animationSpec?: AnimationSpec;
   /** Outer layout only (margins). */
   style?: StyleProp<ViewStyle>;
 };
@@ -33,6 +45,7 @@ export function Symbol({
   color,
   weight = 'regular',
   maxFontSizeMultiplier = 2,
+  animationSpec,
   style,
 }: SymbolProps) {
   const { fontScale } = useWindowDimensions();
@@ -42,6 +55,7 @@ export function Symbol({
       size={Math.round(size * Math.min(fontScale, maxFontSizeMultiplier))}
       tintColor={color}
       weight={weight}
+      animationSpec={animationSpec}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={style}

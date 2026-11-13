@@ -1,10 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Alert,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -14,6 +13,7 @@ import {
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
+import { NavRow } from '@/components/nav-row';
 import { useScreenReader } from '@/components/screen-reader';
 import { Screen } from '@/components/screen';
 import { SectionHeader } from '@/components/section-header';
@@ -31,7 +31,11 @@ import {
   stepCopy,
   type GoalProgress,
 } from '@/services/goals/progress';
-import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
+import {
+  STARTER_STACK_TEXT_SCALE,
+  StarterDeck,
+  StarterDeckPlaceholder,
+} from '@/features/goals/StarterDeck';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
 import { RecapTodayCard, useRecapOffer } from '@/features/wrapped/RecapEntry';
@@ -44,18 +48,24 @@ import {
 } from '@/services/bible';
 import {
   activeGoal,
-  chunkProgressLabel,
   listActiveGoals,
   listGoals,
   startStarterGoal,
   type Goal,
 } from '@/services/db/repos/goals';
-import { countDueReviews } from '@/services/db/repos/reviews';
+import { countDueReviews, dueReviewChunks } from '@/services/db/repos/reviews';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
 import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, spacing, scriptureType, textStyle } from '@/theme';
+import { useMotion } from '@/theme/motion';
+
+/** How many due references the review row names (07 §6). */
+const DUE_REFS_SHOWN = 3;
+/** 07 §8, "Streak day secured: ember pulse": one bounce, then cleared. */
+const EMBER_PULSE = { effect: { type: 'bounce', wholeSymbol: true } } as const;
+const EMBER_PULSE_MS = 1200;
 
 /** The focus passage (the one on the widgets) gets the hero card and its text. */
 type TodayData = GoalProgress & { chunkText: string };
@@ -86,6 +96,7 @@ export default function TodayScreen() {
   const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
   const [dueCount, setDueCount] = useState(0);
+  const [dueRefs, setDueRefs] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
   // The first load threw, so there is nothing true to show: neither the
   // passages nor the first-run empty state. Once a load has succeeded, a
@@ -139,8 +150,14 @@ export default function TodayScreen() {
       }
     }
     const streakNow = await currentStreakDisplay();
-    const due = await countDueReviews();
-    if (!isCancelled()) setDueCount(due);
+    const [due, dueChunks] = await Promise.all([
+      countDueReviews(),
+      dueReviewChunks(DUE_REFS_SHOWN),
+    ]);
+    if (!isCancelled()) {
+      setDueCount(due);
+      setDueRefs(dueChunks.map(chunkRangeLabel));
+    }
     if (!goal) {
       const finished = (await listGoals()).length > 0;
       if (!isCancelled()) {
@@ -249,6 +266,23 @@ export default function TodayScreen() {
     }
   }, [t]);
 
+  // The flame bounces once when today becomes secured while this screen is
+  // alive (coming back from a session), never on the first read and never
+  // under Reduce Motion. The effect plays when it is set, so it is cleared
+  // again rather than left to replay on a later prop change.
+  const { reduce } = useMotion();
+  const secured = streak ? streak.activeToday : null;
+  const wasSecured = useRef<boolean | null>(null);
+  const [emberPulse, setEmberPulse] = useState(false);
+  useEffect(() => {
+    const before = wasSecured.current;
+    wasSecured.current = secured;
+    if (before !== false || secured !== true || reduce) return;
+    setEmberPulse(true);
+    const timer = setTimeout(() => setEmberPulse(false), EMBER_PULSE_MS);
+    return () => clearTimeout(timer);
+  }, [secured, reduce]);
+
   const ember = streak && streak.current > 0 && (
     // 07 §6: a lapis flame, hollow until today is secured. The label says
     // which, so the state never rests on the fill or the colour alone.
@@ -265,6 +299,7 @@ export default function TodayScreen() {
         weight="semibold"
         color={streak.activeToday ? colors.lapis : colors.inkFaint}
         maxFontSizeMultiplier={1.6}
+        animationSpec={emberPulse ? EMBER_PULSE : undefined}
       />
       <Text
         maxFontSizeMultiplier={1.6}
@@ -305,6 +340,8 @@ export default function TodayScreen() {
       onStart={(passage) => void startStarter(passage)}
     />
   );
+  // Holds the deck's place until the cards arrive (or their load fails).
+  const emptyDeckLoading = isEmpty && !starters && !startersFailed && <StarterDeckPlaceholder />;
   const emptyActions = isEmpty && (
     <>
       {startFailed && (
@@ -418,22 +455,17 @@ export default function TodayScreen() {
               const sealChunk = data.sealChunk;
               const sealRef = chunkRangeLabel(sealChunk);
               return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t('hero.sealSpoken', { ref: sealRef })}
-                  onPress={() => router.push(practiceHref(data.goal.id, sealChunk))}
-                  style={({ pressed }) => [
-                    styles.sealOffer,
-                    { borderTopColor: colors.inkFaint },
-                    pressed && styles.pressed,
-                  ]}>
+                <View style={[styles.sealOffer, { borderTopColor: colors.inkFaint }]}>
                   <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                     {t('hero.sealOffer', { ref: sealRef })}
                   </Text>
-                  <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                    {t('hero.recite', { ref: sealRef })}
-                  </Text>
-                </Pressable>
+                  <TextLink
+                    weight="semibold"
+                    label={t('hero.recite', { ref: sealRef })}
+                    accessibilityLabel={t('hero.sealSpoken', { ref: sealRef })}
+                    onPress={() => router.push(practiceHref(data.goal.id, sealChunk))}
+                  />
+                </View>
               );
             })()}
         </Card>
@@ -462,39 +494,31 @@ export default function TodayScreen() {
     <>
       {data?.stitchDue && (
         <Card>
-          <Pressable
-            accessibilityRole="button"
+          <NavRow
+            title={t('stitch.title')}
+            detail={t('stitch.body')}
             onPress={() => router.push(`/stitch/${data.goal.id}`)}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {t('stitch.title')}
-            </Text>
-            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t('stitch.body')}
-            </Text>
-            <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('stitch.begin')}
-            </Text>
-          </Pressable>
+          />
         </Card>
       )}
 
       {dueCount > 0 && (
         <Card>
-          <Pressable
-            accessibilityRole="button"
+          <NavRow
+            title={t('due.title')}
+            detail={
+              dueRefs.length === 0
+                ? t('due.body', { count: dueCount })
+                : dueCount > dueRefs.length
+                  ? t('due.refsAndMore', {
+                      count: dueCount,
+                      refs: dueRefs.join(', '),
+                      more: dueCount - dueRefs.length,
+                    })
+                  : t('due.refs', { count: dueCount, refs: dueRefs.join(', ') })
+            }
             onPress={() => router.push('/review')}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {t('due.title')}
-            </Text>
-            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t('due.body', { count: dueCount })}
-            </Text>
-            <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('due.action', { count: dueCount })}
-            </Text>
-          </Pressable>
+          />
         </Card>
       )}
 
@@ -526,7 +550,9 @@ export default function TodayScreen() {
                 </Text>
                 <View style={styles.otherActions}>
                   {action && (
+                    // Tinted: the hero's is the one filled button (07 §6).
                     <Button
+                      variant="tinted"
                       size="small"
                       label={action.label}
                       accessibilityLabel={action.spoken}
@@ -611,19 +637,18 @@ export default function TodayScreen() {
   const ladder = data?.chunk && (
     <Card>
       <SectionHeader title={t('ladder.title')} style={styles.asideTitle} />
-      <TierLadder highestCleared={data.chunk.tier} />
-      <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {streak && streak.current > 0
-          ? t(streak.activeToday ? 'ladder.withStreakSecured' : 'ladder.withStreak', {
-              progress: chunkProgressLabel(data.chunk, data.totalChunks),
-              count: streak.current,
-            })
-          : chunkProgressLabel(data.chunk, data.totalChunks)}
-      </Text>
+      <TierLadder
+        highestCleared={data.chunk.tier}
+        // The rung the button opens is ringed; a resting verse has none.
+        current={data.step && data.step.kind !== 'rest' ? data.step.tier : undefined}
+      />
     </Card>
   );
 
-  const recapCard = <RecapTodayCard offer={recapOffer} />;
+  // Seasonal cards never come before the practice card (docs/11 §3.2): the
+  // Advent invitation leads only the empty state, above the starter deck.
+  // Neither shows until the first load says which of the two this is.
+  const recapCard = loaded && <RecapTodayCard offer={recapOffer} />;
   const adventInvite = <AdventInviteCard offer={advent.offer} onDismiss={advent.dismiss} />;
   const adventProgress = <AdventProgressCard offer={advent.offer} />;
 
@@ -641,32 +666,36 @@ export default function TodayScreen() {
       ) : twoPane ? (
         <FoldAwareRow>
           <>
-            {recapCard}
             {emptyIntro}
             {emptyActions}
             {hero}
             {links}
           </>
           <>
-            {adventInvite}
+            {isEmpty && adventInvite}
             {adventProgress}
             {emptyDeck}
+            {emptyDeckLoading}
             {ladder}
             {secondary}
+            {data && adventInvite}
+            {recapCard}
             {reminderPrompt}
           </>
         </FoldAwareRow>
       ) : (
         <>
-          {recapCard}
-          {adventInvite}
+          {isEmpty && adventInvite}
           {emptyIntro}
           {actionsFirst && emptyActions}
           {emptyDeck}
+          {emptyDeckLoading}
           {!actionsFirst && emptyActions}
           {hero}
           {adventProgress}
           {secondary}
+          {data && adventInvite}
+          {recapCard}
           {reminderPrompt}
           {links}
         </>
@@ -686,19 +715,19 @@ const styles = StyleSheet.create({
   attribution: { fontSize: 13, marginTop: spacing.md },
   subline: { fontSize: 13, marginTop: spacing.sm, textAlign: 'center' },
   primaryButton: { marginTop: spacing.lg },
-  pressed: { opacity: 0.6 },
   restNote: { marginTop: spacing.lg },
   restTitle: { fontSize: 17, fontWeight: '600', textAlign: 'center' },
   sealOffer: {
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
+    // The link under the line is a 44pt target; the card's padding absorbs it.
+    marginBottom: -spacing.md,
   },
   readingLink: { paddingHorizontal: spacing.xs },
   // The two links under the cards are 44pt targets that reach into the
   // screen's gap, so they sit about as close together as they did as text.
   bottomLink: { marginVertical: -spacing.sm },
-  reviewLink: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
   ember: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   emberCount: { fontSize: 17, fontWeight: '600' },
   focusLabel: { marginBottom: spacing.sm },
