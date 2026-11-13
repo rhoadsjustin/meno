@@ -41,7 +41,7 @@ import {
   setNotificationsEnabled,
   type ReminderStatus,
 } from '@/services/notifications';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 export type SectionKey = 'quizzes' | 'homeWidget' | 'lockWidget' | 'speak' | 'lock';
 
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   section: { gap: spacing.md },
   sectionHeader: { gap: spacing.xs },
-  sectionTitle: { fontSize: 20, lineHeight: 25, fontWeight: '600' },
+  sectionTitle: { ...textStyle.title3, fontWeight: '600' },
   steps: { gap: spacing.sm },
   stepRow: { flexDirection: 'row', gap: spacing.sm },
   stepNumber: { fontSize: 16, lineHeight: 23, fontWeight: '700', minWidth: 22 },

@@ -14,6 +14,7 @@ import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Card } from '@/components/card';
 import { Button } from '@/components/button';
+import { SectionHeader } from '@/components/section-header';
 import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { adventFor, adventPlan, adventWeek, type AdventPlan, type AdventTrack } from '@/services/advent';
@@ -23,7 +24,7 @@ import { CHALLENGE_VERSION } from '@/services/challenges';
 import { adventDismissed, adventPreview, setAdventDismissed } from '@/services/db/repos/appFlags';
 import { activeGoal, goalByChallengeId, type Goal } from '@/services/db/repos/goals';
 import { localToday } from '@/services/db/repos/streaks';
-import { fonts, spacing, useThemeColors } from '@/theme';
+import { fonts, spacing, useThemeColors, textStyle } from '@/theme';
 
 export type AdventOffer = {
   plan: AdventPlan;
@@ -107,7 +108,7 @@ export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | nu
   const short = formatRange(offer.plan.short.range);
   return (
     <Card>
-      <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>{t('kicker')}</Text>
+      <SectionHeader kind="kicker" title={t('kicker')} style={styles.kicker} />
       <Text accessibilityRole="header" style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {t('title')}
       </Text>
@@ -177,15 +178,9 @@ export function AdventProgressCard({ offer }: { offer: AdventOffer | null }) {
 }
 
 const styles = StyleSheet.create({
-  kicker: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: spacing.sm,
-  },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '600' },
-  body: { fontSize: 15, lineHeight: 20, marginTop: spacing.xs },
+  kicker: { marginBottom: spacing.sm },
+  title: { ...textStyle.title2, fontWeight: '600' },
+  body: { ...textStyle.subheadline, marginTop: spacing.xs },
   button: { marginTop: spacing.lg },
   actions: {
     flexDirection: 'row',

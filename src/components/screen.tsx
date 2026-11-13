@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
-import { useThemeColors, fonts, layout, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle } from '@/theme';
 
 /**
  * Tab-screen scaffold: surface background, safe-area top, iOS-style large
@@ -58,8 +58,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   largeTitle: {
-    fontSize: 34,
-    lineHeight: 41,
+    ...textStyle.largeTitle,
     fontWeight: '700',
   },
 });

@@ -16,6 +16,7 @@ import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { useScreenReader } from '@/components/screen-reader';
 import { Screen } from '@/components/screen';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/button';
 import { Symbol } from '@/components/symbol';
 import { TextLink } from '@/components/text-link';
@@ -54,7 +55,7 @@ import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
 import { showGoalOnWidgets } from '@/services/widgets';
-import { useThemeColors, fonts, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, spacing, scriptureType, textStyle } from '@/theme';
 
 /** The focus passage (the one on the widgets) gets the hero card and its text. */
 type TodayData = GoalProgress & { chunkText: string };
@@ -278,9 +279,7 @@ export default function TodayScreen() {
 
   // Only worth saying which passage is on the widgets once there's a choice.
   const focusLabel = others.length > 0 && (
-    <Text style={[styles.focusLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-      {t('focusLabel')}
-    </Text>
+    <SectionHeader kind="kicker" tone="accent" title={t('focusLabel')} style={styles.focusLabel} />
   );
 
   // First run, before the user has a passage: the quick-start cards and the
@@ -501,11 +500,7 @@ export default function TodayScreen() {
 
       {others.length > 0 && (
         <>
-          <Text
-            accessibilityRole="header"
-            style={[styles.sectionHeader, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('others.header')}
-          </Text>
+          <SectionHeader title={t('others.header')} style={styles.sectionHeader} />
           {others.map((o) => {
             const copy = o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
             // A stitch outranks the next chunk; a resting verse has no button
@@ -615,11 +610,7 @@ export default function TodayScreen() {
   // once there is a second column.
   const ladder = data?.chunk && (
     <Card>
-      <Text
-        accessibilityRole="header"
-        style={[styles.asideTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {t('ladder.title')}
-      </Text>
+      <SectionHeader title={t('ladder.title')} style={styles.asideTitle} />
       <TierLadder highestCleared={data.chunk.tier} />
       <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {streak && streak.current > 0
@@ -687,7 +678,7 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   emptyIntro: { paddingHorizontal: spacing.xs },
   emptyTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },
-  emptyBody: { fontSize: 15, lineHeight: 20 },
+  emptyBody: textStyle.subheadline,
   scripture: {
     fontSize: scriptureType.defaultSize,
     lineHeight: scriptureType.defaultLineHeight,
@@ -710,25 +701,9 @@ const styles = StyleSheet.create({
   reviewLink: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
   ember: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   emberCount: { fontSize: 17, fontWeight: '600' },
-  focusLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: spacing.sm,
-  },
-  asideTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: spacing.md,
-  },
+  focusLabel: { marginBottom: spacing.sm },
+  asideTitle: { marginBottom: spacing.md },
   sectionHeader: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
     marginTop: spacing.sm,
     marginBottom: -spacing.sm,
     paddingHorizontal: spacing.xs,

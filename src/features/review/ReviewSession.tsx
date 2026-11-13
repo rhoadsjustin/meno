@@ -29,7 +29,7 @@ import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { WordFeedback } from '@/features/practice/WordFeedback';
-import { useThemeColors, fonts, layout, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle, displayType } from '@/theme';
 import { eq } from 'drizzle-orm';
 
 type QueueEntry = {
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   reference: { fontSize: 14, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  summaryNote: { fontSize: 15, lineHeight: 20, marginBottom: spacing.md },
-  accuracy: { fontSize: 56, marginTop: spacing.xl },
+  summaryNote: { ...textStyle.subheadline, marginBottom: spacing.md },
+  accuracy: { fontSize: displayType.medium, marginTop: spacing.xl },
   accuracyShort: { fontSize: 44, marginTop: 0 },
 });

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Symbol } from '@/components/symbol';
 import { useTranslation } from '@/i18n/react';
 import { describeReminders, type ReminderStatus } from '@/services/notifications';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 /**
  * One line per kind of reminder: when the next one comes, or why none will
@@ -72,6 +72,6 @@ const styles = StyleSheet.create({
   // Centred on the title's first line.
   mark: { paddingTop: 2 },
   text: { flex: 1, gap: 2 },
-  title: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  title: { ...textStyle.subheadline, fontWeight: '600' },
   detail: { fontSize: 14, lineHeight: 19 },
 });

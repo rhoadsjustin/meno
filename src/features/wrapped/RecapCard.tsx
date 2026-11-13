@@ -13,7 +13,7 @@ import type { RecapView } from '@/features/wrapped/recap-view';
 import { locale } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import type { CardId } from '@/services/wrapped';
-import { fonts, palette, type ColorScheme, type ThemeColors } from '@/theme';
+import { displayType, fonts, palette, type ColorScheme, type ThemeColors } from '@/theme';
 
 export type CardVariant = 'screen' | 'story' | 'square';
 
@@ -125,7 +125,7 @@ function CardBody({
   const type = {
     kicker: { color: colors.lapis, fontFamily: fonts?.ui, fontSize: 12 * u, fontWeight: '600', letterSpacing: 1.4 * u, textTransform: 'uppercase' },
     heading: { color: colors.ink, fontFamily: fonts?.scripture, fontSize: 26 * u, lineHeight: 32 * u, fontWeight: '600' },
-    numeral: { color: colors.ink, fontFamily: fonts?.scripture, fontSize: 96 * u, lineHeight: 108 * u },
+    numeral: { color: colors.ink, fontFamily: fonts?.scripture, fontSize: displayType.large * u, lineHeight: 108 * u },
     label: { color: colors.inkFaint, fontFamily: fonts?.ui, fontSize: 17 * u, lineHeight: 22 * u },
     detail: { color: colors.inkFaint, fontFamily: fonts?.ui, fontSize: 15 * u, lineHeight: 21 * u },
     verse: { color: colors.ink, fontFamily: fonts?.scripture, fontSize: 18 * u, lineHeight: 27 * u, fontStyle: 'italic' },

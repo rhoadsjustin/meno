@@ -17,6 +17,7 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { MIN_TOUCH_TARGET } from '@/components/button';
 import { Unavailable } from '@/components/unavailable';
 import { Screen } from '@/components/screen';
+import { SectionHeader } from '@/components/section-header';
 import { TextLink } from '@/components/text-link';
 import { DeleteGoalButton } from '@/features/goals/DeleteGoalButton';
 import { goalAction, progressFor, type GoalAction } from '@/services/goals/progress';
@@ -215,11 +216,7 @@ export default function LibraryScreen() {
   const firstShelf: Segment = twoPane ? 'inProgress' : segment;
 
   const header = (label: string) => (
-    <Text
-      accessibilityRole="header"
-      style={[styles.shelfTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-      {label}
-    </Text>
+    <SectionHeader title={label} style={styles.shelfTitle} />
   );
 
   const inProgress = (
@@ -498,13 +495,7 @@ function cellColor(chunk: Chunk, colors: ThemeColors): string {
 const styles = StyleSheet.create({
   // Matches the Screen scaffold's vertical rhythm between cards.
   stack: { gap: spacing.lg },
-  shelfTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: -spacing.xs,
-  },
+  shelfTitle: { marginBottom: -spacing.xs },
   segmented: {
     flexDirection: 'row',
     borderRadius: radius.capsule,
@@ -528,7 +519,7 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: spacing.md,
   },
-  cell: { width: 16, height: 16, borderRadius: 4 },
+  cell: { width: 16, height: 16, borderRadius: radius.cell },
   // The links are 44pt targets whose text sits where it did: the target
   // reaches into the card's bottom padding rather than making the card taller.
   actionsRow: {

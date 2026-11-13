@@ -44,10 +44,12 @@ Both faces ship with iOS — zero font files, perfect legibility, unmistakably n
 
 Type scale follows Apple's text styles; do not invent sizes.
 
+The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `title1` 28/34, `title2` 22/28, `title3` 20/25, `headline` 17/22 semibold, `body` 17/22, `callout` 16/21, `subheadline` 15/20, `footnote` 13/18, `caption1` 12/16, `caption2` 11/13); new UI text spreads one of these rather than a literal size, and older screens move over as they are next touched. Numerals above the scale use `displayType` (40, 56, 96). The small tracked uppercase label over a group or a card title is `src/components/section-header.tsx`; the capitals are styling, the strings stay sentence case (§9).
+
 ## 5. Spacing, shape, elevation
 
 - 4pt base grid; screen margins 20pt; card padding 16pt.
-- Corner radius: continuous-corner 12pt cards, 24pt sheets (match iOS), capsule buttons.
+- Corner radius: continuous-corner 12pt cards, 24pt sheets (match iOS), capsule buttons, 4pt heat-map cells — always `radius.*` from the theme, never a literal. Circles keep width / 2.
 - Buttons come from `src/components/button.tsx` (`primary` filled lapis capsule with an `onLapis` label, `secondary` outlined, `tinted`, `plain`; `role="destructive"`; `busy` / `disabled`) and text actions from `src/components/text-link.tsx`. Both are at least 44pt tall, dim while pressed and carry their accessibility role and state — never restyle a bare `Pressable` as a button in a screen.
 - Nothing to show comes from `src/components/unavailable.tsx`: `Unavailable` (`kind="empty"` or `"failed"`; symbol, title, one sentence, at most two actions, centred) and `LoadingState` (blank for a moment, then a labelled spinner). A failed load is always `failed` with **Try again** — never the empty state, a blank screen or an endless spinner — and its words come from the catalogue, never from the thrown error. `failed` carries a warning symbol and is announced to VoiceOver; `empty` is quiet.
 - Elevation by material, not shadow: cards use `surfaceRaised` + hairline `separator`; sheets use native materials/glass where `@expo/ui/swift-ui` exposes them.

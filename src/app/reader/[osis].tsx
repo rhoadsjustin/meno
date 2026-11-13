@@ -10,6 +10,7 @@ import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { useBarIcon } from '@/components/bar-icon';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ScreenHeader } from '@/components/screen-header';
+import { SectionHeader } from '@/components/section-header';
 import { useScreenReader } from '@/components/screen-reader';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { BookSpread } from '@/features/reader/BookSpread';
@@ -174,10 +175,7 @@ export default function ReaderRoute() {
             <ScrollView
               style={[styles.sidebar, { borderColor: colors.separator }]}
               contentContainerStyle={styles.sidebarContent}>
-              <Text
-                style={[styles.sidebarTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {bookName(ref.bookId)}
-              </Text>
+              <SectionHeader title={bookName(ref.bookId)} style={styles.sidebarTitle} />
               {chapters.map((n) => {
                 const selected = n === ref.chapter;
                 return (
@@ -256,10 +254,6 @@ const styles = StyleSheet.create({
   sidebar: { width: '26%', maxWidth: 240, flexGrow: 0, borderRightWidth: StyleSheet.hairlineWidth },
   sidebarContent: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, gap: 2 },
   sidebarTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
   },
