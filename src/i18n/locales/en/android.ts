@@ -19,7 +19,6 @@ export default {
     goal: {
       onWidgets: 'Current passage',
       showOnWidgets: 'Make current',
-      showOnWidgetsSpoken: 'Make {{title}} your current passage',
     },
   },
   onboarding: {

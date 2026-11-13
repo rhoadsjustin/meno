@@ -8,19 +8,17 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
-import { MIN_TOUCH_TARGET } from '@/components/button';
+import { Button, MIN_TOUCH_TARGET } from '@/components/button';
 import { Unavailable } from '@/components/unavailable';
 import { Screen } from '@/components/screen';
 import { SectionHeader } from '@/components/section-header';
-import { TextLink } from '@/components/text-link';
-import { DeleteGoalButton } from '@/features/goals/DeleteGoalButton';
+import { GoalMenu, type GoalMenuProps } from '@/features/goals/GoalMenu';
 import { goalAction, progressFor, type GoalAction } from '@/services/goals/progress';
 import { removeGoal, stopPassage } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
@@ -36,16 +34,13 @@ import {
 } from '@/services/db/repos/goals';
 import { itemHealth, reviewItemsForChunks } from '@/services/db/repos/reviews';
 import { deleteGoalPrompt, goalRemoval, stopGoalPrompt } from '@/services/goals/deletion';
+import { sortByRisk } from '@/services/goals/memorized-order';
 import type { Health } from '@/services/scheduler';
 import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, radius, spacing, type ThemeColors } from '@/theme';
 
 type Segment = 'inProgress' | 'memorized';
 
-/** From the accessibility text sizes up (the breakpoint StarterDeck stacks
- * at), the trash button leaves the title's line so the title keeps the
- * card's full width instead of breaking mid-word beside it. */
-const BUTTON_BELOW_TEXT_SCALE = 1.4;
 type GoalWithChunks = { goal: Goal; chunks: Chunk[] };
 
 export default function LibraryScreen() {
@@ -56,10 +51,11 @@ export default function LibraryScreen() {
   // instead of the segmented control (HIG: show the next level of hierarchy
   // when it fits). Opened and rotated (669×951) keeps the segmented column.
   const { twoPane } = useContentLayout();
-  const buttonBelow = useWindowDimensions().fontScale >= BUTTON_BELOW_TEXT_SCALE;
   const [segment, setSegment] = useState<Segment>('inProgress');
   const [items, setItems] = useState<GoalWithChunks[]>([]);
   const [healthByChunk, setHealthByChunk] = useState<Record<string, Health>>({});
+  // When each memorized chunk's review falls due: the Memorized shelf's order.
+  const [dueByChunk, setDueByChunk] = useState<Record<string, number>>({});
   // What each passage in progress offers next (the same step Today names).
   const [actions, setActions] = useState<Record<string, GoalAction | null>>({});
   const [loaded, setLoaded] = useState(false);
@@ -86,13 +82,18 @@ export default function LibraryScreen() {
       Promise.all(goals.filter((g) => g.status === 'active').map(progressFor)),
     ]);
     const health: Record<string, Health> = {};
-    for (const [chunkId, item] of reviewItems) health[chunkId] = itemHealth(item);
+    const due: Record<string, number> = {};
+    for (const [chunkId, item] of reviewItems) {
+      health[chunkId] = itemHealth(item);
+      due[chunkId] = item.dueAt.getTime();
+    }
     const next: Record<string, GoalAction | null> = {};
     for (const p of progress) next[p.goal.id] = goalAction(p);
     if (!isCancelled()) {
       setItems(withChunks);
       setFocusId(focus?.id ?? null);
       setHealthByChunk(health);
+      setDueByChunk(due);
       setActions(next);
       setLoaded(true);
     }
@@ -176,31 +177,25 @@ export default function LibraryScreen() {
     [reload, t],
   );
 
-  /** The trash button. Memorized Scripture is never deleted
-   * (services/goals/deletion): with nothing memorized yet it deletes the
-   * passage; partway through it stops it, keeping what is memorized. */
-  const removalButton = (goal: Goal, chunks: Chunk[]) => {
+  /** Delete or Stop in the card's menu. Memorized Scripture is never deleted
+   * (services/goals/deletion): with nothing memorized yet the passage is
+   * deleted; partway through it is stopped, keeping what is memorized. */
+  const removalFor = (goal: Goal, chunks: Chunk[]): GoalMenuProps['removal'] => {
     switch (goalRemoval(goal, chunks)) {
       case 'delete':
-        return (
-          <DeleteGoalButton
-            label={t('remove.delete.spoken', { title: goal.title })}
-            tint={colors.inkFaint}
-            prompt={deleteGoalPrompt(goal.title)}
-            onConfirm={() => void remove(goal)}
-          />
-        );
+        return {
+          kind: 'delete',
+          prompt: deleteGoalPrompt(goal.title),
+          onConfirm: () => void remove(goal),
+        };
       case 'stop':
-        return (
-          <DeleteGoalButton
-            label={t('remove.stop.spoken', { title: goal.title })}
-            tint={colors.inkFaint}
-            prompt={stopGoalPrompt(goal.title)}
-            onConfirm={() => void stop(goal)}
-          />
-        );
+        return {
+          kind: 'stop',
+          prompt: stopGoalPrompt(goal.title),
+          onConfirm: () => void stop(goal),
+        };
       default:
-        return null;
+        return undefined;
     }
   };
 
@@ -208,8 +203,13 @@ export default function LibraryScreen() {
   // Only offer a choice once there is more than one passage in progress.
   const activeCount = active.length;
 
-  const memorizedChunks = items.flatMap(({ goal, chunks }) =>
-    chunks.filter((c) => c.status === 'memorized').map((c) => ({ goal, chunk: c })),
+  // Sorted by risk (07 §6): the review most overdue first, so at risk leads,
+  // then fading, then fresh.
+  const memorizedChunks = sortByRisk(
+    items.flatMap(({ goal, chunks }) =>
+      chunks.filter((c) => c.status === 'memorized').map((c) => ({ goal, chunk: c })),
+    ),
+    ({ chunk }) => dueByChunk[chunk.id],
   );
 
   // Two panes: In progress leads and Memorized is the second pane. One
@@ -235,7 +235,17 @@ export default function LibraryScreen() {
                   ]}>
                   {goal.title}
                 </Text>
-                {!buttonBelow && removalButton(goal, chunks)}
+                <GoalMenu
+                  label={t('goal.moreSpoken', { title: goal.title })}
+                  tint={colors.inkFaint}
+                  onShare={() => void shareGoalChallenge(goal).catch(() => {})}
+                  onShowOnWidgets={
+                    activeCount > 1 && goal.id !== focusId
+                      ? () => void showOnWidgets(goal)
+                      : undefined
+                  }
+                  removal={removalFor(goal, chunks)}
+                />
               </View>
               <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {t('goal.summary', {
@@ -244,6 +254,12 @@ export default function LibraryScreen() {
                   count: chunks.length,
                 })}
               </Text>
+              {activeCount > 1 && goal.id === focusId && (
+                // A status, not a control: it sits with the summary.
+                <Text style={[styles.focusNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {t('goal.onWidgets')}
+                </Text>
+              )}
               <View
                 style={styles.heatmap}
                 accessible
@@ -257,67 +273,46 @@ export default function LibraryScreen() {
                 {chunks.map((c) => (
                   <View
                     key={c.id}
-                    style={[styles.cell, { backgroundColor: cellColor(c, colors) }]}
+                    style={[
+                      styles.cell,
+                      c.status === 'locked'
+                        ? // Not started: an outline, so it differs from a
+                          // started chunk by shape as well as colour.
+                          { borderWidth: 1, borderColor: colors.inkFaint }
+                        : { backgroundColor: cellColor(c, colors) },
+                    ]}
                   />
                 ))}
               </View>
-              <View style={styles.actionsRow}>
-                {(() => {
-                  // The step Today would name for this passage: Start,
-                  // Continue, Seal or Stitch. A resting verse has a status
-                  // in place of a link, as there is nothing to open today.
-                  const action = actions[goal.id];
-                  if (!action) return null;
-                  if (action.kind === 'resting') {
-                    return (
-                      <Text
-                        accessibilityLabel={action.spoken}
-                        style={[
-                          styles.actionCell,
-                          styles.focusNote,
-                          { color: colors.inkFaint, fontFamily: fonts?.ui },
-                        ]}>
-                        {action.label}
-                      </Text>
-                    );
-                  }
+              {(() => {
+                // The one action on the card is the step Today would name
+                // for this passage: Start, Continue, Seal or Stitch. A
+                // resting verse has a status in its place, as there is
+                // nothing to open today. The rest is in the More menu.
+                const action = actions[goal.id];
+                if (!action) return null;
+                if (action.kind === 'resting') {
                   return (
-                    <TextLink
-                      weight="semibold"
-                      label={action.label}
-                      accessibilityLabel={action.spoken}
-                      onPress={() => router.push(action.href)}
-                    />
-                  );
-                })()}
-                <TextLink
-                  weight="semibold"
-                  label={t('goal.share')}
-                  accessibilityLabel={t('goal.shareSpoken', { title: goal.title })}
-                  onPress={() => shareGoalChallenge(goal).catch(() => {})}
-                />
-                {activeCount > 1 &&
-                  (goal.id === focusId ? (
                     <Text
+                      accessibilityLabel={action.spoken}
                       style={[
-                        styles.actionCell,
-                        styles.focusNote,
+                        styles.resting,
                         { color: colors.inkFaint, fontFamily: fonts?.ui },
                       ]}>
-                      {t('goal.onWidgets')}
+                      {action.label}
                     </Text>
-                  ) : (
-                    <TextLink
-                      weight="semibold"
-                      label={t('goal.showOnWidgets')}
-                      accessibilityLabel={t('goal.showOnWidgetsSpoken', { title: goal.title })}
-                      onPress={() => void showOnWidgets(goal)}
-                    />
-                  ))}
-                {buttonBelow && goalRemoval(goal, chunks) && (
-                  <View style={styles.actionCell}>{removalButton(goal, chunks)}</View>
-                )}
-              </View>
+                  );
+                }
+                return (
+                  <Button
+                    size="small"
+                    label={action.label}
+                    accessibilityLabel={action.spoken}
+                    onPress={() => router.push(action.href)}
+                    style={styles.primaryAction}
+                  />
+                );
+              })()}
             </Card>
           ))}
         </View>
@@ -354,10 +349,18 @@ export default function LibraryScreen() {
   const memorized = (
     <>
       {memorizedChunks.length > 0 && (
-        <View style={styles.stack}>
-          {memorizedChunks.map(({ goal, chunk }) => (
-            <Card key={chunk.id}>
-              <View style={styles.memorizedRow}>
+        // One list in one card, its rows parted by hairlines (07 §6: a list).
+        <Card style={styles.memorizedList}>
+          {memorizedChunks.map(({ goal, chunk }, index) => (
+            <View
+              key={chunk.id}
+              style={[
+                styles.memorizedRow,
+                index > 0 && {
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: colors.separator,
+                },
+              ]}>
                 <View
                   style={[
                     styles.healthDot,
@@ -387,11 +390,10 @@ export default function LibraryScreen() {
                       health: healthLabel(healthByChunk[chunk.id] ?? 'fresh'),
                     })}
                   </Text>
-                </View>
               </View>
-            </Card>
+            </View>
           ))}
-        </View>
+        </Card>
       )}
       {loaded && memorizedChunks.length === 0 && (
         <Card>
@@ -484,7 +486,7 @@ const styles = StyleSheet.create({
   stack: { gap: spacing.lg },
   shelfTitle: { marginBottom: -spacing.xs },
   goalTitle: { fontSize: 17, fontWeight: '600' },
-  // The title wraps beside the trash button, which stays top-right.
+  // The title wraps beside the More button, which stays top-right.
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   titleText: { flex: 1 },
   goalSub: { fontSize: 13, marginTop: spacing.xs },
@@ -495,19 +497,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   cell: { width: 16, height: 16, borderRadius: radius.cell },
-  // The links are 44pt targets whose text sits where it did: the target
-  // reaches into the card's bottom padding rather than making the card taller.
-  actionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    columnGap: spacing.xl,
-    marginBottom: -spacing.md,
-  },
+  // "On your widgets", a caption under the summary.
+  focusNote: { fontSize: 13, marginTop: spacing.xs },
+  // The card's one action, sized to its label at the leading edge.
+  primaryAction: { alignSelf: 'flex-start', marginTop: spacing.md },
+  resting: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
   pressed: { opacity: 0.6 },
-  focusNote: { fontSize: 15, fontWeight: '600' },
-  // The note and the trash button, padded to line up with the 44pt links.
-  actionCell: { paddingVertical: spacing.md, alignSelf: 'flex-start' },
   newGoal: {
     borderWidth: 1.5,
     borderRadius: radius.capsule,
@@ -519,7 +514,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   practiceLinkText: { fontSize: 15, fontWeight: '600' },
-  memorizedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  // The card's padding comes from its rows, so the hairlines run edge to edge
+  // of the text column and each row keeps a 44pt height.
+  memorizedList: { paddingVertical: 0 },
+  memorizedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    minHeight: MIN_TOUCH_TARGET,
+  },
   healthDot: { width: 10, height: 10, borderRadius: 5 },
   memorizedText: { flex: 1 },
 });

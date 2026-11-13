@@ -16,7 +16,6 @@ export default {
     goal: {
       onWidgets: 'Pasaje actual',
       showOnWidgets: 'Hacer actual',
-      showOnWidgetsSpoken: 'Hacer de {{title}} tu pasaje actual',
     },
   },
   onboarding: {

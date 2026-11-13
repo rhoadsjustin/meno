@@ -74,6 +74,7 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
 
 ### Library
 - Segmented (the system control, `@expo/ui/community/segmented-control`; on windows wider than tall both shelves show side by side instead): **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
+- A goal card has one visible action, the capsule naming the day's step (as Today's hero does); Share challenge, Show on widgets and Delete passage / Stop passage sit in its More menu (ellipsis, a system menu). A chunk not yet started is an outlined square in the heatmap. Memorized is one card of hairline-separated rows.
 - Goal detail: chunk map, stats, stitch history, per-chunk drill-down.
 
 ### Reader
