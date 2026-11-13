@@ -10,6 +10,11 @@ export default {
   previousPage: 'Previous page',
   nextPage: 'Next page',
   page: 'Page {{page}}',
+  // VoiceOver: a page of the book pose opens with its number, and each verse
+  // number is named ("Verse 2.") rather than read as a bare digit.
+  pageSpoken: 'Page {{page}}.',
+  verseSpoken: 'Verse {{verse}}.',
+  verse: 'Verse {{verse}}. {{text}}',
   loadFailed: 'Couldn’t load {{chapter}}.',
   loadFailedTitle: 'This chapter didn’t load',
   loadingChapter: 'Loading {{chapter}}',
