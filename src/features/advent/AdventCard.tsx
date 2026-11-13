@@ -34,6 +34,11 @@ export type AdventOffer = {
   /** The Advent goal on this device and which track it is, once started. */
   joined: { goal: Goal; track: 'main' | 'short' } | null;
   dismissed: boolean;
+  /**
+   * Set only between "Not this year" and Today losing focus: puts the offer
+   * back. After that the way back is the plan's link (`/advent`).
+   */
+  undoDismiss?: () => void;
   /** The translation a new Advent goal is made in. */
   translationId: string;
 };
@@ -71,15 +76,25 @@ export function useAdventOffer(): { offer: AdventOffer | null; dismiss: () => vo
         .catch(() => live && setOffer(null));
       return () => {
         live = false;
+        // The Undo row lasts only while Today stays in front.
+        setOffer((current) =>
+          current?.undoDismiss ? { ...current, undoDismiss: undefined } : current,
+        );
       };
     }, []),
   );
+  const undoDismiss = useCallback(() => {
+    setOffer((current) => {
+      if (current) void setAdventDismissed(current.plan.year, false).catch(() => {});
+      return current && { ...current, dismissed: false, undoDismiss: undefined };
+    });
+  }, []);
   const dismiss = useCallback(() => {
     setOffer((current) => {
       if (current) void setAdventDismissed(current.plan.year, true).catch(() => {});
-      return current && { ...current, dismissed: true };
+      return current && { ...current, dismissed: true, undoDismiss };
     });
-  }, []);
+  }, [undoDismiss]);
   return { offer, dismiss };
 }
 
@@ -103,7 +118,27 @@ function join(offer: AdventOffer, track: AdventTrack, title: string) {
 export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | null; onDismiss: () => void }) {
   const colors = useThemeColors();
   const { t } = useTranslation('advent');
-  if (!offer || offer.joined || offer.dismissed) return null;
+  if (!offer || offer.joined) return null;
+  if (offer.dismissed) {
+    const undo = offer.undoDismiss;
+    if (!undo) return null;
+    // One tap hid the plan for the season: say so, with the way back beside it.
+    return (
+      <View style={styles.hidden}>
+        <Text style={[styles.hiddenLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          {t('dismissed')}
+        </Text>
+        <TextLink
+          weight="semibold"
+          label={t('undo')}
+          onPress={() => {
+            undo();
+            AccessibilityInfo.announceForAccessibility(t('restored'));
+          }}
+        />
+      </View>
+    );
+  }
   const main = formatRange(offer.plan.main.range);
   const short = formatRange(offer.plan.short.range);
   return (
@@ -131,7 +166,7 @@ export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | nu
           label={t('dismiss')}
           onPress={() => {
             onDismiss();
-            AccessibilityInfo.announceForAccessibility(t('dismissed'));
+            AccessibilityInfo.announceForAccessibility(t('dismissedSpoken'));
           }}
         />
       </View>
@@ -192,6 +227,16 @@ const styles = StyleSheet.create({
     // and between wrapped rows, and the card's padding absorbs the rest.
     marginBottom: -spacing.md,
   },
+  // Wraps at large text sizes; Undo keeps its 44pt target either way.
+  hidden: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  hiddenLabel: { ...textStyle.subheadline, flexShrink: 1 },
   pressed: { opacity: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   text: { flex: 1 },
