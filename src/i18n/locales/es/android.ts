@@ -30,9 +30,6 @@ export default {
     },
   },
   settings: {
-    guide: {
-      body: 'Paso a paso: recordatorios y recitar en voz alta, además de preguntas frecuentes.',
-    },
     reminders: {
       focusNote:
         'No molestar, el modo Descanso o el Ahorro de batería aún pueden retenerlos. Meno no puede ver ninguno de ellos.',

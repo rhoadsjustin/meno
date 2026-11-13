@@ -33,9 +33,6 @@ export default {
     },
   },
   settings: {
-    guide: {
-      body: 'Step by step: reminders and speaking your verse — plus common questions.',
-    },
     reminders: {
       focusNote:
         'Do Not Disturb, Bedtime mode or Battery Saver can still hold these back. Meno can’t see any of them.',

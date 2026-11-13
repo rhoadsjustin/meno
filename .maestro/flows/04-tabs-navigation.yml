@@ -14,7 +14,7 @@ tags:
 - assertVisible: "Badges"
 - tapOn: "Settings"
 - assertVisible: "Reminders"
-# The row merges title + subtitle into one accessibility element.
+# The row merges label + value ("Recite to Unlock, Off") into one accessibility element.
 - assertVisible: ".*Recite to Unlock.*"
 # Setup guide opens as a sheet and closes back to Settings.
 - tapOn: ".*How to set up Meno.*"

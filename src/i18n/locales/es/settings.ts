@@ -4,7 +4,6 @@ import type en from '@/i18n/locales/en/settings';
 export default {
   guide: {
     title: 'Cómo configurar Meno',
-    body: 'Paso a paso: recordatorios, widgets, recitar en voz alta y Recitar para desbloquear, además de preguntas frecuentes.',
     hintWide: 'Muestra la guía junto a esta lista',
     hint: 'Abre una guía paso a paso',
   },
@@ -12,7 +11,6 @@ export default {
     title: 'Recordatorios',
     body: 'Un recordatorio diario para practicar, y pruebas sorpresa sobre los versículos que ya memorizaste. Nunca más de dos al día.',
     hintWide: 'Muestra cómo funcionan los recordatorios junto a esta lista',
-    off: 'Desactivados. Meno no te enviará nada hasta que los actives.',
     remindAt: 'Recordarme a las',
     timeLabel: 'Hora del recordatorio diario',
     focusNote:
@@ -25,7 +23,9 @@ export default {
   lock: {
     title: 'Recitar para desbloquear',
     hintWide: 'Muestra los pasos de configuración junto a esta lista',
-    onSummary: 'Activado · {{recitations}}, {{overrides}}',
+    on: 'Activado',
+    off: 'Desactivado',
+    usage: '{{recitations}}, {{overrides}}.',
     offBody: 'Pide un versículo antes de que se abran tus apps que más te distraen.',
     unavailable: 'No disponible en este dispositivo.',
     killSwitch: 'Desactivar y quitar todos los bloqueos ahora',
@@ -37,9 +37,16 @@ export default {
     restart: 'Reiniciar Meno ahora',
     hint: 'Reinicia Meno con la nueva versión',
   },
-  updatedVersion: '{{version}}, actualizada el {{date}}',
+  about: {
+    title: 'Acerca de',
+    version: 'Versión',
+    updatedVersion: '{{version}}, actualizada el {{date}}',
+    privacy: 'Política de privacidad',
+    support: 'Soporte',
+    linkHint: 'Se abre en tu navegador',
+    credits:
+      'Escrituras: {{translations}}, de dominio público. El audio de tus recitaciones nunca sale de este dispositivo.',
+  },
   catalogCredit:
     'Las demás traducciones se muestran con licencia de sus editoriales, cada una con su propia línea de derechos de autor, y no se guardan en este dispositivo.',
-  footer:
-    'Meno {{version}} · Escrituras: {{translations}}, de dominio público. El audio de tus recitaciones nunca sale de este dispositivo.',
 } satisfies Catalog<typeof en>;
