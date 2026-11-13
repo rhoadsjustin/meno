@@ -2,9 +2,8 @@
 export default {
   welcome: {
     title: 'Let the Word remain in you.',
-    body: 'Meno helps you hide Scripture in your heart. Pick a passage, climb from reading it to reciting it, and keep it fresh for good — a few minutes a day.',
-    dissolve:
-      'As a verse solidifies in memory, its text dissolves from the screen. That’s the idea: it lives in you, not the app.',
+    body: 'Meno helps you hide Scripture in your heart: pick a passage, climb from reading it to reciting it, and keep it fresh — a few minutes a day.',
+    dissolve: 'As a verse settles in memory, its text dissolves from the screen.',
   },
   notifications: {
     title: 'Turn on reminders?',
@@ -22,7 +21,7 @@ export default {
     title: 'Keep it in front of you',
     previewLabel:
       'Preview: Meno’s Home Screen widget showing {{ref}} with half its words blanked out, and its Lock Screen widget under the clock',
-    body: 'Meno’s widgets put your current verse on the Home Screen and under the clock on your Lock Screen — it follows you all day, and dissolves as you learn it.',
+    body: 'Meno’s widgets keep your current verse on your Home Screen and Lock Screen, and it dissolves as you learn it.',
     howTo:
       'Home Screen: long-press → Edit → Add Widget → Meno.\nLock Screen: long-press the clock → Customize → add Meno.',
   },

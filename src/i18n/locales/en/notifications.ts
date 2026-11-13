@@ -20,13 +20,13 @@ export default {
     dayTomorrow: 'tomorrow',
     dayOn: 'on {{weekday}}',
     waitingNothingMemorized:
-      'Starts once you’ve memorized a verse. There’s nothing to quiz you on yet.',
+      'Starts once you’ve memorized a verse.',
     waitingNoStreak:
-      'No streak yet. Practice today to start one, and the daily reminder will carry it.',
+      'No streak yet. Practice today to start one.',
     waitingNothingToPracticeStreak:
-      'Nothing is in progress, so there’s no reminder to carry your streak. Start a passage and it returns.',
+      'Nothing is in progress, so there’s no reminder to carry your streak.',
     waitingNothingToPractice:
-      'No passage in progress, so there’s nothing to be reminded of. Start one and it begins.',
+      'No passage in progress, so there’s nothing to be reminded of.',
     waitingNotScheduled: 'Nothing is scheduled right now. Open Meno again and it will set the next one.',
     off: 'Off. Reminders are switched off in Meno.',
     blockedCanAsk:

@@ -12,6 +12,8 @@ export default {
   roundHeader: 'Repaso · {{reference}}',
   almost: 'Casi',
   almostMarked: 'Casi — abajo están marcadas las palabras que fallaron',
-  keptFresh_one: '{{count}} versículo repasado y fresco',
-  keptFresh_other: '{{count}} versículos repasados y frescos',
+  keptFresh_one: '{{count}} versículo sigue fresco',
+  keptFresh_other: '{{count}} versículos siguen frescos',
+  comeBack_one: '{{count}} versículo vuelve mañana',
+  comeBack_other: '{{count}} versículos vuelven mañana',
 } satisfies Catalog<typeof en>;

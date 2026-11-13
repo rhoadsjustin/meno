@@ -6,6 +6,8 @@ export default {
   invalidHeading: 'Este enlace no funcionó',
   joinedHeading: 'Ya estás participando',
   joinedBody: '“{{title}}” ya está en este dispositivo. Sigue adelante: cada recitación cuenta.',
+  joinedBodyMemorized: 'Ya memorizaste “{{title}}”.',
+  joinedBodyInactive: '“{{title}}” está en este dispositivo, pero ya no está en curso.',
   translationDue: '{{abbrev}} · terminar antes del {{date}}',
   swapped:
     'Se compartió en {{shared}}, que no está configurada en este dispositivo; memorizarás en {{local}}.',

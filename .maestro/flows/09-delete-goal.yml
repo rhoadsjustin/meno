@@ -33,7 +33,7 @@ tags:
 - extendedWaitUntil:
     visible: "Delete John 1:1\\?"
     timeout: 5000
-- assertVisible: "This deletes your practice history for this passage\\. Your streak and badges stay\\..*"
+- assertVisible: "Your practice history for this passage will be deleted\\. Your streak and badges stay\\."
 - tapOn: "Delete passage"
 # One passage is still in progress.
 - extendedWaitUntil:

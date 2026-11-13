@@ -37,13 +37,15 @@ export default {
     stepOf: 'Step {{step}} of {{total}}',
     passageName: 'Passage name',
     planNote: 'About one new chunk a day, with reviews to keep what you’ve hidden.',
+    // {{date}} is today plus the plan's estimated days (03 §5).
+    finishAround: 'At that pace you’d finish around {{date}}.',
     startMemorizing: 'Start memorizing',
   },
   stats: {
     verses: 'Verses',
     words: 'Words',
     chunks: 'Chunks',
-    estDays: 'Est. days',
+    estDays: 'Days',
     /** VoiceOver reading of one stat, e.g. "12 Verses". */
     a11y: '{{value}} {{label}}',
   },

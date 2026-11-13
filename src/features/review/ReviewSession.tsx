@@ -51,7 +51,7 @@ type Phase =
   | { kind: 'failed' }
   | { kind: 'round'; index: number }
   | { kind: 'feedback'; index: number; accuracy: number; result: GradeResult }
-  | { kind: 'summary'; reviewed: number; averageAccuracy: number };
+  | { kind: 'summary'; held: number; reset: number; averageAccuracy: number };
 
 export function ReviewSession() {
   const colors = useThemeColors();
@@ -61,6 +61,8 @@ export function ReviewSession() {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [accuracies, setAccuracies] = useState<number[]>([]);
+  // Reviews that held (SM-2 quality 3+); the rest were reset to tomorrow.
+  const [heldCount, setHeldCount] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
 
   // Bumped by Try again to read the queue once more.
@@ -142,7 +144,8 @@ export function ReviewSession() {
         missedWords: outcome.missedWords,
         source: 'review',
       });
-      await recordReviewResult(entry.item, outcome.accuracy);
+      const held = await recordReviewResult(entry.item, outcome.accuracy);
+      if (held) setHeldCount((n) => n + 1);
       if ((await secureToday()).daySecured) void rescheduleAll();
       const { refreshBadges } = await import('@/services/db/repos/badges');
       void refreshBadges();
@@ -167,11 +170,12 @@ export function ReviewSession() {
       const all = accuracies;
       setPhase({
         kind: 'summary',
-        reviewed: all.length,
+        held: heldCount,
+        reset: all.length - heldCount,
         averageAccuracy: all.length ? all.reduce((s, a) => s + a, 0) / all.length : 0,
       });
     }
-  }, [phase, queue.length, accuracies]);
+  }, [phase, queue.length, accuracies, heldCount]);
 
   const tone =
     // The pass line is where it has always been; beneath it the ladder's
@@ -312,8 +316,13 @@ export function ReviewSession() {
                 {t('common:percent', { value: Math.round(phase.averageAccuracy * 100) })}
               </Text>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {t('keptFresh', { count: phase.reviewed })}
+                {t('keptFresh', { count: phase.held })}
               </Text>
+              {phase.reset > 0 && (
+                <Text style={[styles.summaryNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {t('comeBack', { count: phase.reset })}
+                </Text>
+              )}
               <Button
                 label={t('common:done')}
                 onPress={() => router.back()}
@@ -333,6 +342,7 @@ const styles = StyleSheet.create({
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   reference: { fontSize: 14, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
+  summaryNote: { fontSize: 15, lineHeight: 20, marginBottom: spacing.md },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
   button: { marginTop: spacing.xxl },
 });

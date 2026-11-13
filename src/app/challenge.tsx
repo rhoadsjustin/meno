@@ -198,7 +198,14 @@ function ChallengeScreen() {
               {tr('joinedHeading')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {tr('joinedBody', { title: view.goal.title })}
+              {tr(
+                view.goal.status === 'active'
+                  ? 'joinedBody'
+                  : view.goal.status === 'completed'
+                    ? 'joinedBodyMemorized'
+                    : 'joinedBodyInactive',
+                { title: view.goal.title },
+              )}
             </Text>
           </>
         )}
@@ -257,7 +264,8 @@ function ChallengeScreen() {
             style={styles.footerPrimary}
           />
         )}
-        {view.kind === 'joined' && (
+        {/* Only a passage still in progress has anything to practice. */}
+        {view.kind === 'joined' && view.goal.status === 'active' && (
           <Button
             label={tr('practice')}
             onPress={() => router.replace(`/practice/${view.goal.id}`)}

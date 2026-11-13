@@ -24,7 +24,8 @@ export default {
     title: 'Recite to Unlock',
     hintWide: 'Shows the setup steps beside this list',
     // {{recitations}} / {{overrides}} are stats:recitationCount / overrideCount.
-    onSummary: 'On · this week: {{recitations}}, {{overrides}}',
+    // All-time counts (repos/lock lockEventCounts), so no period is named.
+    onSummary: 'On · {{recitations}}, {{overrides}}',
     offBody: 'Ask for a verse before your distracting apps open.',
     unavailable: 'Not available on this device.',
     killSwitch: 'Turn off and clear all shields now',

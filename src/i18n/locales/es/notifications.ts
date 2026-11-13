@@ -21,13 +21,13 @@ export default {
     dayTomorrow: 'mañana',
     dayOn: 'el {{weekday}}',
     waitingNothingMemorized:
-      'Empiezan cuando memorices un versículo. Todavía no hay nada sobre qué preguntarte.',
+      'Empiezan cuando memorices un versículo.',
     waitingNoStreak:
-      'Aún no tienes racha. Practica hoy para empezar una, y el recordatorio diario la mencionará.',
+      'Aún no tienes racha. Practica hoy para empezar una.',
     waitingNothingToPracticeStreak:
-      'No hay nada en curso, así que no hay recordatorio que lleve tu racha. Empieza un pasaje y vuelve.',
+      'No hay nada en curso, así que no hay recordatorio que lleve tu racha.',
     waitingNothingToPractice:
-      'No hay ningún pasaje en curso, así que no hay nada que recordarte. Empieza uno y comenzará.',
+      'No hay ningún pasaje en curso, así que no hay nada que recordarte.',
     waitingNotScheduled:
       'No hay nada programado ahora. Abre Meno de nuevo y programará el siguiente.',
     off: 'Desactivado. Los recordatorios están desactivados en Meno.',

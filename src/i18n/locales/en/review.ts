@@ -10,6 +10,9 @@ export default {
   roundHeader: 'Review · {{reference}}',
   almost: 'Almost',
   almostMarked: 'Almost — the slipped words are marked below',
+  // Verses whose review held (SM-2 quality 3 or better); the rest were reset.
   keptFresh_one: '{{count}} verse kept fresh',
   keptFresh_other: '{{count}} verses kept fresh',
+  comeBack_one: '{{count}} verse comes back tomorrow',
+  comeBack_other: '{{count}} verses come back tomorrow',
 } as const;

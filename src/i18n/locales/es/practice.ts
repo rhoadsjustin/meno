@@ -75,13 +75,13 @@ export default {
     notQuiteMarked: 'Todavía no — abajo están marcadas las palabras que fallaron',
     notQuiteRetry: 'Todavía no — intenta esta ronda otra vez',
     sealsTomorrowAlmost:
-      'Tu intento limpio de hoy sigue contando. Para quedar memorizado necesita un intento limpio en dos días distintos — vuelve mañana y este quedará sellado.',
+      'Tu intento limpio de hoy sigue contando. Vuelve mañana para sellarlo.',
     sealsTomorrowPass:
-      'Ya cuenta el intento de hoy. Para quedar memorizado necesita un intento limpio en dos días distintos — vuelve mañana y este quedará sellado.',
+      'El intento limpio de hoy ya cuenta. Vuelve mañana para sellarlo.',
     needsCleanPass:
-      'Estuvo cerca, pero no cuenta para memorizarlo: sellar {{reference}} requiere una recitación limpia en dos días distintos, y la de hoy todavía no cuenta. Inténtalo otra vez ahora, o detente aquí y vuelve más tarde.',
+      'Estuvo cerca, pero no cuenta para memorizarlo: sellar {{reference}} requiere una recitación limpia. Inténtalo otra vez ahora, o para por hoy.',
     almostAtType:
-      'Suficiente para avanzar a {{tier}}. Pero no cuenta para memorizarlo — eso requiere un intento limpio en dos días distintos.',
+      'Suficiente para avanzar a {{tier}}, pero no cuenta para memorizarlo.',
     restPoint:
       'Este es un buen lugar para detenerte hoy. {{first}}, {{second}} y {{third}} te estarán esperando — o sigue si tienes tiempo.',
     suggestDrop:
@@ -102,7 +102,7 @@ export default {
     memorized: 'Memorizaste {{reference}}',
     sealsTomorrow: 'Siguiente: una recitación limpia mañana lo sella como memorizado.',
     needsCleanPass:
-      'Hiciste todos los pasos, pero {{reference}} todavía no está sellado: la última recitación estuvo cerca, pero no fue limpia. La próxima vez sigues en {{tier}} — solo una recitación limpia cuenta para memorizarlo.',
+      'Hiciste todos los pasos, pero {{reference}} todavía no está sellado: la última recitación estuvo cerca, pero no fue limpia. La próxima vez sigues en {{tier}}.',
     pickUp: 'La próxima vez sigues en {{tier}}.',
   },
   wordFeedback: {

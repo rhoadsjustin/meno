@@ -42,7 +42,7 @@ export default {
       spoken: 'Eliminar {{title}}',
       title: '¿Eliminar {{title}}?',
       message:
-        'Se borrará tu historial de práctica de este pasaje. Tu racha y tus insignias se mantienen. No se puede deshacer.',
+        'Se borrará tu historial de práctica de este pasaje. Tu racha y tus insignias se mantienen.',
       confirm: 'Eliminar pasaje',
       done: 'Se eliminó {{title}}.',
       failed: 'No se pudo eliminar {{title}}',
@@ -51,7 +51,7 @@ export default {
       spoken: 'Dejar {{title}}',
       title: '¿Dejar {{title}}?',
       message:
-        'Los versículos que memorizaste se quedan en tu estante Memorizados y en tus repasos. Se borra tu práctica del resto de este pasaje. No se puede deshacer.',
+        'Los versículos memorizados se quedan en tu estante Memorizados y en tus repasos. Se borrará tu práctica del resto de este pasaje.',
       confirm: 'Dejar el pasaje',
       done: 'Dejaste {{title}}. Sus versículos memorizados están en tu estante Memorizados.',
       failed: 'No se pudo dejar {{title}}',

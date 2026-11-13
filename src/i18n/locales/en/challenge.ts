@@ -4,6 +4,9 @@ export default {
   invalidHeading: 'This link didn’t work',
   joinedHeading: 'You’re already in',
   joinedBody: '“{{title}}” is on this device. Keep going — every recitation counts.',
+  // The same link reopened once the passage is finished or no longer in progress.
+  joinedBodyMemorized: 'You’ve memorized “{{title}}”.',
+  joinedBodyInactive: '“{{title}}” is on this device, but it’s no longer in progress.',
   /** Translation and target date under the passage, e.g. "WEB · finish by December 25, 2026". */
   translationDue: '{{abbrev}} · finish by {{date}}',
   swapped:

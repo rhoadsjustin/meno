@@ -61,7 +61,7 @@ export default {
   },
   restingTitle: '{{reference}} is one day from sealed',
   restingBody:
-    'You have already cleared {{tier}} today. Memorized takes a clean pass on two separate days, so this one rests until tomorrow.',
+    'You’ve cleared {{tier}} today. Memorized takes a clean pass on two separate days, so this one rests until tomorrow.',
   feedback: {
     accuracyLabel: 'Accuracy {{value}} percent',
     slipForgiven: 'a slip forgiven',
@@ -78,13 +78,13 @@ export default {
     notQuiteMarked: 'Not quite — the slipped words are marked below',
     notQuiteRetry: 'Not quite — try this round again',
     sealsTomorrowAlmost:
-      'Your clean pass from earlier today is still banked. Memorized takes a clean pass on two separate days — come back tomorrow and this one is sealed.',
+      'Your clean pass from earlier today is still banked. Come back tomorrow to seal it.',
     sealsTomorrowPass:
-      'That is today’s pass banked. Memorized takes a clean pass on two separate days — come back tomorrow and this one is sealed.',
+      'Today’s clean pass is banked. Come back tomorrow to seal it.',
     needsCleanPass:
-      'That was close, but it does not count toward Memorized: sealing {{reference}} takes a clean recitation on two separate days, and today’s is not banked yet. Try it again now, or stop here and come back to it.',
+      'Close, but it doesn’t count toward Memorized: sealing {{reference}} takes a clean recitation. Try again now, or stop for today.',
     almostAtType:
-      'Close enough to move on to {{tier}}. It does not count toward Memorized, though — that takes a clean pass on two separate days.',
+      'Close enough to move on to {{tier}}, but it doesn’t count toward Memorized.',
     restPoint:
       'This is a good place to stop for today. {{first}}, {{second}} and {{third}} will be waiting — or keep going if you have the time.',
     suggestDrop:
@@ -105,7 +105,7 @@ export default {
     memorized: '{{reference}} is memorized',
     sealsTomorrow: 'Next: one clean recitation tomorrow seals it as memorized.',
     needsCleanPass:
-      'Every step is done, but {{reference}} is not sealed yet: the last recitation was close, not clean. Next time you pick up at {{tier}} — only a clean recitation counts toward Memorized.',
+      'Every step is done, but {{reference}} isn’t sealed yet: the last recitation was close, not clean. Next time you pick up at {{tier}}.',
     pickUp: 'Next time you pick up at {{tier}}.',
   },
   /** Word-level feedback under a graded round. */

@@ -4,9 +4,9 @@ import type en from '@/i18n/locales/en/onboarding';
 export default {
   welcome: {
     title: 'Que la Palabra permanezca en ti.',
-    body: 'Meno te ayuda a guardar la Escritura en tu corazón. Elige un pasaje, avanza de leerlo a recitarlo y mantenlo fresco para siempre, con solo unos minutos al día.',
+    body: 'Meno te ayuda a guardar la Escritura en tu corazón: elige un pasaje, avanza de leerlo a recitarlo y mantenlo fresco, con unos minutos al día.',
     dissolve:
-      'A medida que un versículo se afianza en tu memoria, su texto se va desvaneciendo de la pantalla. De eso se trata: que viva en ti, no en la app.',
+      'A medida que un versículo se afianza en tu memoria, su texto se va desvaneciendo de la pantalla.',
   },
   notifications: {
     title: '¿Activar los recordatorios?',
@@ -24,7 +24,7 @@ export default {
     title: 'Tenlo siempre a la vista',
     previewLabel:
       'Vista previa: el widget de Meno en la pantalla de inicio mostrando {{ref}} con la mitad de sus palabras ocultas, y su widget de la pantalla de bloqueo debajo del reloj',
-    body: 'Los widgets de Meno ponen tu versículo actual en la pantalla de inicio y debajo del reloj en la pantalla de bloqueo. Te acompaña todo el día y se va desvaneciendo a medida que lo aprendes.',
+    body: 'Los widgets de Meno mantienen tu versículo actual en la pantalla de inicio y en la pantalla de bloqueo, y se va desvaneciendo a medida que lo aprendes.',
     howTo:
       'Pantalla de inicio: mantén presionado → Editar → Agregar widget → Meno.\nPantalla de bloqueo: mantén presionado el reloj → Personalizar → agrega Meno.',
   },

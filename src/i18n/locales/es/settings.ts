@@ -25,7 +25,7 @@ export default {
   lock: {
     title: 'Recitar para desbloquear',
     hintWide: 'Muestra los pasos de configuración junto a esta lista',
-    onSummary: 'Activado · esta semana: {{recitations}}, {{overrides}}',
+    onSummary: 'Activado · {{recitations}}, {{overrides}}',
     offBody: 'Pide un versículo antes de que se abran tus apps que más te distraen.',
     unavailable: 'No disponible en este dispositivo.',
     killSwitch: 'Desactivar y quitar todos los bloqueos ahora',

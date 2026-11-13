@@ -39,13 +39,14 @@ export default {
     passageName: 'Nombre del pasaje',
     planNote:
       'Más o menos un fragmento nuevo al día, con repasos para conservar lo que ya guardaste.',
+    finishAround: 'A ese ritmo terminarías alrededor del {{date}}.',
     startMemorizing: 'Empezar a memorizar',
   },
   stats: {
     verses: 'Versículos',
     words: 'Palabras',
     chunks: 'Fragmentos',
-    estDays: 'Días aprox.',
+    estDays: 'Días',
     a11y: '{{value}} {{label}}',
   },
   passage: {
