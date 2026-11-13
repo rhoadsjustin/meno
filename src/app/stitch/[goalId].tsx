@@ -15,9 +15,10 @@ import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { announce } from '@/components/screen-reader';
 import { Button } from '@/components/button';
+import { Symbol } from '@/components/symbol';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
-import { formatRange, getPassage, loadFailureMessage } from '@/services/bible';
+import { formatRange, getPassage, getTranslation, loadFailureMessage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { getGoal } from '@/services/db/repos/goals';
 import { recordStitchResult, stitchPlan, STITCH_PASS } from '@/services/db/repos/stitch';
@@ -25,8 +26,10 @@ import { secureToday } from '@/services/db/repos/streaks';
 import { rescheduleAll } from '@/services/notifications';
 import type { GradeResult } from '@/services/grading';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
+import { UnsavedInputProvider, useLeaveGuard } from '@/features/practice/leave-guard';
+import { ScoreHeadline } from '@/features/practice/ScoreHeadline';
 import { WordFeedback } from '@/features/practice/WordFeedback';
-import { useThemeColors, fonts, layout, spacing, displayType } from '@/theme';
+import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
@@ -47,9 +50,10 @@ export default function StitchRoute() {
   const colors = useThemeColors();
   const { t } = useTranslation(['stitch', 'practice', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
-  // A short window (iPhone Duo opened is 669pt high): the score takes less
-  // room, as on practice's feedback screen.
-  const { sides, short } = useContentLayout();
+  const { sides } = useContentLayout();
+  // Close, the edge swipe and Android's back ask first while the recitation
+  // holds words: there is no resume for a stitch.
+  const reportUnsaved = useLeaveGuard();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [data, setData] = useState<{
     text: string;
@@ -142,6 +146,13 @@ export default function StitchRoute() {
           ? Haptics.NotificationFeedbackType.Success
           : Haptics.NotificationFeedbackType.Warning,
       );
+      // The whole passage memorized: success ×2, as for a chunk (07 §8).
+      if (goalCompleted) {
+        setTimeout(
+          () => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+          300,
+        );
+      }
       setPhase({
         kind: 'result',
         accuracy: outcome.accuracy,
@@ -214,7 +225,7 @@ export default function StitchRoute() {
             ))}
 
           {phase.kind === 'quiz' && data && (
-            <>
+            <UnsavedInputProvider value={reportUnsaved}>
               <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {t('intro')}
               </Text>
@@ -224,27 +235,29 @@ export default function StitchRoute() {
                 translationId={data.translationId}
                 onDone={(o) => void onDone(o)}
               />
-            </>
+            </UnsavedInputProvider>
           )}
 
           {phase.kind === 'result' && (
             <>
-              <Text
-                accessibilityLabel={accuracyLabel ?? undefined}
-                style={[
-                  styles.accuracy,
-                  short && styles.accuracyShort,
-                  {
-                    color: phase.goalCompleted
-                      ? colors.gold
-                      : phase.passed
-                        ? colors.success
-                        : colors.error,
-                    fontFamily: fonts?.scripture,
-                  },
-                ]}>
-                {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
-              </Text>
+              <ScoreHeadline
+                accuracy={phase.accuracy}
+                label={accuracyLabel ?? ''}
+                countUp={phase.passed}
+                color={
+                  phase.goalCompleted ? colors.gold : phase.passed ? colors.success : colors.error
+                }
+              />
+              {/* The memorized seal (07 §7), as a chunk earns in practice. */}
+              {phase.goalCompleted && (
+                <Symbol
+                  ios="checkmark.seal.fill"
+                  android="verified"
+                  size={34}
+                  color={colors.gold}
+                  maxFontSizeMultiplier={1.5}
+                />
+              )}
               <Text
                 accessibilityRole="header"
                 style={[
@@ -253,7 +266,11 @@ export default function StitchRoute() {
                 ]}>
                 {verdict}
               </Text>
-              <WordFeedback result={phase.result} />
+              <WordFeedback
+                result={phase.result}
+                text={data?.text ?? ''}
+                language={data ? getTranslation(data.translationId).languageCode : undefined}
+              />
             </>
           )}
         </KeyboardScroll>
@@ -280,6 +297,4 @@ const styles = StyleSheet.create({
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   body: { fontSize: 15, lineHeight: 21 },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  accuracy: { fontSize: displayType.medium, marginTop: spacing.xl },
-  accuracyShort: { fontSize: 44, marginTop: 0 },
 });

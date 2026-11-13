@@ -71,6 +71,9 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
   - **Type**: full-screen editor, New York, no autocorrect, reference watermark.
   - **Speak**: large mic button; live ghost transcript beneath the reference; waveform in lapis.
 - Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. An almost (03 §3) marks the same slips in `amber` on `amberWash`, still struck through. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
+- Actions: a result, the summary and the Read round keep their buttons in the pinned footer (`ActionFooter`), so the way on is in the same place whatever the verse's length. Read and First Letters are not graded (03 §1): their results show the heading and no score. A memorized verse ends on the summary — Done, with the passage's next step beside it.
+- Leaving: while a Type or Speak round holds words, Close, the edge swipe and Android's back ask first (`src/features/practice/leave-guard.tsx`); only the session's position is saved. The unlock screen is not guarded.
+- Arrange: tapping a placed phrase takes it back out and leaves its position open; the next phrase tapped fills it.
 
 ### Library
 - Segmented (the system control, `@expo/ui/community/segmented-control`; on windows wider than tall both shelves show side by side instead): **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).

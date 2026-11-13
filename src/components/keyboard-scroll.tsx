@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef, type ComponentRef } from 'react';
 import {
+  Platform,
   ScrollView,
   type HostInstance,
   type NativeScrollEvent,
@@ -45,6 +46,9 @@ export function KeyboardScroll({ onScroll, ...props }: ScrollViewProps) {
         ref={ref}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
+        // Dragging the content down puts the keyboard away (Type has no Done
+        // key: Return is a new line). `reveal` scrolls in code, which does not.
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         scrollEventThrottle={16}
         onScroll={trackScroll}
         {...props}

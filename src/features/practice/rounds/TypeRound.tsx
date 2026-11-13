@@ -16,11 +16,12 @@ import {
 import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { useRevealAboveKeyboard } from '@/components/keyboard-scroll';
+import { useUnsavedInput } from '@/features/practice/leave-guard';
 
 import { getTranslation } from '@/services/bible';
 import { gradeTyped, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
-import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, layout, radius, spacing, scriptureType, textStyle } from '@/theme';
 
 export function TypeRound({
   text,
@@ -42,6 +43,8 @@ export function TypeRound({
   const colors = useThemeColors();
   const { t } = useTranslation('practice');
   const [input, setInput] = useState('');
+  // Leaving now would lose what has been typed: the host asks first.
+  useUnsavedInput(input.trim().length > 0);
   // A fixed box that scrolls inside, a little taller at large text sizes.
   // Left to grow with the text, the line being typed slid under the keyboard
   // (most of all at accessibility sizes). At a fixed height the screen can
@@ -126,7 +129,7 @@ const EDITOR_HEIGHT = 180;
 const EDITOR_SHORT_MIN = 96;
 
 const styles = StyleSheet.create({
-  watermark: { fontSize: 14, marginBottom: spacing.md },
+  watermark: { ...textStyle.footnote, marginBottom: spacing.md },
   editor: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.card,

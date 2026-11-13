@@ -18,7 +18,7 @@ import { announce } from '@/components/screen-reader';
 import { Button } from '@/components/button';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
-import { formatRange, getPassage } from '@/services/bible';
+import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { dueReviewItems, recordReviewResult, type ReviewItem } from '@/services/db/repos/reviews';
@@ -28,8 +28,10 @@ import { gradeBandAtLine, type GradeResult } from '@/services/grading';
 import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
+import { UnsavedInputProvider, useLeaveGuard } from '@/features/practice/leave-guard';
+import { ScoreHeadline } from '@/features/practice/ScoreHeadline';
 import { WordFeedback } from '@/features/practice/WordFeedback';
-import { useThemeColors, fonts, layout, spacing, textStyle, displayType } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle } from '@/theme';
 import { eq } from 'drizzle-orm';
 
 type QueueEntry = {
@@ -61,9 +63,10 @@ export function ReviewSession() {
   const colors = useThemeColors();
   const { t } = useTranslation(['review', 'practice', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
-  // A short window (iPhone Duo opened is 669pt high): the score takes less
-  // room, as on practice's feedback screen.
-  const { sides, short } = useContentLayout();
+  const { sides } = useContentLayout();
+  // Close, the edge swipe and Android's back ask first while a round holds
+  // typed or spoken words: a review in progress is not saved.
+  const reportUnsaved = useLeaveGuard();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [accuracies, setAccuracies] = useState<number[]>([]);
@@ -220,6 +223,11 @@ export function ReviewSession() {
       ? t('practice:feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })
       : null;
 
+  // "2 of 5": where this verse is in the queue.
+  const index = phase.kind === 'round' || phase.kind === 'feedback' ? phase.index + 1 : 0;
+  const position = t('position', { index, total: queue.length });
+  const positionLabel = t('positionLabel', { index, total: queue.length });
+
   // The round is replaced by its result in place: tell VoiceOver the outcome.
   const spoken =
     phase.kind === 'feedback'
@@ -237,14 +245,9 @@ export function ReviewSession() {
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
-      {/* Native bar: Close, with the queue position as the title. */}
-      <ScreenHeader
-        backHidden
-        title={
-          queue.length > 0 && (phase.kind === 'round' || phase.kind === 'feedback')
-            ? t('position', { index: Math.min(phase.index + 1, queue.length), total: queue.length })
-            : t('title')
-        }>
+      {/* Native bar: Close, titled Review. The queue position is in the
+          content, so the screen keeps its name. */}
+      <ScreenHeader backHidden title={t('title')}>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon={closeIcon}
@@ -281,9 +284,19 @@ export function ReviewSession() {
           )}
 
           {phase.kind === 'round' && queue[phase.index] && (
-            <>
-              <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {t('roundHeader', { reference: queue[phase.index].reference })}
+            <UnsavedInputProvider value={reportUnsaved}>
+              {/* Where this verse is in the queue. Speak prints the
+                  reference itself, large, so it is not said twice there. */}
+              <Text
+                accessibilityLabel={
+                  queue[phase.index].mode === 'speak'
+                    ? positionLabel
+                    : `${positionLabel}, ${queue[phase.index].reference}`
+                }
+                style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {queue[phase.index].mode === 'speak'
+                  ? position
+                  : t('roundHeader', { position, reference: queue[phase.index].reference })}
               </Text>
               {queue[phase.index].mode === 'blanks75' ? (
                 <BlanksRound
@@ -322,51 +335,49 @@ export function ReviewSession() {
                   onDone={(o) => void finishRound(phase.index, o)}
                 />
               )}
-            </>
+            </UnsavedInputProvider>
           )}
 
           {phase.kind === 'feedback' && (
             <>
               <Text
-                accessibilityLabel={accuracyLabel ?? undefined}
-                style={[
-                  styles.accuracy,
-                  short && styles.accuracyShort,
-                  {
-                    // Red only for a review the schedule reset; one that
-                    // held below the pass line reads amber, like an almost.
-                    color: !phase.held
-                      ? colors.error
-                      : tone === 'pass'
-                        ? colors.success
-                        : colors.amber,
-                    fontFamily: fonts?.scripture,
-                  },
-                ]}>
-                {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
+                accessibilityLabel={`${positionLabel}, ${queue[phase.index].reference}`}
+                style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {t('roundHeader', { position, reference: queue[phase.index].reference })}
               </Text>
+              <ScoreHeadline
+                accuracy={phase.accuracy}
+                label={accuracyLabel ?? ''}
+                countUp={phase.held && tone === 'pass'}
+                // Red only for a review the schedule reset; one that held
+                // below the pass line reads amber, like an almost.
+                color={
+                  !phase.held ? colors.error : tone === 'pass' ? colors.success : colors.amber
+                }
+              />
               <Text
                 accessibilityRole="header"
                 style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {outcome}
               </Text>
-              <WordFeedback result={phase.result} tone={tone === 'almost' ? 'almost' : 'error'} />
+              <WordFeedback
+                result={phase.result}
+                text={queue[phase.index].text}
+                language={getTranslation(queue[phase.index].translationId).languageCode}
+                tone={tone === 'almost' ? 'almost' : 'error'}
+              />
             </>
           )}
 
           {phase.kind === 'summary' && (
             <>
-              <Text
-                accessibilityLabel={t('averageAccuracyLabel', {
+              <ScoreHeadline
+                accuracy={phase.averageAccuracy}
+                label={t('averageAccuracyLabel', {
                   value: Math.round(phase.averageAccuracy * 100),
                 })}
-                style={[
-                  styles.accuracy,
-                  short && styles.accuracyShort,
-                  { color: colors.lapis, fontFamily: fonts?.scripture },
-                ]}>
-                {t('common:percent', { value: Math.round(phase.averageAccuracy * 100) })}
-              </Text>
+                color={colors.lapis}
+              />
               <Text
                 accessibilityRole="header"
                 style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -402,9 +413,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
-  reference: { fontSize: 14, marginBottom: spacing.lg },
+  reference: { ...textStyle.footnote, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   summaryNote: { ...textStyle.subheadline, marginBottom: spacing.md },
-  accuracy: { fontSize: displayType.medium, marginTop: spacing.xl },
-  accuracyShort: { fontSize: 44, marginTop: 0 },
 });

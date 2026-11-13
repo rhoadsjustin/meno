@@ -59,6 +59,13 @@ export default {
     header: '{{reference}} · {{tier}}',
     sealingNote: 'Sealing {{reference}} · one clean pass makes it memorized',
   },
+  /** Asked before leaving a round that holds typed or spoken words. */
+  leave: {
+    title: 'Leave this round?',
+    message: 'What you’ve typed or recited in this round won’t be kept.',
+    stay: 'Stay',
+    leave: 'Leave',
+  },
   restingTitle: '{{reference}} is one day from sealed',
   restingBody:
     'You’ve cleared {{tier}} today. Memorized takes a clean pass on two separate days, so this one rests until tomorrow.',
@@ -157,6 +164,9 @@ export default {
     placedHint: 'Double-tap to remove this phrase',
     phrase: 'Phrase: {{phrase}}',
     phraseHint: 'Double-tap to place this phrase next',
+    // A phrase was taken back out: the next one tapped fills its place.
+    phraseHintOpen: 'Double-tap to place this phrase in the open position',
+    openSlot: 'Position {{position}}: empty',
     removed: 'Removed: {{phrase}}',
     allPlaced: 'All phrases placed. Check order is at the end.',
     check: 'Check order',
@@ -185,7 +195,8 @@ export default {
     speakInstead: 'Speak instead',
     typeInstead: 'Type instead',
     permissionOff:
-      'Microphone or speech recognition permission is off. Enable it in Settings, or type instead below.',
+      'Meno can’t hear you: the microphone or speech recognition is turned off for Meno. Turn it on in Settings, or type this round instead.',
+    openSettings: 'Open Settings',
     liveTranscript: 'Live transcript',
     editLabel: 'Your recitation — tap to edit',
     editHint: 'Tap the words to fix them, or keep reciting.',
@@ -196,6 +207,7 @@ export default {
     pauseHint: 'Your words are kept when you pause',
     startHint: 'Adds to what you have said so far',
     micListening: 'Listening — tap to pause',
+    micProcessing: 'Finishing…',
     micMore: 'Tap to keep going',
     micStart: 'Tap to recite',
   },

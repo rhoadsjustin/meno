@@ -7,7 +7,14 @@ import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Button, MIN_TOUCH_TARGET } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
-import { buildArrangeRound, gradeArrangement, isPlacementCorrect } from '@/services/practice';
+import {
+  arrangedOrder,
+  buildArrangeRound,
+  gradeArrangement,
+  isPlacementCorrect,
+  placeTile,
+  removeTile,
+} from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
 
 export function ArrangeRound({
@@ -27,34 +34,42 @@ export function ArrangeRound({
     () => buildArrangeRound(text, chunkId, attemptNo),
     [text, chunkId, attemptNo]
   );
-  const [placed, setPlaced] = useState<number[]>([]);
+  // The answer as slots: taking a phrase back out leaves its place open for
+  // the next one tapped, so a slip early on is fixed where it is.
+  const [slots, setSlots] = useState<(number | null)[]>([]);
 
-  const remaining = round.shuffledOrder.filter((i) => !placed.includes(i));
+  const remaining = round.shuffledOrder.filter((i) => !slots.includes(i));
+  const order = arrangedOrder(round, slots);
 
   const place = (tile: number) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setPlaced([...placed, tile]);
+    const next = placeTile(slots, tile);
+    setSlots(next.slots);
     // VoiceOver: the focused tile leaves the bank, so say where it went.
     const said: string[] = [
-      t('arrange.placed', { position: placed.length + 1, phrase: round.phrases[tile] }),
+      t('arrange.placed', { position: next.position + 1, phrase: round.phrases[tile] }),
     ];
     if (remaining.length === 1) said.push(t('arrange.allPlaced'));
     AccessibilityInfo.announceForAccessibility(said.join(' '));
   };
   const unplace = (position: number) => {
+    const tile = slots[position];
+    if (tile == null) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     AccessibilityInfo.announceForAccessibility(
-      t('arrange.removed', { phrase: round.phrases[placed[position]] }),
+      t('arrange.removed', { phrase: round.phrases[tile] }),
     );
-    setPlaced(placed.filter((_, i) => i !== position));
+    setSlots(removeTile(slots, position));
   };
 
   const submit = () => {
-    const accuracy = gradeArrangement(round, placed);
+    if (!order) return;
+    const accuracy = gradeArrangement(round, order);
     onDone({
       accuracy,
       unitCount: round.phrases.length,
-      missedWords: placed
-        .filter((_, i) => !isPlacementCorrect(round, placed, i))
+      missedWords: order
+        .filter((_, i) => !isPlacementCorrect(round, order, i))
         .map((tile) => round.phrases[tile]),
     });
   };
@@ -62,28 +77,41 @@ export function ArrangeRound({
   return (
     <>
       <View style={[styles.answerArea, { borderColor: colors.separator }]}>
-        {placed.length === 0 && (
+        {slots.length === 0 && (
           <Text style={[styles.placeholder, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('arrange.placeholder')}
           </Text>
         )}
-        {placed.map((tile, i) => (
-          <Pressable
-            key={`${tile}-${i}`}
-            accessibilityRole="button"
-            accessibilityLabel={t('arrange.placed', { position: i + 1, phrase: round.phrases[tile] })}
-            accessibilityHint={t('arrange.placedHint')}
-            onPress={() => unplace(i)}
-            style={({ pressed }) => [
-              styles.tile,
-              { backgroundColor: colors.lapisWash, borderColor: colors.lapis },
-              pressed && styles.pressed,
-            ]}>
-            <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-              {round.phrases[tile]}
-            </Text>
-          </Pressable>
-        ))}
+        {slots.map((tile, i) =>
+          tile === null ? (
+            // The place a phrase was taken from: the next one tapped goes here.
+            <View
+              key={`open-${i}`}
+              accessible
+              accessibilityLabel={t('arrange.openSlot', { position: i + 1 })}
+              style={[styles.tile, styles.openSlot, { borderColor: colors.inkFaint }]}
+            />
+          ) : (
+            <Pressable
+              key={`${tile}-${i}`}
+              accessibilityRole="button"
+              accessibilityLabel={t('arrange.placed', {
+                position: i + 1,
+                phrase: round.phrases[tile],
+              })}
+              accessibilityHint={t('arrange.placedHint')}
+              onPress={() => unplace(i)}
+              style={({ pressed }) => [
+                styles.tile,
+                { backgroundColor: colors.lapisWash, borderColor: colors.lapis },
+                pressed && styles.pressed,
+              ]}>
+              <Text style={[styles.tileText, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                {round.phrases[tile]}
+              </Text>
+            </Pressable>
+          ),
+        )}
       </View>
 
       <View style={styles.bank}>
@@ -92,7 +120,9 @@ export function ArrangeRound({
             key={tile}
             accessibilityRole="button"
             accessibilityLabel={t('arrange.phrase', { phrase: round.phrases[tile] })}
-            accessibilityHint={t('arrange.phraseHint')}
+            accessibilityHint={t(
+              slots.includes(null) ? 'arrange.phraseHintOpen' : 'arrange.phraseHint',
+            )}
             onPress={() => place(tile)}
             style={({ pressed }) => [
               styles.tile,
@@ -106,9 +136,14 @@ export function ArrangeRound({
         ))}
       </View>
 
-      {remaining.length === 0 && (
-        <Button label={t('arrange.check')} onPress={submit} style={styles.button} />
-      )}
+      {/* Always here, as in Type: it says what the round ends on, and it does
+          not appear under the finger as the last phrase is placed. */}
+      <Button
+        label={t('arrange.check')}
+        disabled={!order}
+        onPress={submit}
+        style={styles.button}
+      />
     </>
   );
 }
@@ -135,6 +170,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
+  openSlot: { borderStyle: 'dashed' },
   pressed: { opacity: 0.6 },
   tileText: { fontSize: 17, lineHeight: 24 },
   button: { marginTop: spacing.xxl },
