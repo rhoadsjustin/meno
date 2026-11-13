@@ -41,6 +41,11 @@ export default {
       'Más o menos un fragmento nuevo al día, con repasos para conservar lo que ya guardaste.',
     finishAround: 'A ese ritmo terminarías alrededor del {{date}}.',
     startMemorizing: 'Empezar a memorizar',
+    // Asked before Cancel or a swipe down throws away a chosen passage.
+    discardTitle: '¿Descartar este pasaje?',
+    discardMessage: 'Los versículos que elegiste no se guardarán.',
+    discard: 'Descartar',
+    keepEditing: 'Seguir editando',
   },
   stats: {
     verses: 'Versículos',
