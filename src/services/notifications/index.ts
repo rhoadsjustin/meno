@@ -11,7 +11,7 @@
  */
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { Platform } from 'react-native';
 
 import { t } from '@/i18n';
@@ -28,7 +28,9 @@ import { goalByChallengeId, listActiveGoals } from '@/services/db/repos/goals';
 import { countDueReviews } from '@/services/db/repos/reviews';
 import { loadStreak, localToday } from '@/services/db/repos/streaks';
 import { activeDaysIn } from '@/services/db/repos/wrapped';
+import type { RefRange } from '@/services/bible/types';
 import {
+  CHANNEL_IDS,
   formatReminderTime,
   parseReminderTime,
   planNotifications,
@@ -146,6 +148,7 @@ async function readPlanState() {
   const today = localToday();
   const streak = streakDisplay(streakState, today);
   return {
+    nextReview: await nextReviewState(),
     recapNotice: await recapNoticeState(today),
     adventNotices: await adventNoticeState(today),
     reminderTime: time,
@@ -158,6 +161,31 @@ async function readPlanState() {
 }
 
 type PlanState = Awaited<ReturnType<typeof readPlanState>>;
+
+/** The review due longest — the verse `/review` opens on — for the quiz title. */
+async function nextReviewState(): Promise<{ range: RefRange; dueAt: Date } | null> {
+  const items = await db
+    .select()
+    .from(tables.reviewItems)
+    .orderBy(asc(tables.reviewItems.dueAt))
+    .limit(1);
+  const item = items[0];
+  if (!item) return null;
+  const chunks = await db
+    .select()
+    .from(tables.chunks)
+    .where(eq(tables.chunks.id, item.chunkId))
+    .limit(1);
+  const c = chunks[0];
+  if (!c) return null;
+  return {
+    dueAt: item.dueAt,
+    range: {
+      start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+      end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+    },
+  };
+}
 
 /**
  * The December Year in the Word notice (docs/10 §5.5): only in December,
@@ -198,15 +226,12 @@ async function adventNoticeState(today: string) {
 /**
  * Android files every notification under a channel the user can mute or
  * tune on its own in Settings: one for the daily reminder, one for pop
- * quizzes. Both pop up on screen, as iOS banners do. Named in the UI language; recreating a channel only renames it,
- * so this runs before each plan and keeps the names current.
+ * quizzes, one for the seasonal notices (Year in the Word, Advent). All pop
+ * up on screen, as iOS banners do. Named in the UI language; recreating a
+ * channel only renames it, so this runs before each plan and keeps the names
+ * current.
  */
-const CHANNELS = {
-  practice: 'practice',
-  popQuiz: 'pop-quiz',
-  recap: 'practice',
-  advent: 'practice',
-} as const;
+const CHANNELS = CHANNEL_IDS;
 
 async function ensureChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
@@ -217,6 +242,10 @@ async function ensureChannels(): Promise<void> {
     }),
     Notifications.setNotificationChannelAsync(CHANNELS.popQuiz, {
       name: t('notifications:status.titlePopQuiz'),
+      importance: AndroidImportance.HIGH,
+    }),
+    Notifications.setNotificationChannelAsync(CHANNELS.recap, {
+      name: t('notifications:channel.seasonal'),
       importance: AndroidImportance.HIGH,
     }),
   ]);
