@@ -28,6 +28,7 @@ export default {
     offBody: 'Ask for a verse before your distracting apps open.',
     unavailable: 'Available on your iPhone (not in the simulator).',
     killSwitch: 'Turn off and clear all shields now',
+    killSwitchDone: 'Recite to Unlock is off. All shields are cleared.',
   },
   update: {
     title: 'Update ready',

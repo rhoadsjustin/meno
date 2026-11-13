@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
+  AccessibilityInfo,
   Linking,
   Platform,
   Pressable,
@@ -16,6 +17,7 @@ import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
+import { TextLink } from '@/components/text-link';
 import { TimeField } from '@/components/time-field';
 import { HelpGuide } from '@/features/help/HelpGuide';
 import { locale } from '@/i18n';
@@ -102,12 +104,17 @@ export default function SettingsScreen() {
     killSwitch();
     await saveLockConfig({ enabled: false });
     setLockEnabled(false);
-  }, []);
+    AccessibilityInfo.announceForAccessibility(t('lock.killSwitchDone'));
+  }, [t]);
 
   const selected = (d: Detail) => isWide && detail === d;
   const rowCard = (d: Detail) =>
     selected(d) ? { backgroundColor: colors.lapisWash, borderColor: colors.lapisWash } : undefined;
-  const titleColor = (d: Detail) => (selected(d) ? colors.lapis : colors.ink);
+  // On the selection wash, inkFaint (light) and lapis (dark) fall to 4.1:1,
+  // so a selected row's text steps up to ink there; the wash is the cue.
+  const titleColor = (d: Detail) =>
+    selected(d) && scheme === 'light' ? colors.lapis : colors.ink;
+  const subColor = (d: Detail) => (selected(d) ? colors.ink : colors.inkFaint);
 
   // The footer credits whatever the wizard offers, so a licensed translation
   // (ESV, when its key is configured) is never listed as public domain.
@@ -135,7 +142,7 @@ export default function SettingsScreen() {
           <Text style={[styles.rowTitle, { color: titleColor('guide'), fontFamily: fonts?.ui }]}>
             {t('guide.title')}
           </Text>
-          <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          <Text style={[styles.rowSub, { color: subColor('guide'), fontFamily: fonts?.ui }]}>
             {t('guide.body')}
           </Text>
         </Pressable>
@@ -154,7 +161,7 @@ export default function SettingsScreen() {
               style={[styles.rowTitle, { color: titleColor('reminders'), fontFamily: fonts?.ui }]}>
               {t('reminders.title')}
             </Text>
-            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
               {t('reminders.body')}
             </Text>
           </Pressable>
@@ -167,7 +174,7 @@ export default function SettingsScreen() {
         </View>
         {reminders && reminders.overall === 'off' && (
           <View style={[styles.subRow, { borderTopColor: colors.separator }]}>
-            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
               {t('reminders.off')}
             </Text>
           </View>
@@ -194,7 +201,7 @@ export default function SettingsScreen() {
               style={[
                 styles.rowSub,
                 styles.footnote,
-                { color: colors.inkFaint, fontFamily: fonts?.ui },
+                { color: subColor('reminders'), fontFamily: fonts?.ui },
               ]}>
               {t('reminders.focusNote')}
             </Text>
@@ -206,7 +213,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               onPress={() => void toggleNotifications(true)}
               style={[styles.subRow, { borderTopColor: colors.separator }]}>
-              <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
                 {t('reminders.askNote')}
               </Text>
               <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
@@ -218,7 +225,7 @@ export default function SettingsScreen() {
               accessibilityRole="link"
               onPress={() => void Linking.openSettings()}
               style={[styles.subRow, { borderTopColor: colors.separator }]}>
-              <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+              <Text style={[styles.rowSub, { color: subColor('reminders'), fontFamily: fonts?.ui }]}>
                 {t('reminders.blockedNote')}
               </Text>
               <Text style={[styles.rowAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
@@ -241,7 +248,7 @@ export default function SettingsScreen() {
             <Text style={[styles.rowTitle, { color: titleColor('lock'), fontFamily: fonts?.ui }]}>
               {t('lock.title')}
             </Text>
-            <Text style={[styles.rowSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+            <Text style={[styles.rowSub, { color: subColor('lock'), fontFamily: fonts?.ui }]}>
               {isLockAvailable()
                 ? lockEnabled
                   ? t('lock.onSummary', {
@@ -253,11 +260,15 @@ export default function SettingsScreen() {
             </Text>
           </Pressable>
           {lockEnabled && (
-            <Pressable accessibilityRole="button" onPress={() => void disableLock()}>
-              <Text style={[styles.killSwitch, { color: colors.error, fontFamily: fonts?.ui }]}>
-                {t('lock.killSwitch')}
-              </Text>
-            </Pressable>
+            // The escape of 04 §6: its own row and a full-size target.
+            <View style={[styles.killSwitch, { borderTopColor: colors.separator }]}>
+              <TextLink
+                tone="destructive"
+                weight="semibold"
+                label={t('lock.killSwitch')}
+                onPress={() => void disableLock()}
+              />
+            </View>
           )}
         </Card>
       )}
@@ -360,5 +371,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  killSwitch: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
+  // The 44pt link reaches into the card's bottom padding.
+  killSwitch: {
+    marginTop: spacing.md,
+    marginBottom: -spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

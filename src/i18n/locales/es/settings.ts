@@ -29,6 +29,7 @@ export default {
     offBody: 'Pide un versículo antes de que se abran tus apps que más te distraen.',
     unavailable: 'Disponible en tu iPhone (no en el simulador).',
     killSwitch: 'Desactivar y quitar todos los bloqueos ahora',
+    killSwitchDone: 'Recitar para desbloquear está desactivado. Se quitaron todos los bloqueos.',
   },
   update: {
     title: 'Actualización lista',
