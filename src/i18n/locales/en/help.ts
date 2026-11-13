@@ -26,6 +26,7 @@ export default {
     turnOnReminders: 'Turn on reminders',
     allowMicrophone: 'Allow microphone',
     setUpLock: 'Set up Recite to Unlock',
+    changeLock: 'Change apps or schedule',
   },
   steps: {
     tapOpenSettings: 'Tap Open iPhone Settings below.',

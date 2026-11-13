@@ -32,6 +32,7 @@ export default function ReaderRoute() {
   const { t } = useTranslation(['reader', 'common']);
   const previousIcon = useBarIcon('chevron.left', 'chevron_left');
   const nextIcon = useBarIcon('chevron.right', 'chevron_right');
+  const chaptersIcon = useBarIcon('list.number', 'format_list_numbered');
   // Wide windows (iPhone Duo opened): a chapter sidebar beside the text.
   const { sides, isWide, foldAxis } = useContentLayout();
   // Book pose: the Duo half-open with the crease running top to bottom.
@@ -112,6 +113,23 @@ export default function ReaderRoute() {
       <Stack.Screen options={{ gestureEnabled: !book, headerTransparent: book }} />
       <ScreenHeader title={title} transparent={book}>
         <Stack.Toolbar placement="right">
+          {/* Every chapter of the book, in every layout: the sidebar below
+              only exists on wide windows outside the book pose. */}
+          {chapters.length > 1 && (
+            <Stack.Toolbar.Menu
+              icon={chaptersIcon}
+              title={bookName(ref.bookId)}
+              accessibilityLabel={t('chapterMenu')}>
+              {chapters.map((n) => (
+                <Stack.Toolbar.MenuAction
+                  key={n}
+                  isOn={n === ref.chapter}
+                  onPress={() => goToChapter(n)}>
+                  {t('chapter', { chapter: n })}
+                </Stack.Toolbar.MenuAction>
+              ))}
+            </Stack.Toolbar.Menu>
+          )}
           <Stack.Toolbar.Button
             icon={previousIcon}
             accessibilityLabel={t('previousChapter')}

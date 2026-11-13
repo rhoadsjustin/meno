@@ -3,6 +3,8 @@ export default {
   /** Screen title: a book and chapter, e.g. "John 3". */
   title: '{{book}} {{chapter}}',
   chapter: 'Chapter {{chapter}}',
+  /** The bar's chapter menu, for VoiceOver. */
+  chapterMenu: 'Chapters',
   previousChapter: 'Previous chapter',
   nextChapter: 'Next chapter',
   previousPage: 'Previous page',

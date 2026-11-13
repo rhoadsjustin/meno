@@ -569,7 +569,9 @@ export default function TodayScreen() {
         />
       )}
 
-      {data && (
+      {/* The memorized hero already offers the wizard ("Choose another
+          passage"); a second entry under it would only repeat that. */}
+      {data?.chunk && (
         <TextLink
           label={t('addPassage')}
           onPress={() => router.push('/goal-wizard')}
