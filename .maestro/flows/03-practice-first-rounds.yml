@@ -20,7 +20,8 @@ appId: com.rhoadsdev.meno
 - extendedWaitUntil:
     visible: "Read cleared"
     timeout: 10000
-- assertVisible: "\\d+%"
+# Read is not graded (docs/03 §1): its result carries no score.
+- assertNotVisible: "\\d+%"
 - tapOn: "Continue"
 # Next tier loads in the same screen: First Letters.
 - extendedWaitUntil:
@@ -30,6 +31,9 @@ appId: com.rhoadsdev.meno
 - tapOn: "Reveal"
 - assertVisible: "How did it go\\?"
 - tapOn: "Mostly got it"
+# A self-report: the first of two passes, again without a score.
 - extendedWaitUntil:
-    visible: "\\d+%"
+    visible: "Round passed"
     timeout: 10000
+- assertNotVisible: "\\d+%"
+- assertVisible: "Continue"

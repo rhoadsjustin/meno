@@ -8,6 +8,7 @@ import { Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { ActionFooter } from '@/components/action-footer';
 import { Button } from '@/components/button';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { Card } from '@/components/card';
@@ -37,10 +38,12 @@ import {
 } from '@/services/db/repos/sessionStore';
 import { currentStreakDisplay, secureToday } from '@/services/db/repos/streaks';
 import { rescheduleAll } from '@/services/notifications';
-import { slipCount, tokenize, type GradeResult, type RoundBand } from '@/services/grading';
+import { slipCount, tokenize, type GradeResult } from '@/services/grading';
 import {
   blanksDensity,
   currentMode,
+  describeFeedback,
+  describeStep,
   dropTier,
   ladderProgress,
   nextTier,
@@ -50,11 +53,15 @@ import {
   startSession,
   tierName,
   topTierStanding,
+  type FeedbackAction,
+  type FeedbackFacts,
   type SessionState,
   type TopTierStanding,
 } from '@/services/practice';
 import { Dissolution } from '@/features/practice/Dissolution';
 import { LadderProgress } from '@/features/practice/LadderProgress';
+import { UnsavedInputProvider, useLeaveGuard } from '@/features/practice/leave-guard';
+import { ScoreHeadline } from '@/features/practice/ScoreHeadline';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { WordFeedback } from '@/features/practice/WordFeedback';
 import { ArrangeRound } from '@/features/practice/rounds/ArrangeRound';
@@ -63,7 +70,7 @@ import { FirstLettersRound } from '@/features/practice/rounds/FirstLettersRound'
 import { ReadRound } from '@/features/practice/rounds/ReadRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
-import { useThemeColors, fonts, layout, spacing, textStyle, displayType } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
@@ -74,27 +81,8 @@ type Phase =
   /** Speak is cleared and today's mastery day is banked — only a second day
    * can seal the chunk, so there is nothing left to practice here today. */
   | { kind: 'sealsTomorrow' }
-  | {
-      kind: 'feedback';
-      accuracy: number;
-      /** The round moved on: a pass or an almost. */
-      passed: boolean;
-      band: RoundBand;
-      /** Slipped words in a graded text round; null where there is no
-       * word-level result (self-report, Blanks, Arrange). */
-      slips: number | null;
-      tierCleared: boolean;
-      memorized: boolean;
-      /** Cleared the top tier without sealing: do not serve it again. */
-      sealsTomorrow: boolean;
-      /** Cleared the top tier on an almost with nothing banked today: say
-       * so, and offer the clean recitation instead of promising tomorrow. */
-      needsCleanPass: boolean;
-      /** Just reached REST_TIER: offer to stop for the day. */
-      restPoint: boolean;
-      suggestDropTier: boolean;
-      result?: GradeResult;
-    }
+  /** What the round came to (`FeedbackFacts`, services/practice/feedback). */
+  | ({ kind: 'feedback'; result?: GradeResult } & FeedbackFacts)
   | {
       kind: 'summary';
       /** The chunk's highest cleared tier as the session ends. */
@@ -104,6 +92,9 @@ type Phase =
       needsCleanPass: boolean;
       memorized: boolean;
       streak: number;
+      /** After a verse is memorized: the passage's next step, as its button
+       * reads on Today ("Start John 3:17"); null when nothing is left today. */
+      next: string | null;
     };
 
 export function PracticeScreen({
@@ -123,9 +114,9 @@ export function PracticeScreen({
   // reference, chunk progress, ladder. Narrower windows keep one column so
   // Blanks and Arrange have room to work.
   const { sides, short, isExtraWide: showRail } = useContentLayout();
-  // A short window (iPhone Duo opened in its landscape pose is 669pt high):
-  // the feedback screen spends less on air so both its actions fit without
-  // scrolling — the stopping point's "Keep going" sat on the bottom edge.
+  // Close, the edge swipe and Android's back ask first while a round holds
+  // typed or spoken words: only the session's position is saved.
+  const reportUnsaved = useLeaveGuard();
 
   const [goal, setGoal] = useState<Goal | null>(null);
   const [chunk, setChunk] = useState<Chunk | null>(null);
@@ -298,10 +289,14 @@ export function PracticeScreen({
       setSession(outcome.state);
       setPhase({
         kind: 'feedback',
+        // Read is completion and First Letters a self-report (03 §1): the
+        // attempt log needs a number, the screen must not show one.
+        graded: input.accuracy !== undefined,
         accuracy: input.accuracy ?? (input.selfPass ? 1 : 0),
         passed: outcome.passed,
         band: outcome.band,
         slips: input.result ? slipCount(input.result) : null,
+        marked: !!input.result,
         tierCleared: outcome.tierCleared,
         memorized,
         sealsTomorrow: standing === 'sealsTomorrow',
@@ -335,6 +330,26 @@ export function PracticeScreen({
   const finishSession = useCallback(async () => {
     if (phase.kind !== 'feedback' || !session || !chunk) return;
     const streak = await currentStreakDisplay();
+    // A memorized verse is a place to stop, with the way on beside it.
+    let next: string | null = null;
+    if (phase.memorized) {
+      try {
+        const { plan, chunks } = await practicePlan(goalId);
+        const step = plan.next;
+        const c = step && step.kind !== 'rest' && chunks.find((x) => x.id === step.chunkId);
+        if (step && c) {
+          next = describeStep(
+            step,
+            formatRange({
+              start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+              end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+            }),
+          ).button;
+        }
+      } catch {
+        // The summary stands without the shortcut; Today still offers it.
+      }
+    }
     setPhase({
       kind: 'summary',
       standing: phase.memorized ? 6 : Math.max(chunk.tier, phase.tierCleared ? session.tier : -1),
@@ -342,8 +357,9 @@ export function PracticeScreen({
       needsCleanPass: phase.needsCleanPass,
       memorized: phase.memorized,
       streak: streak.current,
+      next,
     });
-  }, [phase, session, chunk]);
+  }, [phase, session, chunk, goalId]);
 
   const continueSession = useCallback(async () => {
     if (phase.kind !== 'feedback') return;
@@ -380,6 +396,19 @@ export function PracticeScreen({
     setRoundStartedAt(Date.now());
   }, [session]);
 
+  /** From the memorized summary: on to the passage's next step. */
+  const startNext = useCallback(async () => {
+    setPhase({ kind: 'loading' });
+    await load();
+  }, [load]);
+
+  const act = (action: FeedbackAction) =>
+    void (action === 'finish'
+      ? finishSession()
+      : action === 'dropTier'
+        ? dropToLowerTier()
+        : continueSession());
+
   const reference = chunk
     ? formatRange({
         start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
@@ -387,43 +416,18 @@ export function PracticeScreen({
       })
     : '';
 
-  // Feedback for the almost band (docs/03 §3), and for a pass that leaned on
-  // the error budget — the score alone would not say a slip was let through.
+  // An almost (docs/03 §3) moved on without being a pass: amber, not green.
   const almost = phase.kind === 'feedback' && phase.band === 'almost';
   // Type and Speak are the tiers that count toward Memorized (docs/03 §1);
   // an almost at Type moves on to Speak without banking the day.
   const almostAtType =
     almost && !!session && phase.tierCleared && session.tier === 5 && !phase.memorized;
-  const forgiven =
-    phase.kind === 'feedback' && phase.band === 'pass' && phase.accuracy < 1
-      ? phase.slips === null
-        ? t('feedback.slipForgiven')
-        : t('feedback.slipsForgiven', { count: phase.slips })
-      : null;
 
-  // The result's heading, also what VoiceOver is told when the round is graded.
-  const verdict =
-    phase.kind === 'feedback' && session
-      ? phase.memorized
-        ? t('feedback.memorized')
-        : almost
-          ? phase.needsCleanPass
-            ? t('feedback.almostNotClean')
-            : phase.result
-              ? t('feedback.almostMarked')
-              : t('feedback.almostMoveOn')
-          : phase.tierCleared
-            ? forgiven
-              ? t('feedback.tierClearedForgiven', { tier: tierName(session.tier), forgiven })
-              : t('feedback.tierCleared', { tier: tierName(session.tier) })
-            : phase.passed
-              ? forgiven
-                ? t('feedback.passedForgiven', { forgiven })
-                : t('feedback.roundPassed')
-              : phase.result
-                ? t('feedback.notQuiteMarked')
-                : t('feedback.notQuiteRetry')
-      : null;
+  // The result's heading (also what VoiceOver is told) and its buttons.
+  const feedback =
+    phase.kind === 'feedback' && session ? describeFeedback(phase, session.tier) : null;
+  const verdict = feedback?.heading ?? null;
+  const language = getTranslation(goal?.translationId ?? 'web').languageCode;
 
   // The graded round is replaced by its result (the scroll view below is
   // keyed by phase), which drops VoiceOver's focus: say the outcome rather
@@ -431,7 +435,9 @@ export function PracticeScreen({
   // summary, which also arrive in place.
   const spoken =
     phase.kind === 'feedback' && verdict
-      ? `${t('feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })}. ${verdict}`
+      ? phase.graded
+        ? `${t('feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })}. ${verdict}`
+        : verdict
       : phase.kind === 'summary'
         ? phase.memorized
           ? t('summary.memorized', { reference })
@@ -490,12 +496,11 @@ export function PracticeScreen({
           <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('restingBody', { tier: tierName(6) })}
           </Text>
-          <Button label={t('common:done')} onPress={closeModal} style={styles.primaryButton} />
         </>
       )}
 
       {phase.kind === 'round' && session && chunk && (
-        <>
+        <UnsavedInputProvider value={reportUnsaved}>
           <LadderProgress progress={ladderProgress(session)} current />
           <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('round.header', { reference, tier: tierName(session.tier) })}
@@ -515,7 +520,7 @@ export function PracticeScreen({
             translationId={goal?.translationId ?? 'web'}
             onFinish={finishRound}
           />
-        </>
+        </UnsavedInputProvider>
       )}
 
       {phase.kind === 'feedback' && session && (
@@ -524,28 +529,26 @@ export function PracticeScreen({
             progress={ladderProgress(session, { lastRoundOwed: phase.needsCleanPass })}
             current={false}
           />
-          <Text
-            accessibilityLabel={t('feedback.accuracyLabel', {
-              value: Math.round(phase.accuracy * 100),
-            })}
-            style={[
-              styles.accuracy,
-              short && styles.accuracyShort,
-              {
-                // Amber for an almost: it moved on, but it was not a pass.
-                // Gold only when the verse was just memorized.
-                color: phase.memorized
+          {/* A score only where the round was graded: Read and First
+              Letters end on their heading alone. */}
+          {phase.graded && (
+            <ScoreHeadline
+              accuracy={phase.accuracy}
+              label={t('feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })}
+              countUp={phase.passed}
+              // Amber for an almost: it moved on, but it was not a pass.
+              // Gold only when the verse was just memorized.
+              color={
+                phase.memorized
                   ? colors.gold
                   : almost
                     ? colors.amber
                     : phase.passed
                       ? colors.success
-                      : colors.error,
-                fontFamily: fonts?.scripture,
-              },
-            ]}>
-            {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
-          </Text>
+                      : colors.error
+              }
+            />
+          )}
           {/* The dissolve marks a clean clear; an almost shows its slips. */}
           {phase.tierCleared && !almost && (
             <Dissolution
@@ -561,7 +564,12 @@ export function PracticeScreen({
             {verdict}
           </Text>
           {phase.result && (almost || !phase.tierCleared) && (
-            <WordFeedback result={phase.result} tone={almost ? 'almost' : 'error'} />
+            <WordFeedback
+              result={phase.result}
+              text={text}
+              language={language}
+              tone={almost ? 'almost' : 'error'}
+            />
           )}
           {phase.sealsTomorrow && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -592,50 +600,6 @@ export function PracticeScreen({
               {t('feedback.suggestDrop', { tier: tierName(session.tier) })}
             </Text>
           )}
-          <Button
-            label={
-              phase.sealsTomorrow
-                ? t('feedback.doneForToday')
-                : phase.needsCleanPass
-                  ? t('common:retry')
-                  : phase.restPoint
-                    ? t('feedback.doneForToday')
-                    : phase.tierCleared
-                      ? t('common:continue')
-                      : phase.passed
-                        ? t('common:continue')
-                        : t('common:retry')
-            }
-            onPress={() => void (phase.restPoint ? finishSession() : continueSession())}
-            style={[styles.primaryButton, short && styles.primaryButtonShort]}
-          />
-          {phase.restPoint && (
-            <Button
-              variant="plain"
-              label={t('feedback.keepGoing')}
-              accessibilityHint={t('feedback.keepGoingHint', { tier: tierName(REST_TIER + 1) })}
-              onPress={() => void continueSession()}
-              style={styles.secondaryButton}
-            />
-          )}
-          {phase.needsCleanPass && (
-            <Button
-              variant="plain"
-              label={t('feedback.stopForToday')}
-              accessibilityHint={t('feedback.stopForTodayHint', { tier: tierName(6) })}
-              onPress={() => void finishSession()}
-              style={styles.secondaryButton}
-            />
-          )}
-          {phase.suggestDropTier && (
-            <Button
-              variant="plain"
-              label={t('feedback.rebuildAt', { tier: tierName(Math.max(0, session.tier - 1)) })}
-              accessibilityHint={t('feedback.rebuildHint')}
-              onPress={() => void dropToLowerTier()}
-              style={styles.secondaryButton}
-            />
-          )}
         </>
       )}
 
@@ -654,6 +618,41 @@ export function PracticeScreen({
       )}
     </KeyboardScroll>
   );
+
+  // The way on, pinned under the scroll view: the same place on every result,
+  // the summary and the Read round, however long the verse above it is, and
+  // on screen on a short window (iPhone Duo opened is 669pt high). Rounds
+  // with a text field or their own controls keep their actions with them.
+  const footer =
+    phase.kind === 'round' && session && chunk && currentMode(session) === 'read' ? (
+      <ActionFooter>
+        <Button label={t('read.done')} onPress={() => void finishRound({ selfPass: true })} />
+      </ActionFooter>
+    ) : feedback ? (
+      <ActionFooter>
+        <Button label={feedback.primary.label} onPress={() => act(feedback.primary.action)} />
+        {feedback.secondary.map((button) => (
+          <Button
+            key={button.label}
+            variant="plain"
+            label={button.label}
+            accessibilityHint={button.hint}
+            onPress={() => act(button.action)}
+          />
+        ))}
+      </ActionFooter>
+    ) : phase.kind === 'sealsTomorrow' ? (
+      <ActionFooter>
+        <Button label={t('common:done')} onPress={closeModal} />
+      </ActionFooter>
+    ) : phase.kind === 'summary' ? (
+      <ActionFooter>
+        <Button label={t('common:done')} onPress={closeModal} />
+        {phase.next && (
+          <Button variant="plain" label={phase.next} onPress={() => void startNext()} />
+        )}
+      </ActionFooter>
+    ) : null;
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
@@ -680,7 +679,10 @@ export function PracticeScreen({
             and a half-folded iPhone Duo keeps its crease in the gutter
             instead of under a centred column. */}
         <FoldAwareRow fill>
-          {round}
+          <View style={styles.flex}>
+            {round}
+            {footer}
+          </View>
           {showRail && session && chunk && goal ? (
             <View style={styles.rail}>
               <Card>
@@ -740,7 +742,8 @@ function RoundBody({
   const mode = currentMode(session);
   switch (mode) {
     case 'read':
-      return <ReadRound text={text} onDone={() => onFinish({ selfPass: true })} />;
+      // Its one action is in the screen's footer.
+      return <ReadRound text={text} />;
     case 'firstLetters':
       return <FirstLettersRound text={text} onResult={(selfPass) => onFinish({ selfPass })} />;
     case 'blanks25':
@@ -863,7 +866,6 @@ function SessionSummary({
               : t('summary.pickUp', { tier: tierName(nextTier(standing)) })}
         </Text>
       )}
-      <Button label={t('common:done')} onPress={closeModal} style={styles.primaryButton} />
     </>
   );
 }
@@ -893,16 +895,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
     gap: spacing.sm,
   },
-  reference: { fontSize: 14, marginBottom: spacing.lg },
+  reference: { ...textStyle.footnote, marginBottom: spacing.lg },
   // Sits under the reference line, inside the gap it leaves above the round.
   sealNote: { fontSize: 15, fontWeight: '600', marginTop: -spacing.md, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  accuracy: { fontSize: displayType.medium, marginTop: spacing.xl },
-  accuracyShort: { fontSize: 44, marginTop: 0 },
   suggestion: { ...textStyle.subheadline, marginTop: spacing.md },
-  primaryButton: { marginTop: spacing.xxl },
-  primaryButtonShort: { marginTop: spacing.lg },
-  // The plain button is 44pt tall where the old text row was about 36pt, so
-  // the gap gives the difference back: the pair is no taller on a short window.
-  secondaryButton: { marginTop: spacing.sm },
 });

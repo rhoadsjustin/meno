@@ -9,7 +9,8 @@ export default {
   emptyBody: 'Los versículos memorizados vuelven aquí cuando llega su fecha de repaso.',
   loadFailedTitle: 'No se pudieron cargar tus repasos',
   loadFailedBody: 'No se perdió nada: los versículos pendientes seguirán aquí.',
-  roundHeader: 'Repaso · {{reference}}',
+  roundHeader: '{{position}} · {{reference}}',
+  positionLabel: 'Repaso {{index}} de {{total}}',
   almost: 'Casi',
   almostMarked: 'Casi — abajo están marcadas las palabras que fallaron',
   outcome: {
