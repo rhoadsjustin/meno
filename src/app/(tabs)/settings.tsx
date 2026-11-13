@@ -46,11 +46,13 @@ export default function SettingsScreen() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   // An over-the-air update waiting for a restart, and whether one is running.
   const update = useUpdateStatus();
-  // Wide windows (iPhone Duo opened, Split View): a split view. The rows
-  // become a selectable list on the left and the right pane shows what the
-  // row leads to — the whole setup guide, or just the section that explains
-  // the row — instead of pushing a modal (HIG: list and detail side by side).
-  const { isWide } = useContentLayout();
+  // Windows wider than tall (iPhone Duo opened, Split View): a split view.
+  // The rows become a selectable list on the left and the right pane shows
+  // what the row leads to — the whole setup guide, or just the section that
+  // explains the row — instead of pushing a modal (HIG: list and detail side
+  // by side). Opened and rotated (669×951) is one column that pushes the
+  // guide and lock setup, as on a phone.
+  const { twoPane } = useContentLayout();
   const [detail, setDetail] = useState<Detail>('guide');
   // Whether each reminder will arrive, and why not (the guide reads the same).
   const reminders = useReminderStatus();
@@ -107,7 +109,7 @@ export default function SettingsScreen() {
     AccessibilityInfo.announceForAccessibility(t('lock.killSwitchDone'));
   }, [t]);
 
-  const selected = (d: Detail) => isWide && detail === d;
+  const selected = (d: Detail) => twoPane && detail === d;
   const rowCard = (d: Detail) =>
     selected(d) ? { backgroundColor: colors.lapisWash, borderColor: colors.lapisWash } : undefined;
   // On the selection wash, inkFaint (light) and lapis (dark) fall to 4.1:1,
@@ -135,9 +137,9 @@ export default function SettingsScreen() {
       <Card style={rowCard('guide')}>
         <Pressable
           accessibilityRole="button"
-          accessibilityState={isWide ? { selected: detail === 'guide' } : undefined}
-          accessibilityHint={isWide ? t('guide.hintWide') : t('guide.hint')}
-          onPress={() => (isWide ? setDetail('guide') : router.push('/help'))}
+          accessibilityState={twoPane ? { selected: detail === 'guide' } : undefined}
+          accessibilityHint={twoPane ? t('guide.hintWide') : t('guide.hint')}
+          onPress={() => (twoPane ? setDetail('guide') : router.push('/help'))}
           style={styles.rowText}>
           <Text style={[styles.rowTitle, { color: titleColor('guide'), fontFamily: fonts?.ui }]}>
             {t('guide.title')}
@@ -151,10 +153,10 @@ export default function SettingsScreen() {
       <Card style={rowCard('reminders')}>
         <View style={styles.row}>
           <Pressable
-            accessibilityRole={isWide ? 'button' : undefined}
-            accessibilityState={isWide ? { selected: detail === 'reminders' } : undefined}
-            accessibilityHint={isWide ? t('reminders.hintWide') : undefined}
-            disabled={!isWide}
+            accessibilityRole={twoPane ? 'button' : undefined}
+            accessibilityState={twoPane ? { selected: detail === 'reminders' } : undefined}
+            accessibilityHint={twoPane ? t('reminders.hintWide') : undefined}
+            disabled={!twoPane}
             onPress={() => setDetail('reminders')}
             style={styles.rowText}>
             <Text
@@ -241,9 +243,9 @@ export default function SettingsScreen() {
         <Card style={rowCard('lock')}>
           <Pressable
             accessibilityRole="button"
-            accessibilityState={isWide ? { selected: detail === 'lock' } : undefined}
-            accessibilityHint={isWide ? t('lock.hintWide') : undefined}
-            onPress={() => (isWide ? setDetail('lock') : router.push('/lock-setup'))}
+            accessibilityState={twoPane ? { selected: detail === 'lock' } : undefined}
+            accessibilityHint={twoPane ? t('lock.hintWide') : undefined}
+            onPress={() => (twoPane ? setDetail('lock') : router.push('/lock-setup'))}
             style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: titleColor('lock'), fontFamily: fonts?.ui }]}>
               {t('lock.title')}
@@ -336,23 +338,25 @@ export default function SettingsScreen() {
   // The detail pane: the guide in full, or the one section the row is about.
   const detailPane =
     detail === 'guide' ? (
-      <HelpGuide />
+      // No checklist: the rows beside it are the index, and nothing here
+      // scrolls the pane to a section.
+      <HelpGuide overview={false} />
     ) : detail === 'reminders' ? (
-      <HelpGuide sections={['quizzes']} overview={false} faq={false} reminderLines={false} />
+      // The row beside it has the switch, the status and the way to allow
+      // notifications, so the pane only explains.
+      <HelpGuide sections={['quizzes']} overview={false} faq={false} remindersBeside />
     ) : (
       <HelpGuide sections={['lock']} overview={false} faq={false} />
     );
 
   return (
     <Screen title={t('app:tabs.settings')} wide>
-      {isWide ? (
-        <FoldAwareRow>
-          {rows}
-          {detailPane}
-        </FoldAwareRow>
-      ) : (
-        rows
-      )}
+      {/* Always the row: with no second pane the rows keep their place in
+          the tree, so folding and unfolding does not remount them. */}
+      <FoldAwareRow>
+        {rows}
+        {twoPane ? detailPane : null}
+      </FoldAwareRow>
     </Screen>
   );
 }

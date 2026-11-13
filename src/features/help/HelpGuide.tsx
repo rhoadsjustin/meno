@@ -132,7 +132,8 @@ const onPlatform = (key: SectionKey | (typeof FAQ)[number]) =>
 export type HelpGuideProps = {
   /** Which sections to show; all by default. */
   sections?: SectionKey[];
-  /** The status checklist that jumps to each section (needs `scrollTo`). */
+  /** The status checklist. With `scrollTo` its rows are buttons that jump to
+   * each section; without it they are plain status rows. */
   overview?: boolean;
   /** The common-questions card. */
   faq?: boolean;
@@ -140,8 +141,13 @@ export type HelpGuideProps = {
   scrollTo?: (y: number) => void;
   /** Runs before the guide pushes another route (the Help modal closes itself first). */
   onBeforeNavigate?: () => void;
-  /** The per-reminder lines; Settings' detail pane leaves them to the row beside it. */
-  reminderLines?: boolean;
+  /**
+   * Settings' detail pane sits beside the reminders row, which already has
+   * the switch, each reminder's status and the way to allow notifications.
+   * The reminders section then only explains: no status under its title, no
+   * per-reminder lines and no button repeating the row's switch.
+   */
+  remindersBeside?: boolean;
 };
 
 export function HelpGuide({
@@ -150,7 +156,7 @@ export function HelpGuide({
   faq = true,
   scrollTo,
   onBeforeNavigate,
-  reminderLines = true,
+  remindersBeside = false,
 }: HelpGuideProps) {
   const colors = useThemeColors();
   const { t } = useTranslation('help');
@@ -234,27 +240,42 @@ export function HelpGuide({
     <View style={styles.guide} onLayout={(e) => (rootY.current = e.nativeEvent.layout.y)}>
       {overview && (
         <Card>
-          {SECTIONS.filter((key) => shown.has(key)).map((key, i) => (
-            <Pressable
-              key={key}
-              accessibilityRole="button"
-              accessibilityLabel={t('overviewLabel', {
-                title: t(`sections.${key}`),
-                status: statusLabel(key),
-              })}
-              accessibilityHint={t('overviewHint')}
-              onPress={() => jumpTo(key)}
-              style={[
-                styles.overviewRow,
-                i > 0 && {
-                  borderTopColor: colors.separator,
-                  borderTopWidth: StyleSheet.hairlineWidth,
-                },
-              ]}>
-              <Text style={[styles.overviewTitle, text]}>{t(`sections.${key}`)}</Text>
-              <StatusText status={statuses[key]} label={statusLabel(key)} />
-            </Pressable>
-          ))}
+          {SECTIONS.filter((key) => shown.has(key)).map((key, i) => {
+            const label = t('overviewLabel', {
+              title: t(`sections.${key}`),
+              status: statusLabel(key),
+            });
+            const rowStyle = [
+              styles.overviewRow,
+              i > 0 && {
+                borderTopColor: colors.separator,
+                borderTopWidth: StyleSheet.hairlineWidth,
+              },
+            ];
+            const row = (
+              <>
+                <Text style={[styles.overviewTitle, text]}>{t(`sections.${key}`)}</Text>
+                <StatusText status={statuses[key]} label={statusLabel(key)} />
+              </>
+            );
+            // Only a host that can scroll makes these buttons: a row that
+            // says "Shows the steps" and does nothing is worse than a status.
+            return scrollTo ? (
+              <Pressable
+                key={key}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityHint={t('overviewHint')}
+                onPress={() => jumpTo(key)}
+                style={rowStyle}>
+                {row}
+              </Pressable>
+            ) : (
+              <View key={key} accessible accessibilityLabel={label} style={rowStyle}>
+                {row}
+              </View>
+            );
+          })}
         </Card>
       )}
 
@@ -264,6 +285,7 @@ export function HelpGuide({
           title={t('sections.quizzes')}
           status={statuses.quizzes}
           statusLabel={statusLabel('quizzes')}
+          showStatus={!remindersBeside}
           onSectionLayout={recordOffset}>
           <Text style={[styles.body, text]}>{t('quizzes.body')}</Text>
           {reminders?.overall === 'blocked' && (
@@ -281,11 +303,12 @@ export function HelpGuide({
                   t('steps.comeBack'),
                 ]}
               />
+              {/* Kept beside Settings' row too: the first step points at it. */}
               <Button label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.quizzes === 'ready' ? (
             <>
-              {reminderLines && reminders && <ReminderStatusList status={reminders} />}
+              {!remindersBeside && reminders && <ReminderStatusList status={reminders} />}
               <Text style={[styles.tip, faint]}>{t('quizzes.readyTip')}</Text>
             </>
           ) : (
@@ -293,12 +316,16 @@ export function HelpGuide({
               <Text style={[styles.tip, faint]}>
                 {reminders?.overall === 'off' ? t('quizzes.offTip') : t('quizzes.askTip')}
               </Text>
-              <Button
-                label={
-                  reminders?.canAsk ? t('actions.allowNotifications') : t('actions.turnOnReminders')
-                }
-                onPress={() => void turnOnQuizzes()}
-              />
+              {!remindersBeside && (
+                <Button
+                  label={
+                    reminders?.canAsk
+                      ? t('actions.allowNotifications')
+                      : t('actions.turnOnReminders')
+                  }
+                  onPress={() => void turnOnQuizzes()}
+                />
+              )}
             </>
           )}
         </Section>
@@ -457,6 +484,7 @@ function Section({
   title,
   status,
   statusLabel,
+  showStatus = true,
   onSectionLayout,
   children,
 }: PropsWithChildren<{
@@ -465,6 +493,8 @@ function Section({
   status: Status;
   /** Overrides the stock wording for `status`. */
   statusLabel?: string;
+  /** The status line under the title. */
+  showStatus?: boolean;
   /** Reports the section's scroll offset so the overview can jump to it. */
   onSectionLayout: (key: SectionKey, e: LayoutChangeEvent) => void;
 }>) {
@@ -478,7 +508,7 @@ function Section({
             style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {title}
           </Text>
-          <StatusText status={status} label={statusLabel} />
+          {showStatus && <StatusText status={status} label={statusLabel} />}
         </View>
         {children}
       </Card>
