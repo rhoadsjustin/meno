@@ -69,5 +69,6 @@ export default {
     allow: 'Permitir notificaciones',
     turnOn: 'Activar recordatorios',
     dismissHint: 'Lo oculta para siempre. Los recordatorios siguen en Ajustes.',
+    dismissed: 'Meno no volverá a preguntar. Puedes activar los recordatorios cuando quieras en Ajustes → Recordatorios.',
   },
 } satisfies Catalog<typeof en>;

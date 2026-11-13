@@ -36,6 +36,7 @@ import {
   StarterDeck,
   StarterDeckPlaceholder,
 } from '@/features/goals/StarterDeck';
+import { useStartStarter } from '@/features/goals/useStartStarter';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
 import { RecapTodayCard, useRecapOffer } from '@/features/wrapped/RecapEntry';
@@ -50,7 +51,6 @@ import {
   activeGoal,
   listActiveGoals,
   listGoals,
-  startStarterGoal,
   type Goal,
 } from '@/services/db/repos/goals';
 import { countDueReviews, dueReviewChunks } from '@/services/db/repos/reviews';
@@ -104,16 +104,12 @@ export default function TodayScreen() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const everLoaded = useRef(false);
-  // Quick start (empty state only): the starter cards, and which one is
-  // being turned into a passage right now.
+  // Quick start (empty state only): the starter cards.
   const [starters, setStarters] = useState<StarterPassage[] | null>(null);
-  const [startingId, setStartingId] = useState<string | null>(null);
-  const [startFailed, setStartFailed] = useState(false);
   const [startersFailed, setStartersFailed] = useState(false);
   // Nothing in progress, but passages finished earlier: the empty state
   // must not tell someone with memorized verses that they have none.
   const [hasFinished, setHasFinished] = useState(false);
-  const startBusy = useRef(false);
   // Year in the Word, in season (docs/10 §5.5).
   const recapOffer = useRecapOffer();
   // The Advent plan, in season (docs/11 §3.2).
@@ -243,28 +239,15 @@ export default function TodayScreen() {
     [reload, t],
   );
 
-  // One tap, one passage: the ref blocks a second tap before React has
-  // re-rendered the disabled buttons (and `startStarterGoal` dedupes too).
-  const startStarter = useCallback(async (passage: StarterPassage) => {
-    if (startBusy.current) return;
-    startBusy.current = true;
-    setStartingId(passage.starter.id);
-    setStartFailed(false);
-    void Haptics.selectionAsync();
-    try {
-      // Stay in the translation the card showed: no ESV attempt for a KJV card.
-      const goal = await startStarterGoal(passage.starter, {
-        preferEsv: passage.translationId !== 'kjv',
-      });
-      router.push(`/practice/${goal.id}`);
-    } catch {
-      setStartFailed(true);
-      AccessibilityInfo.announceForAccessibility(t('empty.startFailed'));
-    } finally {
-      startBusy.current = false;
-      setStartingId(null);
-    }
-  }, [t]);
+  // Quick start: the same path as onboarding's last step (useStartStarter).
+  const openPractice = useCallback((goal: Goal) => router.push(`/practice/${goal.id}`), []);
+  const { startingId, failed: startFailed, start } = useStartStarter(openPractice);
+  // Stay in the translation the card showed: no ESV attempt for a KJV card.
+  const startStarter = useCallback(
+    (passage: StarterPassage) =>
+      start(passage.starter, { preferEsv: passage.translationId !== 'kjv' }),
+    [start],
+  );
 
   // The flame bounces once when today becomes secured while this screen is
   // alive (coming back from a session), never on the first read and never

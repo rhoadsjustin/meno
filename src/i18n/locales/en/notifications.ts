@@ -67,5 +67,7 @@ export default {
     allow: 'Allow notifications',
     turnOn: 'Turn on reminders',
     dismissHint: 'Hides this for good. Reminders stay in Settings.',
+    // Takes the card's place once Not now is tapped.
+    dismissed: 'Meno won’t ask again. You can turn reminders on any time in Settings → Reminders.',
   },
 } as const;
