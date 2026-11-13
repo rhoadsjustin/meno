@@ -216,7 +216,13 @@ function Reader({
   const memorize = (v: Verse) =>
     router.push({
       pathname: '/goal-wizard',
-      params: { bookId: v.bookId, chapter: String(v.chapter), verse: String(v.verse) },
+      // The wizard opens in the translation being read, when it can use it.
+      params: {
+        bookId: v.bookId,
+        chapter: String(v.chapter),
+        verse: String(v.verse),
+        translation: translationId,
+      },
     });
   // The verse whose actions are up, tinted while they are.
   const [picked, setPicked] = useState<number | null>(null);
