@@ -6,7 +6,12 @@ import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
-import { RecapStatsRow, useRecapOffer } from '@/features/wrapped/RecapEntry';
+import {
+  RecapPastYears,
+  RecapStatsRow,
+  usePastRecapYears,
+  useRecapOffer,
+} from '@/features/wrapped/RecapEntry';
 import { useTranslation } from '@/i18n/react';
 import { BADGE_CODES, badgeHint, badgeName, earnedBadges } from '@/services/db/repos/badges';
 import { loadStats, type Stats } from '@/services/db/repos/stats';
@@ -22,6 +27,8 @@ export default function StatsScreen() {
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [earned, setEarned] = useState<Map<string, Date>>(new Map());
   const recapOffer = useRecapOffer();
+  // Finished years stay reachable after the season ends (docs/10 §5.4).
+  const pastYears = usePastRecapYears();
 
   useFocusEffect(
     useCallback(() => {
@@ -162,6 +169,7 @@ export default function StatsScreen() {
             {numerals}
             <RecapStatsRow offer={recapOffer} />
             {practice}
+            <RecapPastYears years={pastYears} />
           </>
           {badges}
         </FoldAwareRow>
@@ -171,6 +179,7 @@ export default function StatsScreen() {
           <RecapStatsRow offer={recapOffer} />
           {practice}
           {badges}
+          <RecapPastYears years={pastYears} />
         </>
       )}
     </Screen>

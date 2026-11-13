@@ -2,7 +2,8 @@
  * Ways into Year in the Word (docs/10 §5.5): a quiet card on Today and a
  * row on Stats, shown in season (Dec 1 – Jan 31) or with the tester
  * preview on. Before three days of practice the Today card says what
- * opens it instead of linking to an empty recap.
+ * opens it instead of linking to an empty recap. Finished years stay
+ * reachable from a quiet group at the bottom of Stats (§5.4, "Past years").
  */
 import { SymbolView } from 'expo-symbols';
 import { router, useFocusEffect } from 'expo-router';
@@ -13,7 +14,7 @@ import { Card } from '@/components/card';
 import { useTranslation } from '@/i18n/react';
 import { wrappedPreview } from '@/services/db/repos/appFlags';
 import { localToday } from '@/services/db/repos/streaks';
-import { activeDaysIn } from '@/services/db/repos/wrapped';
+import { activeDaysIn, loadPastRecapYears } from '@/services/db/repos/wrapped';
 import { RECAP_MIN_DAYS, recapYearFor } from '@/services/wrapped';
 import { fonts, spacing, useThemeColors } from '@/theme';
 
@@ -104,6 +105,57 @@ export function RecapStatsRow({ offer }: { offer: RecapOffer | null }) {
   );
 }
 
+/** Finished years with a recap to reopen, re-read on focus. Newest first. */
+export function usePastRecapYears(): number[] {
+  const [years, setYears] = useState<number[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      let live = true;
+      loadPastRecapYears()
+        .then((found) => live && setYears(found))
+        .catch(() => live && setYears([]));
+      return () => {
+        live = false;
+      };
+    }, []),
+  );
+  return years;
+}
+
+/** Stats' "Year in the Word" group: one row per finished year. */
+export function RecapPastYears({ years }: { years: number[] }) {
+  const colors = useThemeColors();
+  const { t } = useTranslation('wrapped');
+  if (years.length === 0) return null;
+  return (
+    <Card>
+      <Text
+        accessibilityRole="header"
+        style={[styles.groupTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        {t('pastYears')}
+      </Text>
+      {years.map((year, i) => (
+        <Pressable
+          key={year}
+          accessibilityRole="button"
+          accessibilityLabel={t('statsRow', { year })}
+          onPress={() => open(year)}
+          style={({ pressed }) => [
+            styles.row,
+            styles.pastRow,
+            i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+            pressed && styles.pressed,
+          ]}>
+          <Text style={[styles.pastTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            {t('statsRow', { year })}
+          </Text>
+          <SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={14} tintColor={colors.inkFaint} />
+        </Pressable>
+      ))}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
   pressed: { opacity: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -111,4 +163,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 19, fontWeight: '600' },
   hint: { fontSize: 15, lineHeight: 20 },
   rowTitle: { flex: 1, fontSize: 17, fontWeight: '600' },
+  // Matches the Stats cards' section titles.
+  groupTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },
+  pastRow: { minHeight: 44 },
+  pastTitle: { flex: 1, fontSize: 17 },
 });
