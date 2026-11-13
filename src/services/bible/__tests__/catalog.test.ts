@@ -7,6 +7,7 @@ import {
   matchesQuery,
   preferredLanguageIds,
   searchCatalog,
+  selectedFirst,
   summarizeLanguages,
   translationCoverage,
   type LanguageInfo,
@@ -98,6 +99,20 @@ describe('groupByLanguage', () => {
       'yv-1588',
       'yv-111',
     ]);
+  });
+
+  it('leads a section with the current choice and keeps the rest in order', () => {
+    const [english] = groupByLanguage([niv, esv, amp, web, kjv], languages, ['en']);
+    expect(selectedFirst(english, 'yv-111').translations.map((x) => x.id)).toEqual([
+      'yv-111',
+      'kjv',
+      'web',
+      'esv',
+      'yv-1588',
+    ]);
+    expect(selectedFirst(english, 'kjv')).toBe(english);
+    expect(selectedFirst(english, 'yv-9')).toBe(english);
+    expect(selectedFirst(english, undefined)).toBe(english);
   });
 
   it('orders preferred languages first, then the rest alphabetically', () => {

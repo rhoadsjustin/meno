@@ -29,7 +29,7 @@ export default {
     noResultsHint: 'Check the spelling, or search by a language or abbreviation.',
     empty: 'No translations available.',
     footnote:
-      'Translations that need a connection are read online each time; Meno doesn’t store their text.',
+      'Translations not marked “On this device” or “Saved for your passages” need a connection. They are read online each time; Meno doesn’t store their text.',
   },
   wizard: {
     choosePassage: 'Choose a passage',
@@ -40,6 +40,11 @@ export default {
     // {{date}} is today plus the plan's estimated days (03 §5).
     finishAround: 'At that pace you’d finish around {{date}}.',
     startMemorizing: 'Start memorizing',
+    // Asked before Cancel or a swipe down throws away a chosen passage.
+    discardTitle: 'Discard this passage?',
+    discardMessage: 'The verses you chose won’t be kept.',
+    discard: 'Discard',
+    keepEditing: 'Keep editing',
   },
   stats: {
     verses: 'Verses',

@@ -25,7 +25,11 @@ import type { CatalogRefreshState } from '@/features/goals/translation-catalog';
 import { translationCoverage, type LanguageSummary, type Translation } from '@/services/bible';
 import { useThemeColors, fonts, radius, spacing, textStyle } from '@/theme';
 
-/** Plain words for where a translation's text lives. */
+/**
+ * Plain words for where a translation's text lives. Rows show it only for
+ * the few kept on the device (`storedLabel`); VoiceOver hears it on every
+ * row, since the footnote that covers the rest is a long way down the list.
+ */
 export function availabilityLabel(tr: Translation): string {
   switch (tr.source) {
     case 'bundled':
@@ -35,6 +39,15 @@ export function availabilityLabel(tr: Translation): string {
     default:
       return translate('goals:picker.needsConnection');
   }
+}
+
+/**
+ * The availability worth a place on the row: text on this device, or saved
+ * with the person's passages. Everything else needs a connection, which the
+ * list's footnote says once instead of every row saying it.
+ */
+export function storedLabel(tr: Translation): string | null {
+  return tr.source === 'bundled' || tr.source === 'esv_api' ? availabilityLabel(tr) : null;
 }
 
 /** "New Testament", "4 books", or nothing for a whole Bible. */
@@ -107,14 +120,14 @@ export function TranslationRow({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const detail = [languageTitle, tr.abbrev, coverageLabel(tr), availabilityLabel(tr)]
-    .filter(Boolean)
-    .join(' · ');
+  const facts = [languageTitle, tr.abbrev, coverageLabel(tr)];
+  const detail = [...facts, storedLabel(tr)].filter(Boolean).join(' · ');
+  const spoken = [...facts, availabilityLabel(tr)].filter(Boolean).join(' · ');
   return (
     <GroupRow
       position={position}
       onPress={onPress}
-      accessibilityLabel={`${tr.name}. ${detail}`}
+      accessibilityLabel={`${tr.name}. ${spoken}`}
       accessibilityState={{ selected }}>
       <View style={styles.rowText}>
         <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -181,7 +194,7 @@ export function GroupHeader({ title }: { title: string }) {
     <Text
       accessibilityRole="header"
       style={[styles.groupHeader, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-      {Platform.OS === 'ios' ? title.toLocaleUpperCase() : title}
+      {title}
     </Text>
   );
 }
@@ -243,9 +256,10 @@ export function CatalogStatusRow({
 }
 
 /**
- * The version-list refresh, at the top of the picker: a spinner while the
- * Platform is asked, then how many translations arrived, or the failure in
- * the error colour with what to try. The bar's refresh button retries.
+ * A check started with the bar's refresh button, at the top of the picker: a
+ * spinner while the Platform is asked, then how many translations arrived,
+ * or the failure in the error colour with what to try. The check the picker
+ * runs on opening never shows here.
  */
 export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) {
   const colors = useThemeColors();
