@@ -157,6 +157,11 @@ export default function SettingsScreen() {
             accessibilityState={twoPane ? { selected: detail === 'reminders' } : undefined}
             accessibilityHint={twoPane ? t('reminders.hintWide') : undefined}
             disabled={!twoPane}
+            // In one column this is only the switch's caption: VoiceOver
+            // would read it as a dimmed element with the switch a separate,
+            // undescribed stop. The switch carries both lines instead.
+            accessibilityElementsHidden={!twoPane}
+            importantForAccessibility={twoPane ? 'auto' : 'no-hide-descendants'}
             onPress={() => setDetail('reminders')}
             style={styles.rowText}>
             <Text
@@ -172,6 +177,7 @@ export default function SettingsScreen() {
             onValueChange={(v) => void toggleNotifications(v)}
             trackColor={{ true: colors.lapis }}
             accessibilityLabel={t('reminders.title')}
+            accessibilityHint={twoPane ? undefined : t('reminders.body')}
           />
         </View>
         {reminders && reminders.overall === 'off' && (

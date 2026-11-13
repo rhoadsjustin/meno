@@ -13,6 +13,7 @@ import {
 
 import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { announce } from '@/components/screen-reader';
 import { PassageStep } from '@/features/goals/PassageStep';
 import { Button } from '@/components/button';
 import { locale } from '@/i18n';
@@ -126,7 +127,10 @@ export function GoalWizard() {
       setTitle(formatRange(range));
       setStep('plan');
     } catch {
-      setError(loadFailureMessage(id, formatRange(range)));
+      const message = loadFailureMessage(id, formatRange(range));
+      setError(message);
+      // The message replaces a hint out of VoiceOver's focus: say it.
+      announce(message);
     } finally {
       setBusy(false);
     }
@@ -141,7 +145,9 @@ export function GoalWizard() {
       await createGoal({ translationId, range, title: title.trim() || formatRange(range) });
       closeModal();
     } catch {
-      setError(loadFailureMessage(translationId, formatRange(range)));
+      const message = loadFailureMessage(translationId, formatRange(range));
+      setError(message);
+      announce(message);
       setBusy(false);
     }
   }, [translationId, selection, title]);
@@ -200,7 +206,9 @@ export function GoalWizard() {
             </View>
           )}
           {error && (
-            <Text style={[styles.error, { color: colors.error, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="alert"
+              style={[styles.error, { color: colors.error, fontFamily: fonts?.ui }]}>
               {error}
             </Text>
           )}
@@ -299,7 +307,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     fontSize: 17,
   },
-  statsRow: { flexDirection: 'row', gap: spacing.xl, marginVertical: spacing.md },
+  // Wraps: at accessibility sizes four stats are wider than the sheet.
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: spacing.xl,
+    rowGap: spacing.md,
+    marginVertical: spacing.md,
+  },
   stat: { alignItems: 'flex-start' },
   statValue: { fontSize: 28 },
   statLabel: { fontSize: 13 },

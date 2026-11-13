@@ -58,12 +58,16 @@ const MenoWidgetComponent = (
   environment: WidgetEnvironment<MenoWidgetConfiguration>
 ) => {
   'widget';
-  const lapis = '#2244AA';
-  const gold = '#8F6C1F';
-  const inkFaint = '#6E7280';
+  // The theme's light and dark values (src/theme/palette.ts), inline because
+  // the widget runtime sees no module-scope constants. The light accents on
+  // the dark background were 2.2:1 to 3.9:1; these pass 4.5:1.
+  const dark = environment.colorScheme === 'dark';
+  const lapis = dark ? '#5B7FE8' : '#2244AA';
+  const gold = dark ? '#D4AF37' : '#8F6C1F';
+  const inkFaint = dark ? '#8B8F9C' : '#6E7280';
   const family = environment.widgetFamily;
   // iOS 17+ requires the containerBackground API for home screen widgets.
-  const bg = environment.colorScheme === 'dark' ? '#10131A' : '#FBFAF7';
+  const bg = dark ? '#10131A' : '#FBFAF7';
   const flame = props.streakActiveToday ? '🔥' : '·';
 
   // Resolve the user's choice against the tier ladder, then pick the text.
