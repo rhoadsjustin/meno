@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildFlow, pageRuns, paginate, spreadCount, spreadFor } from '@/features/reader/paginate';
+import {
+  buildFlow,
+  pageRuns,
+  paginate,
+  spreadCount,
+  spreadFor,
+  superscript,
+} from '@/features/reader/paginate';
 import type { Verse } from '@/services/bible';
 
 const verse = (n: number, text: string): Verse => ({
@@ -32,16 +39,25 @@ function wrap(text: string, width: number, trailingSpace: boolean) {
   return lines;
 }
 
+describe('superscript', () => {
+  it('raises every digit of a verse number', () => {
+    expect(superscript(1)).toBe('¹');
+    expect(superscript(20)).toBe('²⁰');
+    expect(superscript(176)).toBe('¹⁷⁶');
+    expect(superscript(3456789)).toBe('³⁴⁵⁶⁷⁸⁹');
+  });
+});
+
 describe('buildFlow', () => {
-  it('lays verses end to end with their numbers', () => {
+  it('lays verses end to end with their numbers raised and tied to the first word', () => {
     const flow = buildFlow(verses);
     expect(flow.text).toBe(
-      '1 In the beginning was the Word, 2 The same was in the beginning with God. ',
+      '¹\u00A0In the beginning was the Word, ²\u00A0The same was in the beginning with God. ',
     );
     expect(flow.segments.map((s) => flow.text.slice(s.start, s.end))).toEqual([
-      '1 ',
+      '¹\u00A0',
       'In the beginning was the Word, ',
-      '2 ',
+      '²\u00A0',
       'The same was in the beginning with God. ',
     ]);
   });
@@ -74,7 +90,7 @@ describe('paginate', () => {
     const repeated = buildFlow([verse(1, 'the the the the the the the the')]);
     const pages = paginate(repeated.text, wrap(repeated.text, 8, false), 10);
     expect(pages.map((p) => repeated.text.slice(p.start, p.end))).toEqual([
-      '1 the ',
+      '¹\u00A0the ',
       'the the ',
       'the the ',
       'the the ',
@@ -92,12 +108,12 @@ describe('pageRuns', () => {
     const flow = buildFlow(verses);
     const cut = flow.text.indexOf('was the Word');
     expect(pageRuns(flow, { start: 0, end: cut })).toEqual([
-      { key: '1:num', kind: 'num', text: '1 ' },
-      { key: '1:text', kind: 'text', text: 'In the beginning ' },
+      { key: '1:num', kind: 'num', verse: 1, text: '¹\u00A0' },
+      { key: '1:text', kind: 'text', verse: 1, text: 'In the beginning ' },
     ]);
     expect(pageRuns(flow, { start: cut, end: flow.text.length }).map((r) => r.text)).toEqual([
       'was the Word, ',
-      '2 ',
+      '²\u00A0',
       'The same was in the beginning with God. ',
     ]);
   });

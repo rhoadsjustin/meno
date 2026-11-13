@@ -76,6 +76,7 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
 
 ### Reader
 - Pure typography. Chapter picker in nav title menu (native). Selection → context menu: "Memorize this…" starts goal wizard pre-filled.
+- As built: the bar's menu holds the text size (Smaller / Larger / Default size, 18–28 in steps of 2, remembered) above the book's chapters. Verse numbers are Unicode superscript digits in the text's own size. A long-press on a verse offers "Memorize this…" (VoiceOver: an action on each verse). A chapter ends in a link to the next one, a new chapter opens at its top, and the chapter last moved to in a book is offered ("Continue from John 5") when a link opens another.
 
 ### Stats
 - Streak, 30-day accuracy, verses memorized as three large New York numerals; below, weekly practice grid and badge medallions (engraved-style, gold when earned, `inkFaint` outline when locked and visible-by-design).
