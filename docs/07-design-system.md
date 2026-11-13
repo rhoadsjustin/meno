@@ -115,6 +115,8 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
 
 Nothing loops; nothing blocks input for >1.5s.
 
+Screens ask about Reduce Motion one way: `useMotion()` from `src/theme/motion.ts`, whose `reduce` is right on the first render and follows the setting while the app is open. Reanimated's entering / exiting animations already skip under it and need no flag; use `reduce` to choose the crossfade, to gate a `withTiming` or looping animation, or for `animated: !reduce` on a scroll.
+
 ## 9. Voice & copy
 - Sentence case everywhere. Verbs on buttons ("Practice", "Recite", "Review 3").
 - Encouraging, never saccharine, never guilt. Errors are factual and kind ("2 words slipped — they're marked below").

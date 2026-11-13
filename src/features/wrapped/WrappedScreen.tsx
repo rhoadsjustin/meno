@@ -22,7 +22,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
@@ -41,6 +41,7 @@ import { getGoal } from '@/services/db/repos/goals';
 import { rescheduleAll } from '@/services/notifications';
 import type { CardId } from '@/services/wrapped';
 import { fonts, layout, radius, spacing, useThemeColors } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 /** Card content never spreads wider than this, even on the Duo's inner panel. */
 const CARD_MAX_WIDTH = 520;
@@ -54,7 +55,7 @@ export function WrappedScreen({ year }: { year: number }) {
   // The pager's own width: a page is as wide as its pane, not the window.
   const [pagerWidth, setPagerWidth] = useState(0);
   const { bottom } = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
+  const { reduce: reduceMotion } = useMotion();
   const closeIcon = useBarIcon('xmark', 'close');
   const shareIcon = useBarIcon('square.and.arrow.up', 'share');
 
@@ -306,6 +307,8 @@ export function WrappedScreen({ year }: { year: number }) {
                   <Animated.View
                     key={`on-${i}`}
                     style={styles.fill}
+                    // Under Reduce Motion the card still arrives, as the
+                    // 200ms crossfade of 07 §8, so the default skip is off.
                     entering={(reduceMotion ? FadeIn.duration(200) : FadeInDown.duration(400)).reduceMotion(
                       ReduceMotion.Never,
                     )}>

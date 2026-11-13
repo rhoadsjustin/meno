@@ -7,7 +7,6 @@
 import { Stack } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
 
 import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
@@ -17,6 +16,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { HelpGuide } from '@/features/help/HelpGuide';
 import { useTranslation } from '@/i18n/react';
 import { useThemeColors, fonts, layout, spacing } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 export default function HelpRoute() {
   return (
@@ -35,7 +35,7 @@ function Help() {
   // and the system moves the bar's items with it.
   const { insets, sides } = useContentLayout();
   const doneIcon = useBarIcon('checkmark', 'check');
-  const reduceMotion = useReducedMotion();
+  const { reduce: reduceMotion } = useMotion();
   const scrollRef = useRef<ScrollViewInstance>(null);
 
   const scrollTo = useCallback(
