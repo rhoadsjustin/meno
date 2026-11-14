@@ -33,7 +33,7 @@ export const STARTER_VERSES: readonly StarterVerse[] = [
   starter('Matt', 11, 28),
 ];
 
-/** What "Try it with …" starts when there is no card to choose from. */
+/** What onboarding's quick start begins, where there is no card to choose from. */
 export const DEFAULT_STARTER: StarterVerse = STARTER_VERSES[0];
 
 /** Starter verses read in ESV when it can be had… */

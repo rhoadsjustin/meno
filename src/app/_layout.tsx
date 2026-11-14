@@ -251,7 +251,8 @@ function RootLayout() {
                 name="onboarding"
                 options={{
                   presentation: 'fullScreenModal',
-                  headerShown: false,
+                  // The bar (Back, Skip, page dots) is configured in-page.
+                  title: '',
                   gestureEnabled: false,
                 }}
               />
@@ -276,7 +277,8 @@ function RootLayout() {
                 name="unlock"
                 options={{
                   presentation: 'fullScreenModal',
-                  headerShown: false,
+                  // The bar (Back, Skip, page dots) is configured in-page.
+                  title: '',
                   gestureEnabled: false,
                 }}
               />
