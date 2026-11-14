@@ -4,10 +4,10 @@
  * then Override offered prominently. Never traps the user (04 §6).
  */
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { t as translate } from '@/i18n';
 import { Button } from '@/components/button';
@@ -122,13 +122,13 @@ export function UnlockScreen() {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPhase({ kind: 'success', accuracy });
     // Brief success (<1.5s), then out of the way (04 §4).
-    setTimeout(() => router.back(), 1400);
+    setTimeout(closeModal, 1400);
   }, [verse]);
 
   const override = useCallback(async () => {
     clearShields();
     await recordLockEvent({ type: 'override', verseChunkId: verse?.chunk?.id });
-    router.back();
+    closeModal();
   }, [verse]);
 
   const onRoundDone = useCallback(

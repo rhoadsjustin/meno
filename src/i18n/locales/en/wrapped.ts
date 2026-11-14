@@ -120,6 +120,8 @@ export default {
   todayCard: 'Your {{year}} in the Word is ready',
   todayCardHint: 'A look back at the Scripture you carried',
   statsRow: '{{year}} in the Word',
+  /** Stats group listing finished years' recaps (docs/10 §5.4). */
+  pastYears: 'Year in the Word',
   notification: {
     title: 'Your {{year}} in the Word',
     body: 'A look back at the Scripture you carried this year.',

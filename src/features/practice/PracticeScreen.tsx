@@ -4,13 +4,14 @@
  * a place to stop for the day, and a summary. Resumable at any point.
  */
 import * as Haptics from 'expo-haptics';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { Card } from '@/components/card';
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { useTranslation } from '@/i18n/react';
@@ -417,14 +418,14 @@ export function PracticeScreen({
           <Unavailable
             kind="empty"
             title={t('errors.allMemorized')}
-            action={{ label: t('common:done'), onPress: () => router.back() }}
+            action={{ label: t('common:done'), onPress: closeModal }}
           />
         ) : phase.reason === 'gone' ? (
           <Unavailable
             kind="failed"
             title={t('common:passageUnavailable')}
             message={t('common:passageGone')}
-            action={{ label: t('common:done'), onPress: () => router.back() }}
+            action={{ label: t('common:done'), onPress: closeModal }}
           />
         ) : (
           <Unavailable
@@ -432,7 +433,7 @@ export function PracticeScreen({
             title={t('common:passageUnavailable')}
             message={phase.message ?? t('common:tryAgainSoon')}
             action={{ label: t('common:retry'), onPress: retryLoad }}
-            secondaryAction={{ label: t('common:done'), onPress: () => router.back() }}
+            secondaryAction={{ label: t('common:done'), onPress: closeModal }}
           />
         ))}
 
@@ -446,7 +447,7 @@ export function PracticeScreen({
           </Text>
           <Button
             label={t('common:done')}
-            onPress={() => router.back()}
+            onPress={closeModal}
             style={styles.primaryButton}
           />
         </>
@@ -638,7 +639,7 @@ export function PracticeScreen({
           <Stack.Toolbar.Button
             icon={closeIcon}
             accessibilityLabel={t('closeLabel')}
-            onPress={() => router.back()}>
+            onPress={closeModal}>
             {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
@@ -835,7 +836,7 @@ function SessionSummary({
               : t('summary.pickUp', { tier: tierName(nextTier(standing)) })}
         </Text>
       )}
-      <Button label={t('common:done')} onPress={() => router.back()} style={styles.primaryButton} />
+      <Button label={t('common:done')} onPress={closeModal} style={styles.primaryButton} />
     </>
   );
 }

@@ -112,6 +112,7 @@ export default {
   todayCard: 'Tu {{year}} en la Palabra está listo',
   todayCardHint: 'Un vistazo a las Escrituras que llevaste contigo',
   statsRow: '{{year}} en la Palabra',
+  pastYears: 'Año en la Palabra',
   notification: {
     title: 'Tu {{year}} en la Palabra',
     body: 'Un vistazo a las Escrituras que llevaste contigo este año.',

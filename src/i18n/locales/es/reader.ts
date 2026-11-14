@@ -4,6 +4,7 @@ import type en from '@/i18n/locales/en/reader';
 export default {
   title: '{{book}} {{chapter}}',
   chapter: 'Capítulo {{chapter}}',
+  chapterMenu: 'Capítulos',
   previousChapter: 'Capítulo anterior',
   nextChapter: 'Capítulo siguiente',
   previousPage: 'Página anterior',

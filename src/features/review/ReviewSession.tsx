@@ -4,10 +4,11 @@
  * Speak alternation arrives with the speech tier; recall is typed for now.
  */
 import * as Haptics from 'expo-haptics';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
@@ -199,7 +200,7 @@ export function ReviewSession() {
           <Stack.Toolbar.Button
             icon={closeIcon}
             accessibilityLabel={t('closeLabel')}
-            onPress={() => router.back()}>
+            onPress={closeModal}>
             {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
@@ -216,7 +217,7 @@ export function ReviewSession() {
               symbol={{ ios: 'checkmark.circle', android: 'check_circle' }}
               title={t('emptyTitle')}
               message={t('emptyBody')}
-              action={{ label: t('common:done'), onPress: () => router.back() }}
+              action={{ label: t('common:done'), onPress: closeModal }}
             />
           )}
 
@@ -226,7 +227,7 @@ export function ReviewSession() {
               title={t('loadFailedTitle')}
               message={t('loadFailedBody')}
               action={{ label: t('common:retry'), onPress: retryLoad }}
-              secondaryAction={{ label: t('common:done'), onPress: () => router.back() }}
+              secondaryAction={{ label: t('common:done'), onPress: closeModal }}
             />
           )}
 
@@ -325,7 +326,7 @@ export function ReviewSession() {
               )}
               <Button
                 label={t('common:done')}
-                onPress={() => router.back()}
+                onPress={closeModal}
                 style={styles.button}
               />
             </>

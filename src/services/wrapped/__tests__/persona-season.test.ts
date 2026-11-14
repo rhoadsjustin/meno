@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { personaFor, personasFor, type PersonaFacts } from '@/services/wrapped/persona';
-import { isRecapSeason, recapYearFor } from '@/services/wrapped/season';
+import { isRecapSeason, pastRecapYears, recapYearFor } from '@/services/wrapped/season';
 
 const base: PersonaFacts = { hours: [], modes: [], activeDays: 10, longestRun: 3 };
 const facts = (over: Partial<PersonaFacts>): PersonaFacts => ({ ...base, ...over });
@@ -75,5 +75,42 @@ describe('recap season', () => {
   it('reads malformed dates as out of season', () => {
     expect(recapYearFor('')).toBeNull();
     expect(recapYearFor('soon')).toBeNull();
+  });
+});
+
+describe('pastRecapYears', () => {
+  const days = (entries: [number, number][]) => new Map(entries);
+
+  it('lists finished years with a snapshot or enough practice, newest first', () => {
+    expect(
+      pastRecapYears({
+        today: '2028-03-10',
+        activeDays: days([
+          [2025, 2],
+          [2026, 40],
+          [2027, 3],
+          [2028, 50],
+        ]),
+        snapshotYears: [2024],
+        minDays: 3,
+      }),
+    ).toEqual([2027, 2026, 2024]);
+  });
+
+  it('leaves out the year on offer in season, which has its own row', () => {
+    const input = { activeDays: days([[2026, 10], [2027, 10]]), snapshotYears: [2026], minDays: 3 };
+    expect(pastRecapYears({ ...input, today: '2028-01-15' })).toEqual([2026]);
+    expect(pastRecapYears({ ...input, today: '2028-02-01' })).toEqual([2027, 2026]);
+    // December offers the year still running; finished years stay listed.
+    expect(pastRecapYears({ ...input, today: '2027-12-05' })).toEqual([2026]);
+  });
+
+  it('is empty with nothing finished', () => {
+    expect(
+      pastRecapYears({ today: '2026-11-13', activeDays: days([[2026, 90]]), snapshotYears: [], minDays: 3 }),
+    ).toEqual([]);
+    expect(
+      pastRecapYears({ today: '', activeDays: days([[2020, 9]]), snapshotYears: [2020], minDays: 3 }),
+    ).toEqual([]);
   });
 });

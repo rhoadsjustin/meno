@@ -385,7 +385,16 @@ export function HelpGuide({
           {statuses.lock === 'unavailable' ? (
             <Text style={[styles.tip, faint]}>{t('lock.unavailable')}</Text>
           ) : statuses.lock === 'ready' ? (
-            <Text style={[styles.tip, faint]}>{t('lock.readyTip')}</Text>
+            // Settings' wide pane shows only this section for the lock row,
+            // so it must lead back into setup once the lock is on.
+            <>
+              <Text style={[styles.tip, faint]}>{t('lock.readyTip')}</Text>
+              <Button
+                variant="secondary"
+                label={t('actions.changeLock')}
+                onPress={openLockSetup}
+              />
+            </>
           ) : (
             <>
               <Steps

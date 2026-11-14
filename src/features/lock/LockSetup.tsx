@@ -4,12 +4,13 @@
  * physical iOS device with the native module present.
  */
 import * as Notifications from 'expo-notifications';
-import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { Button } from '@/components/button';
+import { ScreenHeader } from '@/components/screen-header';
 import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { loadLockConfig, saveLockConfig } from '@/services/db/repos/lock';
@@ -37,7 +38,7 @@ type Mode = 'firstPickup' | 'everyPickup' | 'schedule';
 export function LockSetup() {
   const colors = useThemeColors();
   const { t } = useTranslation(['lock', 'common']);
-  const { insets, sides } = useContentLayout();
+  const { sides } = useContentLayout();
   const [step, setStep] = useState<Step>('explainer');
   const [authStatus, setAuthStatus] = useState<LockAuthStatus>('notDetermined');
   const [hasSelection, setHasSelection] = useState(false);
@@ -116,9 +117,15 @@ export function LockSetup() {
     }
   }, [mode, relockMinutes]);
 
+  // Every step has a native way out: the bar's back chevron, which on iPhone
+  // Duo moves to the side with the status bar. The steps carry their own
+  // headings, so the bar has no title.
+  const header = <ScreenHeader title="" />;
+
   if (!available) {
     return (
-      <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+      <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      {header}
         <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
           <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {t('setup.unavailableTitle')}
@@ -126,7 +133,7 @@ export function LockSetup() {
           <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('setup.unavailableBody')}
           </Text>
-          <Button label={t('common:back')} onPress={() => router.back()} style={styles.primary} />
+          <Button label={t('common:back')} onPress={closeModal} style={styles.primary} />
         </ScrollView>
       </View>
     );
@@ -135,7 +142,8 @@ export function LockSetup() {
   const SheetPicker = mod?.DeviceActivitySelectionSheetViewPersisted;
 
   return (
-    <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      {header}
       <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
         {step === 'explainer' && (
           <>
@@ -274,7 +282,7 @@ export function LockSetup() {
             </Text>
             <Button
               label={t('common:done')}
-              onPress={() => router.back()}
+              onPress={closeModal}
               style={styles.primary}
             />
           </>
@@ -287,7 +295,7 @@ export function LockSetup() {
             onPress={() => {
               killSwitch();
               void saveLockConfig({ enabled: false });
-              router.back();
+              closeModal();
             }}
             style={styles.cancel}
             labelStyle={styles.cancelLabel}

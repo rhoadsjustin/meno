@@ -28,6 +28,7 @@ export default {
     turnOnReminders: 'Activar recordatorios',
     allowMicrophone: 'Permitir micrófono',
     setUpLock: 'Configurar Recitar para desbloquear',
+    changeLock: 'Cambiar apps u horario',
   },
   steps: {
     tapOpenSettings: 'Toca Abrir Ajustes del iPhone aquí abajo.',
