@@ -26,15 +26,14 @@ import Animated, {
   FadeInDown,
   FadeOut,
   interpolateColor,
-  ReduceMotion,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
+import { SymbolIcon } from '@/components/symbol';
 import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { getTranslation } from '@/services/bible';
@@ -43,6 +42,7 @@ import { displayWords } from '@/services/practice';
 import { fallbackLocale, recognizerLocale } from '@/services/speech/locale';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { useThemeColors, fonts, layout, spacing } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 export type SpeakOutcome = {
   accuracy: number;
@@ -133,7 +133,7 @@ export function SpeakRound({
   const colors = useThemeColors();
   const { t } = useTranslation('practice');
   const { height } = useWindowDimensions();
-  const reducedMotion = useReducedMotion();
+  const { reduce: reducedMotion } = useMotion();
 
   const [typeMode, setTypeMode] = useState(false);
   const [micState, setMicState] = useState<MicState>('idle');
@@ -189,7 +189,9 @@ export function SpeakRound({
   }, [listening, reducedMotion, listeningSv, pulse]);
 
   const micStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - pressed.get() * 0.03 }],
+    // Pressed: a 3% squeeze, or a dim in its place under Reduce Motion.
+    transform: [{ scale: reducedMotion ? 1 : 1 - pressed.get() * 0.03 }],
+    opacity: reducedMotion ? 1 - pressed.get() * 0.25 : 1,
     backgroundColor: interpolateColor(listeningSv.get(), [0, 1], [colors.lapis, colors.error]),
   }));
 
@@ -340,7 +342,7 @@ export function SpeakRound({
       <>
         {unavailable && (
           <Animated.Text
-            entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
+            entering={FadeIn.duration(150)}
             style={[styles.notice, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t(
               unavailable === 'language' ? 'speak.unavailableLanguage' : 'speak.unavailableOffline',
@@ -368,7 +370,7 @@ export function SpeakRound({
   const hasWords = committed.trim().length > 0 || interim.length > 0;
   const canCheck = committed.trim().length > 0 && micState === 'idle';
   const entering = (delay = 0) =>
-    FadeInDown.duration(200).delay(delay).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
+    FadeInDown.duration(200).delay(delay).easing(EASE_OUT);
 
   return (
     // The surface claims most of the window so the mic sits low; on a short
@@ -413,7 +415,7 @@ export function SpeakRound({
       {speechError && (
         <Animated.Text
           accessibilityRole="alert"
-          entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
+          entering={FadeIn.duration(150)}
           style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {speechError}
         </Animated.Text>
@@ -425,7 +427,7 @@ export function SpeakRound({
           listening || micState === 'processing' ? (
             <Animated.Text
               key="ghost"
-              entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
+              entering={FadeIn.duration(150)}
               accessibilityLabel={t('speak.liveTranscript')}
               style={[styles.transcript, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {committed}
@@ -435,7 +437,7 @@ export function SpeakRound({
           ) : (
             <Animated.View
               key="editor"
-              entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}>
+              entering={FadeIn.duration(150)}>
               <TextInput
                 multiline
                 scrollEnabled={false}
@@ -482,15 +484,20 @@ export function SpeakRound({
             onPress={() => void toggleListening()}
             hitSlop={8}>
             <Animated.View style={[styles.micButton, micStyle]}>
-              <Text style={[styles.micGlyph, { color: colors.onLapis }]}>
-                {listening ? '⏸' : '🎙️'}
-              </Text>
+              <SymbolIcon
+                ios={listening ? 'pause.fill' : 'mic.fill'}
+                android={listening ? 'pause' : 'mic'}
+                size={36}
+                color={colors.onLapis}
+                // The button is a fixed 96pt circle.
+                maxFontSizeMultiplier={1.4}
+              />
             </Animated.View>
           </Pressable>
           <Animated.Text
             key={listening ? 'l' : hasWords ? 'more' : 'start'}
-            entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
-            exiting={FadeOut.duration(100).reduceMotion(ReduceMotion.System)}
+            entering={FadeIn.duration(150)}
+            exiting={FadeOut.duration(100)}
             style={[styles.micLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {listening
               ? t('speak.micListening')
@@ -541,7 +548,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  micGlyph: { fontSize: 36 },
   micLabel: { fontSize: 14 },
   toggle: { alignSelf: 'center', paddingHorizontal: spacing.md },
   // The 44pt target reaches up into the gap under the mic caption, so the

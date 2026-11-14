@@ -20,6 +20,7 @@ import { closeModal } from '@/components/close-modal';
 import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
 import { ScreenHeader } from '@/components/screen-header';
+import { SectionHeader } from '@/components/section-header';
 import { announce } from '@/components/screen-reader';
 import { t as translate } from '@/i18n';
 import { Button } from '@/components/button';
@@ -211,9 +212,7 @@ function ChallengeScreen() {
         </Stack.Toolbar>
       </ScreenHeader>
       <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
-        <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          {tr('invitation')}
-        </Text>
+        <SectionHeader kind="kicker" title={tr('invitation')} />
 
         {view.kind === 'loading' && (
           <ActivityIndicator accessibilityLabel={tr('common:loading')} style={styles.spinner} />
@@ -347,7 +346,6 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { padding: spacing.xl, paddingBottom: spacing.xxxl, gap: spacing.sm },
-  kicker: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
   spinner: { marginTop: spacing.xxl },
   heading: { fontSize: 22, fontWeight: '700' },
   passage: { fontSize: 28, marginTop: spacing.xs },

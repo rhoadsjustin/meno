@@ -7,7 +7,7 @@ import { useTranslation } from '@/i18n/react';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { dismissReminderPrompt, reminderPromptDismissed } from '@/services/db/repos/appFlags';
 import { setNotificationsEnabled } from '@/services/notifications';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 /**
  * Today's one gentle prompt for someone with a passage under way whose
@@ -105,7 +105,7 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
 
 const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },
-  body: { fontSize: 15, lineHeight: 20 },
+  body: textStyle.subheadline,
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',

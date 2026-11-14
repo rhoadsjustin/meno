@@ -21,7 +21,6 @@ import {
   usePanGesture,
   useTapGesture,
 } from 'react-native-gesture-handler';
-import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaListener } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -41,6 +40,7 @@ import {
 } from '@/features/reader/paginate';
 import { bookName, getChapter, getTranslation, type Verse } from '@/services/bible';
 import { fonts, layout, scriptureType, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 type Side = 'left' | 'right';
 type Direction = 1 | -1; // 1 is forward, -1 back
@@ -96,7 +96,7 @@ export function BookSpread({
   const { t } = useTranslation('reader');
   const { fold, insets } = useContentLayout();
   const { fontScale } = useWindowDimensions();
-  const reduceMotion = useReducedMotion();
+  const { reduce: reduceMotion } = useMotion();
   // The pages run under the (clear) navigation bar; the text starts below it.
   // Where the bar ends is read from UIKit's safe area of the spread itself:
   // under a translucent bar a view's top inset reaches the bar's bottom edge,

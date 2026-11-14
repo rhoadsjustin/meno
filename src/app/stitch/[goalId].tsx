@@ -26,7 +26,7 @@ import { rescheduleAll } from '@/services/notifications';
 import type { GradeResult } from '@/services/grading';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
 import { WordFeedback } from '@/features/practice/WordFeedback';
-import { useThemeColors, fonts, layout, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, displayType } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
@@ -280,6 +280,6 @@ const styles = StyleSheet.create({
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   body: { fontSize: 15, lineHeight: 21 },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  accuracy: { fontSize: 56, marginTop: spacing.xl },
+  accuracy: { fontSize: displayType.medium, marginTop: spacing.xl },
   accuracyShort: { fontSize: 44, marginTop: 0 },
 });

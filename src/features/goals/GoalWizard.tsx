@@ -34,7 +34,7 @@ import {
 } from '@/services/bible/selection';
 import { createGoal, previewGoal, type GoalPreview } from '@/services/db/repos/goals';
 import { lastTranslationId, rememberTranslation } from '@/services/db/repos/wizardPrefs';
-import { useThemeColors, fonts, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, radius, spacing, textStyle } from '@/theme';
 
 type Step = 'passage' | 'plan';
 
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: '700', marginTop: spacing.sm },
   stepLabel: { fontSize: 13, marginTop: spacing.sm, marginBottom: spacing.xs },
   section: { gap: spacing.md, marginTop: spacing.sm },
-  planNote: { fontSize: 13, lineHeight: 18 },
+  planNote: textStyle.footnote,
   titleInput: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.card,

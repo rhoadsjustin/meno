@@ -43,6 +43,8 @@ export const radius = {
   card: 12,
   sheet: 24,
   capsule: 999,
+  /** Heat-map squares: a chunk on a goal card, a day in the practice grid. */
+  cell: 4,
 } as const;
 
 /**
@@ -61,6 +63,36 @@ export const fonts = Platform.select({
     mono: 'monospace',
   },
 });
+
+/**
+ * UI type scale (07 §4): Apple's text styles at the default text size, as
+ * size / leading. React Native scales both with Dynamic Type. Spread one
+ * into a style (`...textStyle.footnote`) and add weight and colour beside
+ * it; `headline` is the one style that carries its own weight.
+ *
+ * New UI text takes a style from here rather than a literal size. Verse
+ * text stays on `scriptureType`, and the large numerals on `displayType`.
+ */
+export const textStyle = {
+  largeTitle: { fontSize: 34, lineHeight: 41 },
+  title1: { fontSize: 28, lineHeight: 34 },
+  title2: { fontSize: 22, lineHeight: 28 },
+  title3: { fontSize: 20, lineHeight: 25 },
+  headline: { fontSize: 17, lineHeight: 22, fontWeight: '600' },
+  body: { fontSize: 17, lineHeight: 22 },
+  callout: { fontSize: 16, lineHeight: 21 },
+  subheadline: { fontSize: 15, lineHeight: 20 },
+  footnote: { fontSize: 13, lineHeight: 18 },
+  caption1: { fontSize: 12, lineHeight: 16 },
+  caption2: { fontSize: 11, lineHeight: 13 },
+} as const;
+
+/** Display numerals (Stats, the recap, scores): sizes above the text styles. */
+export const displayType = {
+  small: 40,
+  medium: 56,
+  large: 96,
+} as const;
 
 /** Reader verse setting: NY Medium 22/34, user-adjustable 18–28 (07 §4). */
 export const scriptureType = {

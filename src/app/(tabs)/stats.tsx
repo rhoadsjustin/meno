@@ -16,7 +16,7 @@ import { useTranslation } from '@/i18n/react';
 import { BADGE_CODES, badgeHint, badgeName, earnedBadges } from '@/services/db/repos/badges';
 import { loadStats, type Stats } from '@/services/db/repos/stats';
 import { loadStreak } from '@/services/db/repos/streaks';
-import { useThemeColors, fonts, spacing, type ThemeColors } from '@/theme';
+import { useThemeColors, fonts, radius, spacing, type ThemeColors, displayType } from '@/theme';
 
 /** From this text scale the three numerals and the badges stack as rows:
  * a third of a phone's width cannot hold a 40pt "100%" (Library's switch). */
@@ -252,13 +252,13 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     columnGap: spacing.md,
   },
-  numeralValue: { fontSize: 40 },
+  numeralValue: { fontSize: displayType.small },
   numeralValueStacked: { maxWidth: '100%' },
   numeralLabel: { fontSize: 12, marginTop: spacing.xs },
   numeralLabelStacked: { flexShrink: 1, marginTop: 0 },
   sectionTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  cell: { width: 14, height: 14, borderRadius: 3 },
+  cell: { width: 14, height: 14, borderRadius: radius.cell },
   neutral: { fontSize: 13, marginTop: spacing.md },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
   badge: { width: 72, alignItems: 'center', gap: spacing.xs },

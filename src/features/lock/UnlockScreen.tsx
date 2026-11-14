@@ -22,7 +22,7 @@ import { rescheduleAll } from '@/services/notifications';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { clearShields, registerUnlockMount, scheduleRelock } from '@/services/lock';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
-import { useThemeColors, fonts, layout, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, displayType } from '@/theme';
 
 /** A reason the quiz can't start, in words meant for the screen. */
 class UnlockNotice extends Error {}
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   body: { fontSize: 16, lineHeight: 22, marginTop: spacing.lg },
-  accuracy: { fontSize: 56, marginTop: spacing.xl },
+  accuracy: { fontSize: displayType.medium, marginTop: spacing.xl },
   primary: { marginTop: spacing.xxl },
   // The whole strip under the quiz is the target: the override is never a
   // small thing to hit (04 §6).

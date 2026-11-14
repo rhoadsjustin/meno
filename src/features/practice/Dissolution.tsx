@@ -8,7 +8,7 @@
    Reanimated shared values are mutable by design; the compiler heuristic
    can't tell the skip handler's writes are the animation's cancel path. */
 import { useCallback, useEffect, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -21,6 +21,7 @@ import Animated, {
 import { useTranslation } from '@/i18n/react';
 import { firstLetters } from '@/services/practice';
 import { useThemeColors, fonts, spacing, scriptureType } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 export function Dissolution({
   text,
@@ -38,7 +39,10 @@ export function Dissolution({
 }) {
   const colors = useThemeColors();
   const { t } = useTranslation('practice');
-  const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+  // Chosen once, as the moment starts: a change to the setting halfway
+  // through must not restart it.
+  const { reduce } = useMotion();
+  const [reduceMotion] = useState(reduce);
   const [done, setDone] = useState(false);
 
   const fullOpacity = useSharedValue(1);
@@ -47,11 +51,6 @@ export function Dissolution({
   const sealScale = useSharedValue(0.8);
 
   useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-  }, []);
-
-  useEffect(() => {
-    if (reduceMotion === null) return;
     const total = reduceMotion ? 200 : memorized ? 1500 : 1200;
     if (reduceMotion) {
       // Single quiet crossfade (07 §8).

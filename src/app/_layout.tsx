@@ -19,7 +19,7 @@ import { tapNavigation } from '@/services/notifications/tap';
 import { useUpdateLifecycle } from '@/services/updates';
 import { publishSiriContext } from '@/services/siri';
 import { publishWidgetSnapshot } from '@/services/widgets';
-import { palette } from '@/theme/tokens';
+import { palette, radius, spacing } from '@/theme/tokens';
 
 // Before any screen renders or any service formats a string.
 applyDeviceLocale();
@@ -327,14 +327,14 @@ function RecoveryScreen({
 }
 
 const styles = StyleSheet.create({
-  recovery: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 8 },
+  recovery: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl, gap: spacing.sm },
   recoveryTitle: { fontSize: 20, fontWeight: '600' },
   recoveryBody: { fontSize: 15, textAlign: 'center' },
   recoveryButton: {
-    marginTop: 16,
-    borderRadius: 999,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    marginTop: spacing.lg,
+    borderRadius: radius.capsule,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xxxl,
   },
   recoveryButtonPressed: { opacity: 0.6 },
   recoveryButtonText: { fontSize: 17, fontWeight: '600' },

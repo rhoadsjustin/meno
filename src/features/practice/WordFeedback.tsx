@@ -13,7 +13,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useTranslation } from '@/i18n/react';
 import { feedbackSequence, feedbackSummary, type GradeResult } from '@/services/grading';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 export function WordFeedback({
   result,
@@ -82,5 +82,5 @@ const styles = StyleSheet.create({
   typo: { textDecorationLine: 'underline' },
   error: { textDecorationLine: 'line-through' },
   extra: { fontStyle: 'italic' },
-  legend: { fontSize: 13, lineHeight: 18, marginTop: spacing.sm },
+  legend: { ...textStyle.footnote, marginTop: spacing.sm },
 });

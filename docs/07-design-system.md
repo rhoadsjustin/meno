@@ -44,10 +44,12 @@ Both faces ship with iOS — zero font files, perfect legibility, unmistakably n
 
 Type scale follows Apple's text styles; do not invent sizes.
 
+The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `title1` 28/34, `title2` 22/28, `title3` 20/25, `headline` 17/22 semibold, `body` 17/22, `callout` 16/21, `subheadline` 15/20, `footnote` 13/18, `caption1` 12/16, `caption2` 11/13); new UI text spreads one of these rather than a literal size, and older screens move over as they are next touched. Numerals above the scale use `displayType` (40, 56, 96). The small tracked uppercase label over a group or a card title is `src/components/section-header.tsx`; the capitals are styling, the strings stay sentence case (§9).
+
 ## 5. Spacing, shape, elevation
 
 - 4pt base grid; screen margins 20pt; card padding 16pt.
-- Corner radius: continuous-corner 12pt cards, 24pt sheets (match iOS), capsule buttons.
+- Corner radius: continuous-corner 12pt cards, 24pt sheets (match iOS), capsule buttons, 4pt heat-map cells — always `radius.*` from the theme, never a literal. Circles keep width / 2.
 - Buttons come from `src/components/button.tsx` (`primary` filled lapis capsule with an `onLapis` label, `secondary` outlined, `tinted`, `plain`; `role="destructive"`; `busy` / `disabled`) and text actions from `src/components/text-link.tsx`. Both are at least 44pt tall, dim while pressed and carry their accessibility role and state — never restyle a bare `Pressable` as a button in a screen.
 - Nothing to show comes from `src/components/unavailable.tsx`: `Unavailable` (`kind="empty"` or `"failed"`; symbol, title, one sentence, at most two actions, centred) and `LoadingState` (blank for a moment, then a labelled spinner). A failed load is always `failed` with **Try again** — never the empty state, a blank screen or an endless spinner — and its words come from the catalogue, never from the thrown error. `failed` carries a warning symbol and is announced to VoiceOver; `empty` is quiet.
 - Elevation by material, not shadow: cards use `surfaceRaised` + hairline `separator`; sheets use native materials/glass where `@expo/ui/swift-ui` exposes them.
@@ -69,7 +71,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 - Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. An almost (03 §3) marks the same slips in `amber` on `amberWash`, still struck through. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
 
 ### Library
-- Segmented: **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
+- Segmented (the system control, `@expo/ui/community/segmented-control`; on windows wider than tall both shelves show side by side instead): **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
 - Goal detail: chunk map, stats, stitch history, per-chunk drill-down.
 
 ### Reader
@@ -95,6 +97,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 
 ## 7. Iconography & illustration
 - SF Symbols throughout (book.closed, flame, checkmark.seal for memorized — seal filled gold).
+- Icons inside the app's own views come from `src/components/symbol.tsx` (`Symbol`: the SF Symbol on iOS, its Material Symbol on Android; a theme colour; grows with Dynamic Type; hidden from VoiceOver because the row or button carries the words). Never an emoji or a typed character (`+`, `›`, `✓`) as an icon. A link that opens another screen takes `disclosure` on `TextLink`: a chevron on iOS, none on Android. The widget's inline flame is the one exception (05 §1: typographic, no images).
 - Badges: custom typographic medallions — circled monogram/numeral with an engraved double-rule border, flat, no gradients or 3D.
 - No mascots. No stock-spiritual imagery (doves, sunbeams).
 
@@ -111,6 +114,8 @@ Type scale follows Apple's text styles; do not invent sizes.
 | Reduced motion | all replaced by 200ms crossfades | unchanged |
 
 Nothing loops; nothing blocks input for >1.5s.
+
+Screens ask about Reduce Motion one way: `useMotion()` from `src/theme/motion.ts`, whose `reduce` is right on the first render and follows the setting while the app is open. Reanimated's entering / exiting animations already skip under it and need no flag; use `reduce` to choose the crossfade, to gate a `withTiming` or looping animation, or for `animated: !reduce` on a scroll.
 
 ## 9. Voice & copy
 - Sentence case everywhere. Verbs on buttons ("Practice", "Recite", "Review 3").

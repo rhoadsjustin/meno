@@ -23,7 +23,7 @@ import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import type { CatalogRefreshState } from '@/features/goals/translation-catalog';
 import { translationCoverage, type LanguageSummary, type Translation } from '@/services/bible';
-import { useThemeColors, fonts, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, radius, spacing, textStyle } from '@/theme';
 
 /** Plain words for where a translation's text lives. */
 export function availabilityLabel(tr: Translation): string {
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 17 },
-  rowDetail: { fontSize: 13, lineHeight: 18 },
+  rowDetail: textStyle.footnote,
   rowValue: { fontSize: 17 },
   groupHeader: {
     fontSize: 13,
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginHorizontal: spacing.lg,
   },
-  statusText: { fontSize: 15, lineHeight: 20 },
+  statusText: textStyle.subheadline,
   refresh: {
     flexDirection: 'row',
     alignItems: 'center',

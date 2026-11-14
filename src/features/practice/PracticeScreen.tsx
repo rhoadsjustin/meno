@@ -63,7 +63,7 @@ import { FirstLettersRound } from '@/features/practice/rounds/FirstLettersRound'
 import { ReadRound } from '@/features/practice/rounds/ReadRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
-import { useThemeColors, fonts, layout, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle, displayType } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
     paddingRight: layout.screenMargin,
     paddingTop: layout.screenMargin,
   },
-  railTitle: { fontSize: 22, lineHeight: 28 },
+  railTitle: textStyle.title2,
   railSub: { fontSize: 13, marginTop: spacing.xs },
   railLadder: { marginTop: spacing.lg },
   summaryStats: {
@@ -897,9 +897,9 @@ const styles = StyleSheet.create({
   // Sits under the reference line, inside the gap it leaves above the round.
   sealNote: { fontSize: 15, fontWeight: '600', marginTop: -spacing.md, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  accuracy: { fontSize: 56, marginTop: spacing.xl },
+  accuracy: { fontSize: displayType.medium, marginTop: spacing.xl },
   accuracyShort: { fontSize: 44, marginTop: 0 },
-  suggestion: { fontSize: 15, lineHeight: 20, marginTop: spacing.md },
+  suggestion: { ...textStyle.subheadline, marginTop: spacing.md },
   primaryButton: { marginTop: spacing.xxl },
   primaryButtonShort: { marginTop: spacing.lg },
   // The plain button is 44pt tall where the old text row was about 36pt, so

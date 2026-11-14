@@ -29,6 +29,7 @@ import {
 import { Card } from '@/components/card';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { Button } from '@/components/button';
+import { SymbolIcon } from '@/components/symbol';
 import { useTranslation } from '@/i18n/react';
 import { formatRef } from '@/services/bible';
 import { loadLockConfig } from '@/services/db/repos/lock';
@@ -40,7 +41,7 @@ import {
   setNotificationsEnabled,
   type ReminderStatus,
 } from '@/services/notifications';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 export type SectionKey = 'quizzes' | 'homeWidget' | 'lockWidget' | 'speak' | 'lock';
 
@@ -461,12 +462,13 @@ export function HelpGuide({
                     onPress={() => setOpenFaq(open ? null : i)}
                     style={styles.faqRow}>
                     <Text style={[styles.faqQuestion, text]}>{t(`faq.${id}.q`)}</Text>
-                    <Text
-                      importantForAccessibility="no"
-                      accessibilityElementsHidden
-                      style={[styles.faqToggle, { color: colors.lapis }]}>
-                      {open ? '−' : '+'}
-                    </Text>
+                    <SymbolIcon
+                      ios={open ? 'chevron.up' : 'chevron.down'}
+                      android={open ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                      size={15}
+                      weight="semibold"
+                      color={colors.lapis}
+                    />
                   </Pressable>
                   {open && <Text style={[styles.faqAnswer, faint]}>{t(`faq.${id}.a`)}</Text>}
                 </View>
@@ -526,12 +528,21 @@ function StatusText({ status, label }: { status: Status; label?: string }) {
       : status === 'openSettings'
         ? colors.error
         : colors.inkFaint;
-  const mark = status === 'ready' ? '✓ ' : status === 'openSettings' ? '! ' : '';
-  return (
+  const words = (
     <Text style={[styles.status, { color, fontFamily: fonts?.ui }]}>
-      {mark}
       {label ?? t(`status.${status}`)}
     </Text>
+  );
+  if (status !== 'ready' && status !== 'openSettings') return words;
+  return (
+    <View style={styles.statusRow}>
+      {status === 'ready' ? (
+        <SymbolIcon ios="checkmark.circle.fill" android="check_circle" size={15} color={color} />
+      ) : (
+        <SymbolIcon ios="exclamationmark.circle.fill" android="error" size={15} color={color} />
+      )}
+      {words}
+    </View>
   );
 }
 
@@ -565,10 +576,11 @@ const styles = StyleSheet.create({
   tip: { fontSize: 15, lineHeight: 21 },
   overviewRow: { paddingVertical: spacing.sm, gap: 2 },
   overviewTitle: { fontSize: 17, fontWeight: '600' },
-  status: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  status: { fontSize: 14, lineHeight: 19, fontWeight: '600', flexShrink: 1 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   section: { gap: spacing.md },
   sectionHeader: { gap: spacing.xs },
-  sectionTitle: { fontSize: 20, lineHeight: 25, fontWeight: '600' },
+  sectionTitle: { ...textStyle.title3, fontWeight: '600' },
   steps: { gap: spacing.sm },
   stepRow: { flexDirection: 'row', gap: spacing.sm },
   stepNumber: { fontSize: 16, lineHeight: 23, fontWeight: '700', minWidth: 22 },
@@ -581,6 +593,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   faqQuestion: { flex: 1, fontSize: 16, lineHeight: 22, fontWeight: '600' },
-  faqToggle: { fontSize: 22, lineHeight: 22, fontWeight: '500' },
   faqAnswer: { fontSize: 15, lineHeight: 22, paddingBottom: spacing.md },
 });

@@ -16,7 +16,7 @@ import { wrappedPreview } from '@/services/db/repos/appFlags';
 import { localToday } from '@/services/db/repos/streaks';
 import { activeDaysIn, loadPastRecapYears } from '@/services/db/repos/wrapped';
 import { RECAP_MIN_DAYS, recapYearFor } from '@/services/wrapped';
-import { fonts, spacing, useThemeColors } from '@/theme';
+import { fonts, spacing, useThemeColors, textStyle } from '@/theme';
 
 export type RecapOffer = { year: number; ready: boolean };
 
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   text: { flex: 1, gap: spacing.xs },
   title: { fontSize: 19, fontWeight: '600' },
-  hint: { fontSize: 15, lineHeight: 20 },
+  hint: textStyle.subheadline,
   rowTitle: { flex: 1, fontSize: 17, fontWeight: '600' },
   // Matches the Stats cards' section titles.
   groupTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },

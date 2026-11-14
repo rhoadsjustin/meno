@@ -59,7 +59,7 @@ import {
   tapVerse,
   type PassageSelection,
 } from '@/services/bible/selection';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 /** The pinned bar is chrome: it grows with Dynamic Type, but not so far that
  * it crowds the verses out of a short sheet. */
@@ -243,7 +243,8 @@ export function PassageStep({
         {translation && (
           <TextLink
             size="large"
-            label={`${translation.abbrev} · ${translation.name} ›`}
+            label={`${translation.abbrev} · ${translation.name}`}
+            disclosure
             accessibilityLabel={t('passage.translationLabel', {
               name: translation.name,
               abbrev: translation.abbrev,
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
   verseText: { flex: 1, fontSize: 19, lineHeight: 28, paddingVertical: spacing.sm },
   verseNum: { fontSize: 13 },
   verseNumSelected: { fontWeight: '700' },
-  attribution: { fontSize: 13, lineHeight: 18, padding: spacing.xl },
+  attribution: { ...textStyle.footnote, padding: spacing.xl },
   bar: { borderTopWidth: StyleSheet.hairlineWidth },
   barInner: {
     flexDirection: 'row',
@@ -486,5 +487,5 @@ const styles = StyleSheet.create({
   },
   barText: { flex: 1, gap: 2 },
   barRef: { fontSize: 17, fontWeight: '600' },
-  barHint: { fontSize: 13, lineHeight: 18 },
+  barHint: textStyle.footnote,
 });
