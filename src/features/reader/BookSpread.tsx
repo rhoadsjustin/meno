@@ -13,6 +13,7 @@ import {
   View,
   type AccessibilityActionInfo,
   type TextLayoutEvent,
+  type TextStyle,
   type ViewInstance,
 } from 'react-native';
 import {
@@ -38,6 +39,8 @@ import {
   type Page,
   type Run,
 } from '@/features/reader/paginate';
+import { neighbourChapter } from '@/features/reader/chapters';
+import { readerType } from '@/features/reader/text-size';
 import { bookName, getChapter, getTranslation, type Verse } from '@/services/bible';
 import { fonts, layout, scriptureType, spacing, useThemeColors, type ThemeColors } from '@/theme';
 import { useMotion } from '@/theme/motion';
@@ -83,13 +86,17 @@ export function BookSpread({
   translationId,
   bookId,
   chapter,
-  chapterCount,
+  chapters,
+  textSize,
   onChapterChange,
 }: {
   translationId: string;
   bookId: string;
   chapter: number;
-  chapterCount: number;
+  /** The chapters this translation has of the book; a portion may skip some. */
+  chapters: readonly number[];
+  /** Scripture size in points, before Dynamic Type. */
+  textSize: number;
   onChapterChange: (chapter: number) => void;
 }) {
   const colors = useThemeColors();
@@ -142,15 +149,18 @@ export function BookSpread({
   }, [frame, fold, insets.bottom, fontScale, barBottom]);
 
   // Verses and pages for this chapter and its neighbours, so a turn across a
-  // chapter boundary has its pages ready.
+  // chapter boundary has its pages ready. The neighbours are the ones the
+  // translation has, so a turn steps over a gap as the bar's buttons do.
+  const before = neighbourChapter(chapters, pos.chapter, -1);
+  const after = neighbourChapter(chapters, pos.chapter, 1);
   const wanted = useMemo(
-    () =>
-      [pos.chapter - 1, pos.chapter, pos.chapter + 1].filter((c) => c >= 1 && c <= chapterCount),
-    [pos.chapter, chapterCount],
+    () => [before, pos.chapter, after].filter((c): c is number => c !== undefined),
+    [before, pos.chapter, after],
   );
   const verses = useChapterVerses(translationId, bookId, wanted);
+  const type = useMemo(() => readerType(textSize, scriptureType), [textSize]);
   const layoutKey = geo
-    ? `${translationId}:${bookId}:${geo.textWidth}:${geo.pageHeight}:${fontScale}`
+    ? `${translationId}:${bookId}:${geo.textWidth}:${geo.pageHeight}:${fontScale}:${textSize}`
     : '';
   const [pagedCache, setPagedCache] = useState<{ key: string; chapters: Record<number, Paged> }>({
     key: layoutKey,
@@ -183,10 +193,11 @@ export function BookSpread({
     if (within >= 0 && within < spreadCount(current.pages)) {
       return { chapter: pos.chapter, spread: within, anchor: current.pages[within * 2].start };
     }
-    const other = paged[pos.chapter + dir];
-    if (!other || other.pages.length === 0) return null;
+    const neighbour = dir === 1 ? after : before;
+    const other = neighbour === undefined ? undefined : paged[neighbour];
+    if (neighbour === undefined || !other || other.pages.length === 0) return null;
     const s = dir === 1 ? 0 : spreadCount(other.pages) - 1;
-    return { chapter: pos.chapter + dir, spread: s, anchor: other.pages[s * 2].start };
+    return { chapter: neighbour, spread: s, anchor: other.pages[s * 2].start };
   };
   const forward = target(1);
   const backward = target(-1);
@@ -262,6 +273,7 @@ export function BookSpread({
               <PageView
                 key={key}
                 geo={geo}
+                type={type}
                 colors={colors}
                 attribution={attribution}
                 side={side}
@@ -281,6 +293,7 @@ export function BookSpread({
                   <PageView
                     key={key}
                     geo={geo}
+                    type={type}
                     colors={colors}
                     attribution={attribution}
                     side={side}
@@ -299,6 +312,7 @@ export function BookSpread({
                 key={`${layoutKey}:${c}`}
                 verses={verses[c]}
                 geo={geo}
+                type={type}
                 onPaged={(result) => storePaged(c, result)}
               />
             ) : null,
@@ -345,10 +359,12 @@ function useChapterVerses(translationId: string, bookId: string, wanted: number[
 function Measurer({
   verses,
   geo,
+  type,
   onPaged,
 }: {
   verses: Verse[];
   geo: Geometry;
+  type: TextStyle;
   onPaged: (result: Paged) => void;
 }) {
   const flow = useMemo(() => buildFlow(verses), [verses]);
@@ -360,11 +376,9 @@ function Measurer({
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      <Text style={[styles.passage, { fontFamily: fonts?.scripture }]} onTextLayout={onTextLayout}>
+      <Text style={[type, { fontFamily: fonts?.scripture }]} onTextLayout={onTextLayout}>
         {flow.segments.map((s) => (
-          <Text key={`${s.verse}:${s.kind}`} style={s.kind === 'num' && styles.verseNum}>
-            {flow.text.slice(s.start, s.end)}
-          </Text>
+          <Text key={`${s.verse}:${s.kind}`}>{flow.text.slice(s.start, s.end)}</Text>
         ))}
       </Text>
     </View>
@@ -373,6 +387,8 @@ function Measurer({
 
 type PageProps = {
   geo: Geometry;
+  /** Scripture font size and line height: the same the Measurer cut the pages at. */
+  type: TextStyle;
   colors: ThemeColors;
   attribution: string;
   side: Side;
@@ -382,6 +398,7 @@ type PageProps = {
 /** One page's text and footer, placed against the crease. */
 function PageContent({
   geo,
+  type,
   colors,
   attribution,
   side,
@@ -418,14 +435,14 @@ function PageContent({
           accessibilityLabel={[
             t('pageSpoken', { page: face.number }),
             ...face.runs.map((r) =>
-              r.kind === 'num' ? t('verseSpoken', { verse: r.text.trim() }) : r.text.trim(),
+              r.kind === 'num' ? t('verseSpoken', { verse: r.verse }) : r.text.trim(),
             ),
           ].join(' ')}
-          style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+          style={[type, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+          {/* Verse numbers are superscript digits in the flow itself, so
+              they take the text's size and only change colour. */}
           {face.runs.map((r) => (
-            <Text
-              key={r.key}
-              style={r.kind === 'num' && [styles.verseNum, { color: colors.inkFaint }]}>
+            <Text key={r.key} style={r.kind === 'num' && { color: colors.inkFaint }}>
               {r.text}
             </Text>
           ))}
@@ -481,9 +498,4 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 13 },
   attribution: { flexShrink: 1 },
   measurer: { position: 'absolute', top: 0, left: 0, height: 0, opacity: 0, overflow: 'hidden' },
-  passage: {
-    fontSize: scriptureType.defaultSize,
-    lineHeight: scriptureType.defaultLineHeight,
-  },
-  verseNum: { fontSize: 13 },
 });

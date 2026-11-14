@@ -3,8 +3,15 @@
  * with superscript verse numbers, chapter navigation, and attribution.
  */
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type ScrollViewInstance,
+} from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { useBarIcon } from '@/components/bar-icon';
@@ -12,24 +19,91 @@ import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ScreenHeader } from '@/components/screen-header';
 import { SectionHeader } from '@/components/section-header';
 import { useScreenReader } from '@/components/screen-reader';
+import { TextLink } from '@/components/text-link';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { BookSpread } from '@/features/reader/BookSpread';
+import { neighbourChapter } from '@/features/reader/chapters';
+import { verseMark } from '@/features/reader/paginate';
+import { useReaderPrefs } from '@/features/reader/reader-prefs';
+import { readerType } from '@/features/reader/text-size';
+import { showVerseActions } from '@/features/reader/verse-actions';
 import { useTranslation } from '@/i18n/react';
 import {
   DEFAULT_TRANSLATION_ID,
   bookName,
-  getBook,
+  formatRef,
   getChapter,
   getTranslation,
   loadFailureMessage,
   parseOsisRef,
+  type Ref,
   type Verse,
 } from '@/services/bible';
+import { readingPlace, rememberReadingPlace } from '@/services/db/repos/readerPrefs';
 import { useAvailableChapters } from '@/features/reader/use-available-chapters';
 import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
 
+/** The one custom action a verse offers VoiceOver, beside reading it. */
+const MEMORIZE_ACTION = 'memorize';
+
 export default function ReaderRoute() {
   const { osis, translation } = useLocalSearchParams<{ osis: string; translation?: string }>();
+
+  let ref: Ref | null;
+  try {
+    ref = parseOsisRef(osis);
+  } catch {
+    // A link that names no chapter says so, rather than opening some other
+    // chapter as if it had been asked for.
+    ref = null;
+  }
+  if (!ref) return <BadLink />;
+  return (
+    <Reader
+      bookId={ref.bookId}
+      chapter={ref.chapter}
+      translationId={knownTranslationId(translation)}
+    />
+  );
+}
+
+/** The link's translation, or the default when it names one this device does not know. */
+function knownTranslationId(id: string | undefined): string {
+  if (!id) return DEFAULT_TRANSLATION_ID;
+  try {
+    return getTranslation(id).id;
+  } catch {
+    return DEFAULT_TRANSLATION_ID;
+  }
+}
+
+function BadLink() {
+  const colors = useThemeColors();
+  const { t } = useTranslation('reader');
+  const { sides } = useContentLayout();
+  return (
+    <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
+      <ScreenHeader title={t('screenTitle')} />
+      <Unavailable
+        kind="failed"
+        layout="fill"
+        title={t('badLinkTitle')}
+        message={t('badLinkMessage')}
+        action={{ label: t('goToToday'), onPress: () => router.dismissTo('/') }}
+      />
+    </View>
+  );
+}
+
+function Reader({
+  bookId,
+  chapter,
+  translationId,
+}: {
+  bookId: string;
+  chapter: number;
+  translationId: string;
+}) {
   const colors = useThemeColors();
   const { t } = useTranslation(['reader', 'common']);
   const previousIcon = useBarIcon('chevron.left', 'chevron_left');
@@ -45,7 +119,14 @@ export default function ReaderRoute() {
   const book = isWide && foldAxis === 'vertical';
   const screenReader = useScreenReader();
 
-  const translationId = translation ?? DEFAULT_TRANSLATION_ID;
+  // Text size (docs/07 §4): 22/34 unless the reader chose another, 18–28.
+  const textSize = useReaderPrefs((s) => s.textSize);
+  const hydrateTextSize = useReaderPrefs((s) => s.hydrate);
+  const stepTextSize = useReaderPrefs((s) => s.step);
+  const resetTextSize = useReaderPrefs((s) => s.reset);
+  useEffect(hydrateTextSize, [hydrateTextSize]);
+  const type = useMemo(() => readerType(textSize, scriptureType), [textSize]);
+
   // What the last finished load produced, tagged with the chapter it was
   // for: `verses: null` is a failure. Anything tagged for another chapter
   // counts as still loading, so a slow chapter never shows the previous
@@ -54,22 +135,16 @@ export default function ReaderRoute() {
   // Bumped by Try again to fetch the same chapter once more.
   const [attempt, setAttempt] = useState(0);
 
-  let ref;
-  try {
-    ref = parseOsisRef(osis);
-  } catch {
-    ref = { bookId: 'John', chapter: 1, verse: 1 };
-  }
-  const bookInfo = getBook(ref.bookId);
-  const title = t('title', { book: bookName(ref.bookId), chapter: ref.chapter });
-  const chapterKey = `${translationId}:${ref.bookId}:${ref.chapter}`;
+  const chapterTitle = (n: number) => t('title', { book: bookName(bookId), chapter: n });
+  const title = chapterTitle(chapter);
+  const chapterKey = `${translationId}:${bookId}:${chapter}`;
   const current = loaded?.key === chapterKey ? loaded : null;
   const verses = current?.verses ?? [];
   const failed = current !== null && current.verses === null;
 
   useEffect(() => {
     let cancelled = false;
-    getChapter(translationId, ref.bookId, ref.chapter)
+    getChapter(translationId, bookId, chapter)
       .then((rows) => {
         if (!cancelled) setLoaded({ key: chapterKey, verses: rows });
       })
@@ -79,7 +154,32 @@ export default function ReaderRoute() {
     return () => {
       cancelled = true;
     };
-  }, [translationId, ref.bookId, ref.chapter, chapterKey, attempt]);
+  }, [translationId, bookId, chapter, chapterKey, attempt]);
+
+  // A new chapter opens at its top: the route only changes its params, so
+  // the same scroll view stays mounted and would keep the last offset.
+  const scroll = useRef<ScrollViewInstance>(null);
+  useEffect(() => {
+    scroll.current?.scrollTo({ y: 0, animated: false });
+  }, [chapterKey]);
+
+  // Where reading stopped: the chapter last moved to in this book. A link
+  // opens the chapter it names; when reading had gone on to another one,
+  // that chapter is offered above the text until the reader moves.
+  const [resume, setResume] = useState<number | null>(null);
+  const moved = useRef(false);
+  useEffect(() => {
+    let live = true;
+    moved.current = false;
+    readingPlace(bookId)
+      .then((place) => {
+        if (live && !moved.current) setResume(place);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [bookId]);
 
   // In place of the passage: what failed (and whether it needs a
   // connection), with a way to try again.
@@ -99,13 +199,35 @@ export default function ReaderRoute() {
     />
   );
 
-  const goToChapter = (chapter: number) => {
-    router.setParams({ osis: `${ref.bookId}.${chapter}.1` });
+  const goToChapter = (to: number) => {
+    moved.current = true;
+    setResume(null);
+    rememberReadingPlace(bookId, to).catch(() => {});
+    router.setParams({ osis: `${bookId}.${to}.1` });
   };
   // Only the chapters this translation has (a portion may skip some).
-  const { chapters } = useAvailableChapters(translationId, ref.bookId);
-  const previousChapter = [...chapters].reverse().find((c) => c < ref.chapter);
-  const nextChapter = chapters.find((c) => c > ref.chapter);
+  const { chapters } = useAvailableChapters(translationId, bookId);
+  const previousChapter = neighbourChapter(chapters, chapter, -1);
+  const nextChapter = neighbourChapter(chapters, chapter, 1);
+  const resumeAt =
+    resume !== null && resume !== chapter && chapters.includes(resume) ? resume : null;
+
+  // "Memorize this…" (docs/07 §6): the goal wizard, started at the verse.
+  const memorize = (v: Verse) =>
+    router.push({
+      pathname: '/goal-wizard',
+      params: { bookId: v.bookId, chapter: String(v.chapter), verse: String(v.verse) },
+    });
+  // The verse whose actions are up, tinted while they are.
+  const [picked, setPicked] = useState<number | null>(null);
+  const offerActions = (v: Verse) => {
+    setPicked(v.verse);
+    showVerseActions({
+      title: formatRef(v),
+      onMemorize: () => memorize(v),
+      onClose: () => setPicked(null),
+    });
+  };
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
@@ -118,23 +240,43 @@ export default function ReaderRoute() {
       <Stack.Screen options={{ gestureEnabled: !book, headerTransparent: book }} />
       <ScreenHeader title={title} transparent={book}>
         <Stack.Toolbar placement="right">
-          {/* Every chapter of the book, in every layout: the sidebar below
-              only exists on windows wider than tall, outside the book pose. */}
-          {chapters.length > 1 && (
-            <Stack.Toolbar.Menu
-              icon={chaptersIcon}
-              title={bookName(ref.bookId)}
-              accessibilityLabel={t('chapterMenu')}>
-              {chapters.map((n) => (
+          {/* Text size, then every chapter of the book, in every layout: the
+              sidebar below only exists on windows wider than tall, outside
+              the book pose. */}
+          <Stack.Toolbar.Menu
+            icon={chaptersIcon}
+            title={bookName(bookId)}
+            accessibilityLabel={t('chapterMenu')}>
+            <Stack.Toolbar.Menu inline title={t('textSize')}>
+              {/* Stepping keeps the menu up, so several steps are one visit. */}
+              <Stack.Toolbar.MenuAction
+                unstable_keepPresented
+                disabled={textSize <= scriptureType.minSize}
+                onPress={() => stepTextSize(-1)}>
+                {t('textSmaller')}
+              </Stack.Toolbar.MenuAction>
+              <Stack.Toolbar.MenuAction
+                unstable_keepPresented
+                disabled={textSize >= scriptureType.maxSize}
+                onPress={() => stepTextSize(1)}>
+                {t('textLarger')}
+              </Stack.Toolbar.MenuAction>
+              <Stack.Toolbar.MenuAction
+                disabled={textSize === scriptureType.defaultSize}
+                onPress={resetTextSize}>
+                {t('textDefault')}
+              </Stack.Toolbar.MenuAction>
+            </Stack.Toolbar.Menu>
+            {chapters.length > 1 &&
+              chapters.map((n) => (
                 <Stack.Toolbar.MenuAction
                   key={n}
-                  isOn={n === ref.chapter}
+                  isOn={n === chapter}
                   onPress={() => goToChapter(n)}>
                   {t('chapter', { chapter: n })}
                 </Stack.Toolbar.MenuAction>
               ))}
-            </Stack.Toolbar.Menu>
-          )}
+          </Stack.Toolbar.Menu>
           <Stack.Toolbar.Button
             icon={previousIcon}
             accessibilityLabel={t('previousChapter')}
@@ -163,9 +305,10 @@ export default function ReaderRoute() {
         ) : (
           <BookSpread
             translationId={translationId}
-            bookId={ref.bookId}
-            chapter={ref.chapter}
-            chapterCount={chapters[chapters.length - 1] ?? bookInfo.chapters}
+            bookId={bookId}
+            chapter={chapter}
+            chapters={chapters}
+            textSize={textSize}
             onChapterChange={goToChapter}
           />
         )
@@ -175,9 +318,9 @@ export default function ReaderRoute() {
             <ScrollView
               style={[styles.sidebar, { borderColor: colors.separator }]}
               contentContainerStyle={styles.sidebarContent}>
-              <SectionHeader title={bookName(ref.bookId)} style={styles.sidebarTitle} />
+              <SectionHeader title={bookName(bookId)} style={styles.sidebarTitle} />
               {chapters.map((n) => {
-                const selected = n === ref.chapter;
+                const selected = n === chapter;
                 return (
                   <Pressable
                     key={n}
@@ -201,7 +344,18 @@ export default function ReaderRoute() {
               })}
             </ScrollView>
           )}
-          <ScrollView style={styles.flex} contentContainerStyle={[styles.content, contentColumn]}>
+          <ScrollView
+            ref={scroll}
+            style={styles.flex}
+            contentContainerStyle={[styles.content, contentColumn]}>
+            {resumeAt !== null && (
+              <TextLink
+                label={t('resume', { chapter: chapterTitle(resumeAt) })}
+                disclosure
+                onPress={() => goToChapter(resumeAt)}
+                style={styles.resume}
+              />
+            )}
             {failure}
             {current === null && (
               <LoadingState layout="inline" label={t('loadingChapter', { chapter: title })} />
@@ -211,20 +365,46 @@ export default function ReaderRoute() {
                 // One element per verse, "Verse 2. The same was…": VoiceOver
                 // moves verse by verse and can find its place again, where
                 // the flowed paragraph is a single element for the chapter.
+                // "Memorize this…" is each verse's action in the rotor.
                 verses.map((v) => (
                   <Text
                     key={`${v.chapter}:${v.verse}`}
                     accessibilityLabel={t('verse', { verse: v.verse, text: v.text })}
-                    style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                    <Text style={[styles.verseNum, { color: colors.inkFaint }]}>{v.verse} </Text>
+                    accessibilityActions={[{ name: MEMORIZE_ACTION, label: t('memorize') }]}
+                    onAccessibilityAction={(e) => {
+                      if (e.nativeEvent.actionName === MEMORIZE_ACTION) memorize(v);
+                    }}
+                    style={[type, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                    <Text style={{ color: colors.inkFaint }}>{verseMark(v.verse)}</Text>
                     {v.text}
                   </Text>
                 ))
               ) : (
-                <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                  {renderVerses(verses, colors.inkFaint)}
+                <Text style={[type, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                  {verses.map((v) => (
+                    // A long-press on a verse offers "Memorize this…".
+                    <Text
+                      key={`${v.chapter}:${v.verse}`}
+                      suppressHighlighting
+                      onLongPress={() => offerActions(v)}
+                      style={picked === v.verse && { backgroundColor: colors.lapisWash }}>
+                      {/* Superscript digits in the text's own size (docs/07 §4). */}
+                      <Text style={{ color: colors.inkFaint }}>{verseMark(v.verse)}</Text>
+                      {v.text}{' '}
+                    </Text>
+                  ))}
                 </Text>
               ))}
+            {verses.length > 0 && nextChapter !== undefined && (
+              // The chapter's end leads on to the next one. Named for where
+              // it goes; the bar's button keeps the plain "Next chapter".
+              <TextLink
+                label={t('nextChapterNamed', { chapter: chapterTitle(nextChapter) })}
+                disclosure
+                onPress={() => goToChapter(nextChapter)}
+                style={styles.next}
+              />
+            )}
             {verses.length > 0 && (
               <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {getTranslation(translationId).attribution}
@@ -235,15 +415,6 @@ export default function ReaderRoute() {
       )}
     </View>
   );
-}
-
-function renderVerses(list: Verse[], numberColor: string) {
-  return list.map((v) => (
-    <Text key={`${v.chapter}:${v.verse}`}>
-      <Text style={[styles.verseNum, { color: numberColor }]}>{v.verse} </Text>
-      {v.text}{' '}
-    </Text>
-  ));
 }
 
 const styles = StyleSheet.create({
@@ -268,10 +439,7 @@ const styles = StyleSheet.create({
     padding: layout.screenMargin,
     paddingBottom: spacing.xxxl * 2,
   },
-  passage: {
-    fontSize: scriptureType.defaultSize,
-    lineHeight: scriptureType.defaultLineHeight,
-  },
-  verseNum: { fontSize: 13 },
+  resume: { alignSelf: 'flex-start', marginBottom: spacing.md },
+  next: { alignSelf: 'flex-start', marginTop: spacing.xl },
   attribution: { fontSize: 13, marginTop: spacing.xxl },
 });
