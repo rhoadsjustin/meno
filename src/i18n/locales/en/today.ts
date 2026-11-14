@@ -5,9 +5,9 @@ export default {
   streak_other: '{{count}} day streak',
   streakSecured_one: '{{count}} day streak, secured today',
   streakSecured_other: '{{count}} day streak, secured today',
-  focusLabel: 'On your widgets',
-  nowOnWidgets: '{{title}} is now on your widgets.',
-  widgetsFailed: 'Couldn’t put {{title}} on your widgets',
+  focusLabel: 'Your focus',
+  nowOnWidgets: '{{title}} is now your focus. Your widgets show it too.',
+  widgetsFailed: 'Couldn’t make {{title}} your focus',
   // The first load failed, so there is nothing to show (never the empty state).
   loadFailed: {
     title: 'Couldn’t load Today',
@@ -65,8 +65,8 @@ export default {
     stepSpoken: '{{title}}. {{spoken}}',
     sealSpoken: 'Optional. Seal {{ref}} with one clean recitation.',
     seal: 'Seal {{ref}}',
-    showOnWidgetsSpoken: 'Show {{title}} on your widgets',
-    showOnWidgets: 'Show on widgets',
+    showOnWidgetsSpoken: 'Make {{title}} your focus. Your widgets and Recite to Unlock will use it.',
+    showOnWidgets: 'Make this my focus',
   },
 
   continueReading: 'Continue reading {{range}}',

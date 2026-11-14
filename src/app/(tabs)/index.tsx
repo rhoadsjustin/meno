@@ -468,7 +468,8 @@ export default function TodayScreen() {
             return (
               <>
                 <Button
-                  label={copy.button}
+                  // The reference is on the line above; the button only names the step.
+                  label={copy.verb}
                   accessibilityLabel={copy.spoken}
                   onPress={() => router.push(practiceHref(data.goal.id))}
                   style={styles.primaryButton}

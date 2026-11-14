@@ -2,8 +2,8 @@
 export default {
   inProgress: 'In progress',
   memorized: 'Memorized',
-  nowOnWidgets: '{{title}} is now on your widgets.',
-  widgetsFailed: 'Couldn’t put {{title}} on your widgets',
+  nowOnWidgets: '{{title}} is now your focus. Your widgets show it too.',
+  widgetsFailed: 'Couldn’t make {{title}} your focus',
   // The first load failed: shown in place of both shelves' empty states.
   loadFailed: {
     title: 'Couldn’t load your library',
@@ -17,8 +17,8 @@ export default {
     heatmap:
       'Chunk progress for {{title}}: {{memorized}} memorized, {{learning}} in progress, {{locked}} not started',
     share: 'Share challenge',
-    onWidgets: 'On your widgets',
-    showOnWidgets: 'Show on widgets',
+    onWidgets: 'Your focus',
+    showOnWidgets: 'Make this my focus',
     // The card's More menu: share, show on widgets, delete or stop.
     moreSpoken: 'More actions for {{title}}',
   },

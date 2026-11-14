@@ -1,6 +1,6 @@
 # Deleting passages from Library: the card's More menu, then a confirmation
 # that says what goes. Two passages first. Library lists the oldest first,
-# and with no "Show on widgets" pick the oldest is the focus, so the first
+# and with no "Make this my focus" pick the oldest is the focus, so the first
 # deletion removes the focus passage and the other one stays in progress.
 # Deleting the last one empties Library and brings Today's empty state back.
 # Both goals use the wizard defaults (John 1:1), so the flow checks

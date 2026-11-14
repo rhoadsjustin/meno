@@ -1,5 +1,5 @@
 # Two passages in progress → Today lists the second under "Also practicing",
-# and "Show on widgets" swaps which one is the focus (the widget verse).
+# and "Make this my focus" swaps which one is the focus (the widget verse).
 # The wizard's native menus aren't Maestro-friendly, so both goals use the
 # wizard defaults (John 1:1); the flow checks structure, not titles.
 appId: com.rhoadsdev.meno
@@ -20,22 +20,22 @@ tags:
 - extendedWaitUntil:
     visible: "Also practicing"
     timeout: 10000
-- assertVisible: "On your widgets"
+- assertVisible: "Your focus"
 - scrollUntilVisible:
-    element: "Show John 1:1 on your widgets"
+    element: "Make John 1:1 your focus.*"
     direction: DOWN
-- tapOn: "Show John 1:1 on your widgets"
+- tapOn: "Make John 1:1 your focus.*"
 # The other passage is now the focus; the first moves under "Also practicing".
 - assertVisible: "Also practicing"
 - scrollUntilVisible:
-    element: "On your widgets"
+    element: "Your focus"
     direction: UP
 - tapOn: "Library"
 # Library marks the focus passage and offers the switch in the other one's
 # More menu. The oldest passage is listed first and is no longer the focus,
 # so the first More button is its.
 - scrollUntilVisible:
-    element: "On your widgets"
+    element: "Your focus"
     direction: DOWN
 - tapOn: "More actions for John 1:1"
-- assertVisible: "Show on widgets"
+- assertVisible: "Make this my focus"

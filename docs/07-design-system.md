@@ -58,7 +58,7 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
 
 ### Today (home tab)
 - Large title "Today" with streak ember (small flame glyph + count, lapis; turns hollow if today not yet active).
-- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button (capsule, lapis) that names its step and reference — **Start John 3:17**, **Continue John 3:16**, **Seal John 3:16** (03 §5). Sub-line: "Chunk 4 of 12 · Next step · Blanks 50/75".
+- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button (capsule, lapis) that names its step — **Start**, **Continue**, **Seal** (03 §5). The reference is already on the attribution line above it, so the button does not repeat it; VoiceOver still hears step and reference together. A quiet "Continue reading …" row closes the card. The title row carries the streak and a plus button for adding a passage. Sub-line: "Chunk 4 of 12 · Next step · Blanks 50/75".
 - Below: **Due for review** row (count + up-to-3 references, tap → review session), then a quiet reading shortcut ("Continue reading Philippians 3").
 - Order: with a passage, the hero card comes first in every layout and its button is the only filled one; other passages' actions and the Advent start are `tinted`. Seasonal and prompt cards (Advent invitation, Year in the Word, reminders) follow the review rows. The Advent invitation leads only the empty state, above the starter deck (11 §3.2).
 - A card that opens another screen is a `NavRow` (`src/components/nav-row.tsx`: title, one line of detail, chevron on iOS, the whole row the target) inside a `Card` — Stitch, Due for review, the Advent week and Year in the Word. Never a card with a link-coloured line inside it.
@@ -77,7 +77,7 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
 
 ### Library
 - Segmented (the system control, `@expo/ui/community/segmented-control`; on windows wider than tall both shelves show side by side instead): **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
-- A goal card has one visible action, the capsule naming the day's step (as Today's hero does); Share challenge, Show on widgets and Delete passage / Stop passage sit in its More menu (ellipsis, a system menu). A chunk not yet started is an outlined square in the heatmap. Memorized is one card of hairline-separated rows.
+- A goal card has one visible action, the capsule naming the day's step (as Today's hero does); Share challenge, Make this my focus and Delete passage / Stop passage sit in its More menu (ellipsis, a system menu). A chunk not yet started is an outlined square in the heatmap. Memorized is one card of hairline-separated rows.
 - Goal detail: chunk map, stats, stitch history, per-chunk drill-down.
 
 ### Reader

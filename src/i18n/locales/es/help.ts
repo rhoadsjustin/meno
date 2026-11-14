@@ -60,7 +60,7 @@ export default {
         'Desliza a la izquierda o a la derecha para elegir un tamaño y luego toca Agregar widget.',
       tapDone: 'Toca OK en la esquina superior derecha.',
     },
-    tip: 'Consejo: ¿estás aprendiendo más de un pasaje? En Hoy o en Biblioteca, toca “Mostrar en widgets” debajo del que quieras. Para elegir cuánto del versículo se muestra, mantén presionado el widget y toca Editar widget.',
+    tip: 'Consejo: ¿estás aprendiendo más de un pasaje? En Hoy o en Biblioteca, toca “Hacer mi enfoque” debajo del que quieras. Para elegir cuánto del versículo se muestra, mantén presionado el widget y toca Editar widget.',
   },
   lockWidget: {
     body: 'Pone tu versículo justo debajo del reloj, para que lo veas cada vez que tomas tu teléfono.',
@@ -105,7 +105,7 @@ export default {
     },
     widgetVerse: {
       q: '¿Cómo elijo qué versículo muestran mis widgets?',
-      a: 'En Hoy o en Biblioteca, toca “Mostrar en widgets” debajo del pasaje que quieras. Todos los widgets de Meno cambian a ese pasaje en un momento, y Recitar para desbloquear también te pedirá ese versículo.',
+      a: 'En Hoy o en Biblioteca, toca “Hacer mi enfoque” debajo del pasaje que quieras. Todos los widgets de Meno cambian a ese pasaje en un momento, y Recitar para desbloquear también te pedirá ese versículo.',
     },
     oldVerse: {
       q: 'Mi widget muestra un versículo anterior.',
