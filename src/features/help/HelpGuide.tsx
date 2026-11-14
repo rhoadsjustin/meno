@@ -29,7 +29,7 @@ import {
 import { Card } from '@/components/card';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { Button } from '@/components/button';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { useTranslation } from '@/i18n/react';
 import { formatRef } from '@/services/bible';
 import { loadLockConfig } from '@/services/db/repos/lock';
@@ -462,7 +462,7 @@ export function HelpGuide({
                     onPress={() => setOpenFaq(open ? null : i)}
                     style={styles.faqRow}>
                     <Text style={[styles.faqQuestion, text]}>{t(`faq.${id}.q`)}</Text>
-                    <Symbol
+                    <SymbolIcon
                       ios={open ? 'chevron.up' : 'chevron.down'}
                       android={open ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
                       size={15}
@@ -537,9 +537,9 @@ function StatusText({ status, label }: { status: Status; label?: string }) {
   return (
     <View style={styles.statusRow}>
       {status === 'ready' ? (
-        <Symbol ios="checkmark.circle.fill" android="check_circle" size={15} color={color} />
+        <SymbolIcon ios="checkmark.circle.fill" android="check_circle" size={15} color={color} />
       ) : (
-        <Symbol ios="exclamationmark.circle.fill" android="error" size={15} color={color} />
+        <SymbolIcon ios="exclamationmark.circle.fill" android="error" size={15} color={color} />
       )}
       {words}
     </View>

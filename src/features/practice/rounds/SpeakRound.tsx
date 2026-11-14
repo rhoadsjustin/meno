@@ -35,7 +35,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { getTranslation } from '@/services/bible';
@@ -570,7 +570,7 @@ export function SpeakRound({
             onPress={() => void toggleListening()}
             hitSlop={8}>
             <Animated.View style={[styles.micButton, micStyle]}>
-              <Symbol
+              <SymbolIcon
                 ios={listening ? 'pause.fill' : 'mic.fill'}
                 android={listening ? 'pause' : 'mic'}
                 size={36}
