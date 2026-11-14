@@ -13,54 +13,32 @@
  * translations whose license permits persisting text.
  *
  * The widget runtime can't load the i18n catalogs either, so its copy is
- * rendered here in the UI language and shipped as props (`withCopy`).
+ * rendered in the UI language and shipped as props (`withCopy`, in ./copy).
  */
 import { Platform } from 'react-native';
 
-import { t } from '@/i18n';
-
+import { formatRangeShort } from '@/services/bible/abbreviations';
 import { formatRange, getPassage, getTranslation, mayPersistText } from '@/services/bible';
 import { activeGoal, currentChunk, setFocusGoalId } from '@/services/db/repos/goals';
 import { dueReviewItems, countDueReviews } from '@/services/db/repos/reviews';
 import { loadStats } from '@/services/db/repos/stats';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { db, tables } from '@/services/db';
+import { withCopy, type WidgetData } from '@/services/widgets/copy';
 import { autoModeForTier, buildTextVariants, emptyTextVariants } from '@/services/widgets/modes';
 import { eq } from 'drizzle-orm';
 
-import type { MenoWidgetProps } from '@/widgets/MenoWidget';
-
-type WidgetCopy =
-  | 'streakUnitLabel'
-  | 'streakCaption'
-  | 'dueBadge'
-  | 'referenceNote'
-  | 'emptyPrompt'
-  | 'dueLine';
-
-/** Fills in the widget's localized copy from the data fields. */
-function withCopy(props: Omit<MenoWidgetProps, WidgetCopy>): MenoWidgetProps {
-  return {
-    ...props,
-    streakUnitLabel: t('widgets:streakUnit', { count: props.streak }),
-    streakCaption: t('widgets:streakCaption', { count: props.streak }),
-    dueBadge: t('widgets:dueBadge', { count: props.dueCount }),
-    referenceNote: props.memorized ? t('widgets:memorizedNote') : t('widgets:fromMemoryNote'),
-    emptyPrompt: t('widgets:emptyPrompt'),
-    dueLine: props.dueRefs ? t('widgets:dueList', { refs: props.dueRefs }) : t('widgets:nothingDue'),
-  };
-}
-
-async function buildProps(): Promise<Omit<MenoWidgetProps, WidgetCopy>> {
+async function buildProps(): Promise<WidgetData> {
   const [streak, dueCount, stats] = await Promise.all([
     currentStreakDisplay(),
     countDueReviews(),
     loadStats(1),
   ]);
 
-  const base: Omit<MenoWidgetProps, WidgetCopy> = {
+  const base: WidgetData = {
     ...emptyTextVariants(),
     verseRef: '',
+    verseRefShort: '',
     autoMode: 'full',
     memorized: false,
     streak: streak.current,
@@ -107,6 +85,7 @@ async function buildProps(): Promise<Omit<MenoWidgetProps, WidgetCopy>> {
     // Everything memorized — celebrate quietly with the goal reference. There
     // is no chunk to render, so every mode falls back to reference-only.
     base.verseRef = goal.title;
+    base.verseRefShort = goal.title;
     base.memorized = true;
     base.autoMode = 'reference';
     return base;
@@ -117,6 +96,7 @@ async function buildProps(): Promise<Omit<MenoWidgetProps, WidgetCopy>> {
     end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
   };
   base.verseRef = formatRange(range);
+  base.verseRefShort = formatRangeShort(range);
   base.memorized = chunk.tier >= 6;
   // What 'Match my progress' shows: the tier-based dissolution of 05 §1.
   base.autoMode = autoModeForTier(chunk.tier);

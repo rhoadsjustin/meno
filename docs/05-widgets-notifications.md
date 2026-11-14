@@ -75,15 +75,18 @@ iOS 16.x even though the app's deployment target is 16.4.
 | Family | Content | Tap target |
 |---|---|---|
 | systemSmall | Streak flame + count, due-count pill, verse reference | Today screen |
-| systemMedium | **Current verse** at the configured mode, + streak in corner | `practice/[goalId]` |
+| systemMedium | **Current verse** at the configured mode, + streak in corner | `practice/[goalId]` (the widget links `/practice`, which resolves to the focus goal) |
 | systemLarge | Verse (as medium) + this-week grid of practice days + due reviews list (up to 3 refs) | Today |
 | accessoryRectangular (Lock Screen) | Reference + the verse at the configured mode | Today |
-| accessoryCircular | Streak count | Today |
-| accessoryInline | "Phil 4:6 · 12🔥" | Today |
+| accessoryCircular | Streak count over the practiced-today mark (flame or dot) | Today |
+| accessoryInline | "Phil 4:6 · 12🔥" (book abbreviated, `services/bible/abbreviations`) | Today |
 
 - The tier-based obscuring is the signature, and stays the default (`auto`): full text (tiers 0–2) → 50% blanked (3–4) → first letters (5) → reference only (6/memorized — "you know this one"). The widget quietly tracks your mastery; text dissolves from the home screen as it solidifies in memory. Choosing an explicit mode overrides the ladder — useful for drilling one level, or for keeping a finished passage on the Lock Screen as a daily blank-fill.
 - Timeline refresh policy: publish on app close; schedule one entry after local midnight so streak/day state rolls over without opening the app.
-- Dark/tinted/clear rendering modes respected via WidgetEnvironment.
+- Dark/tinted/clear rendering modes respected via WidgetEnvironment: the dark palette follows `colorScheme`; outside full colour (`widgetRenderingMode` accented or vibrant) captions use the system's secondary level instead of a fixed hex.
+- **No passage chosen**: small, medium, large and rectangular show "Pick a passage to begin."; inline shows "Pick a passage"; circular keeps the count.
+- **Type**: text styles (Dynamic Type), capped at xxLarge on the Home Screen and xLarge on the Lock Screen because the box is fixed; nothing under caption2 (11pt). The verse has a line limit per family and shrinks to 80% before it truncates.
+- **VoiceOver**: the streak reads as one phrase ("12-day streak, not yet practiced today"), the week grid as a count ("Practiced 5 of the last 7 days"), and blanked or first-letter text as its note ("From memory.") beside the reference. The wording is rendered in `services/widgets/copy` (unit-tested).
 
 ### Live Activity (stretch, post-v1)
 During an active practice session: chunk progress dots + current accuracy in Dynamic Island. Nice demo, not core.
@@ -92,7 +95,7 @@ During an active practice session: chunk progress dots + current accuracy in Dyn
 
 | Type | Default | Copy style | Deep link |
 |---|---|---|---|
-| Pop quiz (F4) | ≤2/day within 9am–9pm windows | "Pop quiz — Psalm 23:1. 30 seconds." | `review/[itemId]?source=popquiz` |
+| Pop quiz (F4) | ≤2/day within 9am–9pm windows | "Pop quiz — Psalm 23:1. 30 seconds." The reference is named when the quiz fires after the longest-due review falls due, since that is the verse the queue opens on; otherwise "Pop quiz". | `review/[itemId]?source=popquiz` (today: `/review`, the queue) |
 | Practice reminder | 1/day at the user's chosen time (default 7pm), planned a week ahead, skipped once today is practiced. Doubles as the streak guard: the next one carries the streak count. | "Your verse is waiting. A few minutes is plenty." | Today |
 | Review pileup | Weekly max | "4 passages are fading. Quick rescue session?" | Review queue |
 | Challenge events (Phase 2) | On join/completion | — | Challenge screen |
@@ -113,7 +116,8 @@ Rules:
   The status is judged against what iOS actually holds (`getAllScheduledNotificationsAsync`; each request carries its fire time in `data.at`), not against what the plan should have produced. Saying yes in Meno and no to the iOS prompt leaves the switch **on** and the state `blocked`, so reminders start by themselves once notifications are allowed in iPhone Settings.
 - Where it shows, all from `loadReminderStatus` / `useReminderStatus` so they cannot disagree: **Settings → Reminders** lists the three with their state; the **setup guide** shows the same lines and a one-line summary in its checklist; **onboarding** stops on a plain "Reminders can’t reach you yet" step when the iOS prompt is declined instead of moving on; **Today** shows one dismissible card to someone with a passage under way whose reminders are off or blocked — once answered, closed, or made moot by working reminders it never returns (06 §6).
 - A Focus and Scheduled Summary can hold notifications back and are invisible to apps. Settings and the guide say so rather than guessing.
-- Notification categories with actions: pop quiz gets a "Later today" action (reschedules once) alongside default open.
+- Notification categories with actions: pop quiz gets a "Later today" action (reschedules once) alongside default open. *Not built yet.*
+- Android channels: Daily reminder, Pop quizzes, and Seasonal notices (Year in the Word, Advent), each mutable on its own.
 - Verse **text** in notification bodies only for license-permitting translations; otherwise reference only.
 
 ## 3. Siri — "Look up a verse" (App Intents)
