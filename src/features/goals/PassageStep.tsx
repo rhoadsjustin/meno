@@ -30,6 +30,7 @@ import {
 } from 'react-native';
 
 import { contentColumn } from '@/components/content-layout';
+import { BookMenu } from '@/features/goals/BookMenu';
 import { ExtendMenu } from '@/features/goals/ExtendMenu';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
 import { useAvailableChapters } from '@/features/reader/use-available-chapters';
@@ -79,6 +80,9 @@ type Props = {
   onChapterChange: (chapter: number) => void;
   selection: PassageSelection | null;
   setSelection: Dispatch<SetStateAction<PassageSelection | null>>;
+  /** A verse of the opening chapter to bring into view once it has loaded
+   * (the wizard opened on a verse from the reader). */
+  initialVerse?: number;
   /** A failure from the wizard's Continue, shown in the pinned bar. */
   error: string | null;
   /** Reports whether the chapter on screen has its verses; the wizard holds Continue until it does. */
@@ -95,6 +99,7 @@ export function PassageStep({
   onChapterChange,
   selection,
   setSelection,
+  initialVerse,
   error,
   onReadyChange,
 }: Props) {
@@ -175,6 +180,18 @@ export function PassageStep({
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [bookId, chapter]);
+
+  // Opened on a verse further down: bring it into view, once. Rows vary in
+  // height, so a row not yet measured goes through `onScrollToIndexFailed`.
+  const pendingVerse = useRef(initialVerse !== undefined && initialVerse > 1 ? initialVerse : null);
+  const scrollRetries = useRef(0);
+  useEffect(() => {
+    const target = pendingVerse.current;
+    if (!verses || target === null) return;
+    pendingVerse.current = null;
+    const index = verses.findIndex((v) => v.verse >= target);
+    if (index > 0) listRef.current?.scrollToIndex({ index, animated: false });
+  }, [verses]);
 
   const commit = useCallback(
     (next: PassageSelection | null) => {
@@ -257,13 +274,7 @@ export function PassageStep({
         )}
       </View>
       <View style={styles.controlRow}>
-        <Host matchContents seedColor={colors.lapis}>
-          <Picker selectedValue={bookId} onValueChange={(v) => onBookChange(String(v))}>
-            {books.map((b) => (
-              <Picker.Item key={b.id} label={bookName(b.id)} value={b.id} />
-            ))}
-          </Picker>
-        </Host>
+        <BookMenu books={books} bookId={bookId} onBookChange={onBookChange} tint={colors.lapis} />
         {chapters.length > 1 && (
           <Host matchContents seedColor={colors.lapis}>
             <Picker selectedValue={chapter} onValueChange={(v) => onChapterChange(Number(v))}>
@@ -355,6 +366,15 @@ export function PassageStep({
         }
         initialNumToRender={12}
         windowSize={7}
+        onScrollToIndexFailed={({ index, averageItemLength }) => {
+          // Get near on the average row height, then ask again now that the
+          // rows around it exist. A few tries is plenty; after that the
+          // verse is simply further down, selected as it should be.
+          listRef.current?.scrollToOffset({ offset: averageItemLength * index, animated: false });
+          if (scrollRetries.current >= 3) return;
+          scrollRetries.current += 1;
+          setTimeout(() => listRef.current?.scrollToIndex({ index, animated: false }), 100);
+        }}
       />
 
       <View style={[styles.bar, { borderTopColor: colors.separator }]}>

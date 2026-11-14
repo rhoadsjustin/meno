@@ -30,7 +30,7 @@ export default {
     noResultsHint: 'Revisa la ortografía o busca por idioma o abreviatura.',
     empty: 'No hay traducciones disponibles.',
     footnote:
-      'Las traducciones que necesitan conexión se leen en línea cada vez; Meno no guarda su texto.',
+      'Las traducciones sin la nota “En este dispositivo” o “Guardada para tus pasajes” necesitan conexión. Se leen en línea cada vez; Meno no guarda su texto.',
   },
   wizard: {
     choosePassage: 'Elige un pasaje',
@@ -41,6 +41,11 @@ export default {
       'Más o menos un fragmento nuevo al día, con repasos para conservar lo que ya guardaste.',
     finishAround: 'A ese ritmo terminarías alrededor del {{date}}.',
     startMemorizing: 'Empezar a memorizar',
+    // Asked before Cancel or a swipe down throws away a chosen passage.
+    discardTitle: '¿Descartar este pasaje?',
+    discardMessage: 'Los versículos que elegiste no se guardarán.',
+    discard: 'Descartar',
+    keepEditing: 'Seguir editando',
   },
   stats: {
     verses: 'Versículos',

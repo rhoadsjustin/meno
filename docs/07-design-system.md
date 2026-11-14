@@ -89,7 +89,10 @@ The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `ti
   - The menus and chapter actions scroll with the verses; only the echo bar and buttons are pinned, so the list keeps its room on short windows (iPhone Duo opened, landscape) and at accessibility sizes, where the control rows wrap.
   - Licensed text (ESV) loads a chapter at a time through `services/bible`: a spinner while it loads; if it fails, a message in place of the verses with **Try again** and **Use the WEB instead**, and the menus stay usable.
   - VoiceOver: each row reads "Verse 16. ‹text›", its selected state and what a double-tap will do, and offers the custom actions "Start passage here" / "End passage here"; every change is announced ("John 3:16–18 selected").
-- **Plan.** Editable goal name, then verses, words, chunks and estimated days.
+- **Plan.** Editable goal name under a visible "Passage name" caption, then verses, words, chunks and estimated days. The passage step stays mounted underneath, so **Back** returns to the same chapter at the same place with nothing loaded again.
+- **Leaving.** Cancel, a swipe down or Android's back asks **Discard this passage?** (Discard / Keep editing) once the verses differ from the ones the sheet opened on, or the name was edited; untouched, it just closes. iOS presents the system confirmation dialog from the Cancel/Back button, which is a system button for that reason; Android uses the platform alert. While a plan is being worked out or a goal created, Cancel/Back is disabled and the sheet stays.
+- **Opening on a verse.** `/goal-wizard?bookId=Ps&chapter=23&verse=4` (plus an optional `translation` id) opens on that verse, selected and scrolled into view: the reader's "Memorize this…" uses it. The params are checked against the canon by `selectionFromParams`; anything else opens on John 1:1.
+- The book menu groups books under Old Testament and New Testament on iOS (a translation with one testament gets a plain list); Android's picker has no sections and lists them in canonical order.
 - Range logic is pure and unit-tested in `src/services/bible/selection.ts`.
 
 ### Lock setup & Unlock
