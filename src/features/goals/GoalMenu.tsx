@@ -2,7 +2,7 @@ import { MenuView, type MenuAction, type MenuComponentRef } from '@expo/ui/commu
 import { useRef } from 'react';
 import { Alert, Pressable, StyleSheet, type ColorValue } from 'react-native';
 
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import type { DeletePrompt } from '@/services/goals/deletion';
@@ -70,7 +70,7 @@ export function GoalMenu({ label, tint, onShare, onShowOnWidgets, removal }: Goa
         accessibilityLabel={label}
         onPress={() => menu.current?.show()}
         style={styles.target}>
-        <Symbol ios="ellipsis" android="more_horiz" size={22} color={tint} />
+        <SymbolIcon ios="ellipsis" android="more_horiz" size={22} color={tint} />
       </Pressable>
     </MenuView>
   );
