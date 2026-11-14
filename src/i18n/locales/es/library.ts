@@ -5,13 +5,17 @@ export default {
   inProgress: 'En curso',
   memorized: 'Memorizados',
   nowOnWidgets: '{{title}} ya está en tus widgets.',
+  widgetsFailed: 'No se pudo poner {{title}} en tus widgets',
+  loadFailed: {
+    title: 'No se pudo cargar tu biblioteca',
+    body: 'Tus pasajes siguen en este dispositivo.',
+  },
 
   goal: {
     summary_one: '{{translation}} · {{done}} de {{count}} fragmento memorizado',
     summary_other: '{{translation}} · {{done}} de {{count}} fragmentos memorizados',
     heatmap:
       'Progreso de los fragmentos de {{title}}: {{memorized}} memorizados, {{learning}} en curso, {{locked}} sin empezar',
-    practice: 'Practicar',
     share: 'Compartir reto',
     shareSpoken: 'Compartir {{title}} como reto',
     onWidgets: 'En tus widgets',
@@ -20,7 +24,7 @@ export default {
   },
 
   emptyInProgressTitle: 'Aún no hay pasajes',
-  emptyInProgressBody: 'Aquí aparecerán los pasajes que estás aprendiendo.',
+  emptyInProgressBody: 'Elige un pasaje para memorizar y aparecerá aquí mientras lo aprendes.',
   practiceAnother: '+ Practicar otro pasaje',
   choosePassage: 'Elegir un pasaje',
 

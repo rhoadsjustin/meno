@@ -13,7 +13,9 @@ export default {
     'Al unirte, se crea esta meta en tu dispositivo. Tu progreso es privado; por ahora solo tú lo ves.',
   join: 'Unirme al desafío',
   practice: 'Practicar',
-  joinFailed: 'Algo salió mal al unirte a este desafío. Vuelve a abrir el enlace.',
+  joinFailed: 'No se pudo unir a este desafío. Inténtalo de nuevo.',
+  failedHeading: 'No se pudo cargar este pasaje',
+  failedBody: 'El enlace está bien. Inténtalo de nuevo en un momento.',
   errors: {
     malformed: 'Este enlace de desafío está incompleto o dañado.',
     newerVersion:

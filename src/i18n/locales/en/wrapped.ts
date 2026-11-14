@@ -110,6 +110,10 @@ export default {
     previous: 'Previous card',
     shareFailed: 'This card couldn’t be turned into an image. Try again.',
     notYetTitle: 'Not quite yet',
+    practiceToday: 'Practice today',
+    loadFailedTitle: 'Couldn’t load your Year in the Word',
+    shareFailedTitle: 'Couldn’t share this card',
+    sharing: 'Preparing the image…',
   },
   /** The Today card before there's enough to show (docs/10 §4). */
   notYet: 'Your Year in the Word opens once you’ve practiced on 3 days.',

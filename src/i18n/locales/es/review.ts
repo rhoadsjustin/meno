@@ -7,6 +7,8 @@ export default {
   closeLabel: 'Cerrar el repaso',
   emptyTitle: 'No hay nada pendiente de repaso',
   emptyBody: 'Los versículos memorizados vuelven aquí cuando llega su fecha de repaso.',
+  loadFailedTitle: 'No se pudieron cargar tus repasos',
+  loadFailedBody: 'No se perdió nada: los versículos pendientes seguirán aquí.',
   roundHeader: 'Repaso · {{reference}}',
   almost: 'Casi',
   almostMarked: 'Casi — abajo están marcadas las palabras que fallaron',

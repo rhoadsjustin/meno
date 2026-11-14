@@ -6,11 +6,20 @@
  * Material lists carry no chevron, so Android leaves it off.
  */
 import { SymbolView } from 'expo-symbols';
-import type { ReactNode } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, type ReactNode } from 'react';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { t as translate } from '@/i18n';
 import { TextLink } from '@/components/text-link';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import type { CatalogRefreshState } from '@/features/goals/translation-catalog';
 import { translationCoverage, type LanguageSummary, type Translation } from '@/services/bible';
@@ -187,6 +196,18 @@ export function GroupFooter({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Speaks a status when it appears. On iOS React Native's live regions do
+ * nothing and the `alert` role adds no announcement, so VoiceOver would
+ * otherwise say nothing when a row changes; Android's live regions already
+ * speak, and announcing there as well would say it twice.
+ */
+function useAnnouncement(message: string | null) {
+  useEffect(() => {
+    if (message && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
+}
+
 /** Loading or failed, under the featured languages; a retry when failed. */
 export function CatalogStatusRow({
   status,
@@ -197,6 +218,7 @@ export function CatalogStatusRow({
 }) {
   const colors = useThemeColors();
   const { t } = useTranslation(['goals', 'common']);
+  useAnnouncement(status === 'error' ? t('picker.catalogFailed') : null);
   if (status === 'loading') {
     return (
       <View style={styles.status} accessible accessibilityLabel={t('picker.loading')}>
@@ -211,6 +233,7 @@ export function CatalogStatusRow({
     <View style={styles.status}>
       <Text
         accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
         style={[styles.statusText, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {t('picker.catalogFailed')}
       </Text>
@@ -227,6 +250,16 @@ export function CatalogStatusRow({
 export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) {
   const colors = useThemeColors();
   const { t } = useTranslation('goals');
+  // The result of a check, spoken once when it arrives.
+  useAnnouncement(
+    refresh.state === 'done'
+      ? refresh.added > 0
+        ? t('picker.refreshAdded', { count: refresh.added })
+        : t('picker.refreshUpToDate')
+      : refresh.state === 'failed'
+        ? `${t('picker.refreshFailed')} ${refresh.reason ?? t('picker.refreshHint')}`
+        : null,
+  );
   if (refresh.state === 'idle') return null;
   const text = [styles.statusText, { fontFamily: fonts?.ui }];
   if (refresh.state === 'checking') {
@@ -285,22 +318,15 @@ export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) 
 
 /** The empty search state (HIG: say what was searched and what to try). */
 export function NoResults({ query }: { query: string }) {
-  const colors = useThemeColors();
   const { t } = useTranslation('goals');
   return (
-    <View style={styles.noResults} accessible accessibilityRole="text">
-      <SymbolView
-        name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
-        tintColor={colors.inkFaint}
-        size={40}
-      />
-      <Text style={[styles.noResultsTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        {t('picker.noResults', { query: query.trim() })}
-      </Text>
-      <Text style={[styles.noResultsHint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {t('picker.noResultsHint')}
-      </Text>
-    </View>
+    <Unavailable
+      kind="empty"
+      symbol={{ ios: 'magnifyingglass', android: 'search' }}
+      title={t('picker.noResults', { query: query.trim() })}
+      message={t('picker.noResultsHint')}
+      style={styles.noResults}
+    />
   );
 }
 
@@ -351,7 +377,5 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
   },
   refreshText: { flex: 1 },
-  noResults: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxxl },
-  noResultsTitle: { fontSize: 20, fontWeight: '600', textAlign: 'center' },
-  noResultsHint: { fontSize: 15, lineHeight: 20, textAlign: 'center' },
+  noResults: { paddingVertical: spacing.xxxl },
 });

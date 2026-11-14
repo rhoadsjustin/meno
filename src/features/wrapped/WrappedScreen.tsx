@@ -8,7 +8,7 @@ import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
-  ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -32,6 +32,7 @@ import { RecapCard } from '@/features/wrapped/RecapCard';
 import { loadRecapView, type RecapView } from '@/features/wrapped/recap-view';
 import { ShareStage, type ShareFormat, type ShareStageHandle } from '@/features/wrapped/ShareStage';
 import { Button } from '@/components/button';
+import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import { shareGoalChallenge } from '@/services/challenges';
 import { markRecapSeen } from '@/services/db/repos/appFlags';
@@ -57,6 +58,10 @@ export function WrappedScreen({ year }: { year: number }) {
   const shareIcon = useBarIcon('square.and.arrow.up', 'share');
 
   const [view, setView] = useState<RecapView | null>(null);
+  // A load that threw, kept apart from "still loading" (`view === null`).
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by Try again to run the load once more.
+  const [attempt, setAttempt] = useState(0);
   const [index, setIndex] = useState(0);
   const [sharing, setSharing] = useState(false);
   const list = useRef<FlatList<CardId>>(null);
@@ -71,11 +76,11 @@ export function WrappedScreen({ year }: { year: number }) {
         // Seen: the December notice has nothing left to announce.
         if (v.recap.eligible) void markRecapSeen(year).then(rescheduleAll);
       })
-      .catch(() => live && setView(null));
+      .catch(() => live && setLoadFailed(true));
     return () => {
       live = false;
     };
-  }, [year]);
+  }, [year, attempt]);
 
   const cards = useMemo(() => view?.recap.cards ?? [], [view]);
   const current = cards[index];
@@ -123,7 +128,9 @@ export function WrappedScreen({ year }: { year: number }) {
       try {
         await stage.current?.share(current, format);
       } catch {
-        AccessibilityInfo.announceForAccessibility(t('screen.shareFailed'));
+        // An alert, not only an announcement: without it a sighted person
+        // taps a format and nothing happens. VoiceOver reads the alert.
+        Alert.alert(t('screen.shareFailedTitle'), t('screen.shareFailed'));
       } finally {
         setSharing(false);
       }
@@ -160,21 +167,44 @@ export function WrappedScreen({ year }: { year: number }) {
 
   if (!view) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.surface }]}>
+      <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
         {header}
-        <ActivityIndicator color={colors.inkFaint} />
+        {loadFailed ? (
+          <Unavailable
+            kind="failed"
+            layout="fill"
+            title={t('screen.loadFailedTitle')}
+            message={t('common:tryAgainSoon')}
+            action={{
+              label: t('common:retry'),
+              onPress: () => {
+                setLoadFailed(false);
+                setAttempt((n) => n + 1);
+              },
+            }}
+          />
+        ) : (
+          // Word counts read passage text, which may be a fetch.
+          <LoadingState />
+        )}
       </View>
     );
   }
 
   if (!view.recap.eligible) {
     return (
-      <View style={[styles.center, sides, { backgroundColor: colors.surface }]}>
+      <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
         {header}
-        <Text accessibilityRole="header" style={[styles.notYetTitle, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-          {t('screen.notYetTitle')}
-        </Text>
-        <Text style={[styles.notYetBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>{t('notYet')}</Text>
+        {/* The title keeps the recap's New York voice. Close stays in the
+            bar; the button is the way to go and do what opens the recap. */}
+        <Unavailable
+          kind="empty"
+          layout="fill"
+          titleFont="scripture"
+          title={t('screen.notYetTitle')}
+          message={t('notYet')}
+          action={{ label: t('screen.practiceToday'), onPress: closeModal }}
+        />
       </View>
     );
   }
@@ -264,7 +294,9 @@ export function WrappedScreen({ year }: { year: number }) {
           key={format}
           variant="secondary"
           label={t(format === 'story' ? 'screen.storyFormat' : 'screen.postFormat')}
-          disabled={sharing}
+          accessibilityLabel={sharing ? t('screen.sharing') : undefined}
+          // The capture takes a moment (layout, two frames, the image).
+          busy={sharing}
           onPress={() => void share(format)}
         />
       ))}
@@ -290,9 +322,6 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1 },
   pager: { flex: 1, overflow: 'hidden' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: layout.screenMargin },
-  notYetTitle: { fontSize: 26, fontWeight: '600', marginBottom: spacing.sm, textAlign: 'center' },
-  notYetBody: { fontSize: 17, lineHeight: 24, textAlign: 'center', maxWidth: 360 },
   sharePane: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingHorizontal: layout.screenMargin },
   shareHeading: { fontSize: 22, fontWeight: '600', marginBottom: spacing.sm },
   ticks: {

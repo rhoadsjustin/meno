@@ -67,6 +67,7 @@ export default {
     clear: 'Clear',
     clearSelection: 'Clear selection',
     chapterFailed: 'This chapter didn’t load.',
+    chapterFailedTitle: 'This chapter didn’t load',
     tapToBegin: 'Tap a verse to begin.',
     tapToEnd: 'Tap another verse to end the range, or continue with this one.',
     tapToChooseAgain: 'Tap a verse to choose again.',

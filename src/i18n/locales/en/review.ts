@@ -5,6 +5,8 @@ export default {
   closeLabel: 'Close review',
   emptyTitle: 'Nothing due for review',
   emptyBody: 'Memorized verses come back here as their review dates arrive.',
+  loadFailedTitle: 'Couldn’t load your reviews',
+  loadFailedBody: 'Nothing is lost: the verses that are due will still be here.',
   roundHeader: 'Review · {{reference}}',
   almost: 'Almost',
   almostMarked: 'Almost — the slipped words are marked below',

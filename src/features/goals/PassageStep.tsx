@@ -33,8 +33,8 @@ import { contentColumn } from '@/components/content-layout';
 import { ExtendMenu } from '@/features/goals/ExtendMenu';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
 import { useAvailableChapters } from '@/features/reader/use-available-chapters';
-import { t as translate } from '@/i18n';
 import { TextLink } from '@/components/text-link';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import {
   BOOKS,
@@ -43,6 +43,7 @@ import {
   formatRange,
   getChapter,
   getTranslation,
+  loadFailureMessage,
   translationHasBook,
   type Verse,
 } from '@/services/bible';
@@ -83,14 +84,6 @@ type Props = {
   /** Reports whether the chapter on screen has its verses; the wizard holds Continue until it does. */
   onReadyChange?: (ready: boolean) => void;
 };
-
-/** Plain words for a passage that would not load; bundled text never needs the network. */
-export function loadFailureMessage(translationId: string, what: string): string {
-  const translation = getTranslation(translationId);
-  return translation.source === 'bundled'
-    ? translate('goals:passage.loadFailed', { what })
-    : translate('goals:passage.loadFailedRemote', { what, abbrev: translation.abbrev });
-}
 
 export function PassageStep({
   heading,
@@ -305,27 +298,24 @@ export function PassageStep({
   );
 
   const empty = failed ? (
-    <View style={styles.empty}>
-      <Text
-        accessibilityRole="alert"
-        style={[styles.emptyText, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        {translationId && loadFailureMessage(translationId, bookChapter(chapter))}
-      </Text>
-      <View style={styles.controlRow}>
-        <TextLink
-          size="large"
-          label={t('common:retry')}
-          onPress={() => setAttempt((n) => n + 1)}
-        />
-        {translationId !== DEFAULT_TRANSLATION_ID && (
-          <TextLink
-            size="large"
-            label={t('passage.useInstead', { abbrev: getTranslation(DEFAULT_TRANSLATION_ID).abbrev })}
-            onPress={() => onTranslationChange(DEFAULT_TRANSLATION_ID)}
-          />
-        )}
-      </View>
-    </View>
+    // 07 §6: a message in place of the verses, with Try again and Use the
+    // WEB instead. The shared state announces the failure to VoiceOver.
+    <Unavailable
+      kind="failed"
+      title={t('passage.chapterFailedTitle')}
+      message={translationId ? loadFailureMessage(translationId, bookChapter(chapter)) : undefined}
+      action={{ label: t('common:retry'), onPress: () => setAttempt((n) => n + 1) }}
+      secondaryAction={
+        translationId !== DEFAULT_TRANSLATION_ID
+          ? {
+              label: t('passage.useInstead', {
+                abbrev: getTranslation(DEFAULT_TRANSLATION_ID).abbrev,
+              }),
+              onPress: () => onTranslationChange(DEFAULT_TRANSLATION_ID),
+            }
+          : undefined
+      }
+    />
   ) : (
     <View
       style={styles.empty}
@@ -474,8 +464,7 @@ const styles = StyleSheet.create({
   },
   controlLabel: { fontSize: 15 },
   notice: { fontSize: 15 },
-  empty: { padding: spacing.xl, gap: spacing.md, alignItems: 'flex-start' },
-  emptyText: { fontSize: 17, lineHeight: 24 },
+  empty: { padding: spacing.xl, alignItems: 'center' },
   verseRow: {
     flexDirection: 'row',
     minHeight: 44,

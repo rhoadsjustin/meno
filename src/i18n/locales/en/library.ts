@@ -3,6 +3,12 @@ export default {
   inProgress: 'In progress',
   memorized: 'Memorized',
   nowOnWidgets: '{{title}} is now on your widgets.',
+  widgetsFailed: 'Couldn’t put {{title}} on your widgets',
+  // The first load failed: shown in place of both shelves' empty states.
+  loadFailed: {
+    title: 'Couldn’t load your library',
+    body: 'Your passages are still on this device.',
+  },
 
   goal: {
     // English keeps "chunks" for any count, as before.
@@ -10,7 +16,6 @@ export default {
     summary_other: '{{translation}} · {{done}} of {{count}} chunks memorized',
     heatmap:
       'Chunk progress for {{title}}: {{memorized}} memorized, {{learning}} in progress, {{locked}} not started',
-    practice: 'Practice',
     share: 'Share challenge',
     shareSpoken: 'Share {{title}} as a challenge',
     onWidgets: 'On your widgets',
@@ -19,7 +24,7 @@ export default {
   },
 
   emptyInProgressTitle: 'No passages yet',
-  emptyInProgressBody: 'Your passages in progress will live here.',
+  emptyInProgressBody: 'Choose a passage to memorize and it will live here while you learn it.',
   practiceAnother: '+ Practice another passage',
   choosePassage: 'Choose a passage',
 

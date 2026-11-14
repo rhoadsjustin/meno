@@ -9,6 +9,7 @@ import { SectionList, StyleSheet, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { ScreenHeader } from '@/components/screen-header';
+import { Unavailable } from '@/components/unavailable';
 import { useCatalogSections } from '@/features/goals/translation-catalog';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
 import { closePicker, type PickerSection } from '@/features/goals/translation-picker-nav';
@@ -71,6 +72,8 @@ export function LanguageTranslations() {
         }
         renderSectionHeader={({ section: s }) => <GroupHeader title={s.title} />}
         stickySectionHeadersEnabled={false}
+        // The language was pruned from the catalogue while this screen was up.
+        ListEmptyComponent={<Unavailable kind="empty" title={t('picker.empty')} />}
         ListFooterComponent={<GroupFooter>{t('picker.footnote')}</GroupFooter>}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[

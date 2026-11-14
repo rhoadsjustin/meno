@@ -3,7 +3,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, MIN_TOUCH_TARGET } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
@@ -34,8 +34,17 @@ export function ArrangeRound({
   const place = (tile: number) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setPlaced([...placed, tile]);
+    // VoiceOver: the focused tile leaves the bank, so say where it went.
+    const said: string[] = [
+      t('arrange.placed', { position: placed.length + 1, phrase: round.phrases[tile] }),
+    ];
+    if (remaining.length === 1) said.push(t('arrange.allPlaced'));
+    AccessibilityInfo.announceForAccessibility(said.join(' '));
   };
   const unplace = (position: number) => {
+    AccessibilityInfo.announceForAccessibility(
+      t('arrange.removed', { phrase: round.phrases[placed[position]] }),
+    );
     setPlaced(placed.filter((_, i) => i !== position));
   };
 
