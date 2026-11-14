@@ -14,7 +14,7 @@ import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-nati
 import { MIN_TOUCH_TARGET } from '@/components/button';
 import { Card } from '@/components/card';
 import { NavRow } from '@/components/nav-row';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { useTranslation } from '@/i18n/react';
 import {
   dismissRecapCard,
@@ -85,7 +85,7 @@ export function RecapTodayCard({ offer }: { offer: RecapOffer | null }) {
         );
       }}
       style={({ pressed }) => [styles.close, pressed && styles.pressed]}>
-      <Symbol ios="xmark" android="close" size={13} weight="semibold" color={colors.inkFaint} />
+      <SymbolIcon ios="xmark" android="close" size={13} weight="semibold" color={colors.inkFaint} />
     </Pressable>
   );
   return (

@@ -1,7 +1,7 @@
 import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { MIN_TOUCH_TARGET } from '@/components/button';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 export type NavRowProps = {
@@ -53,7 +53,7 @@ export function NavRow({
         )}
       </View>
       {Platform.OS === 'ios' && (
-        <Symbol
+        <SymbolIcon
           ios="chevron.right"
           android="chevron_right"
           size={14}
