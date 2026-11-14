@@ -18,7 +18,7 @@ import { useScreenReader } from '@/components/screen-reader';
 import { Screen } from '@/components/screen';
 import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/button';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { TextLink } from '@/components/text-link';
 import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
@@ -258,7 +258,7 @@ export default function TodayScreen() {
         count: streak.current,
       })}
       style={styles.ember}>
-      <Symbol
+      <SymbolIcon
         ios={streak.activeToday ? 'flame.fill' : 'flame'}
         android="local_fire_department"
         size={17}

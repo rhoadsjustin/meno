@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { useTranslation } from '@/i18n/react';
 import { describeReminders, type ReminderStatus } from '@/services/notifications';
 import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
@@ -32,16 +32,16 @@ export function ReminderStatusList({ status }: { status: ReminderStatus }) {
             style={styles.line}>
             <View style={styles.mark}>
               {line.tone === 'ok' ? (
-                <Symbol ios="checkmark.circle.fill" android="check_circle" size={15} color={markColor} />
+                <SymbolIcon ios="checkmark.circle.fill" android="check_circle" size={15} color={markColor} />
               ) : line.tone === 'problem' ? (
-                <Symbol
+                <SymbolIcon
                   ios="exclamationmark.circle.fill"
                   android="error"
                   size={15}
                   color={markColor}
                 />
               ) : (
-                <Symbol ios="minus.circle" android="do_not_disturb_on" size={15} color={markColor} />
+                <SymbolIcon ios="minus.circle" android="do_not_disturb_on" size={15} color={markColor} />
               )}
             </View>
             <View style={styles.text}>
