@@ -8,6 +8,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,7 +40,9 @@ import {
   friendlyDate,
   isPassageTitle,
   parseChallengeParams,
+  targetDateStanding,
   type Challenge,
+  type ChallengeLinkReason,
 } from '@/services/challenges';
 import {
   createGoal,
@@ -47,12 +51,16 @@ import {
   type Goal,
   type GoalPreview,
 } from '@/services/db/repos/goals';
+import { localToday } from '@/services/db/repos/streaks';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
+
+/** Meno's App Store listing (the one site/challenge links to). */
+const APP_STORE_URL = 'https://apps.apple.com/us/app/meno-scripture-memory/id6806028621';
 
 type JoinState =
   | { kind: 'loading' }
   /** The link itself is wrong (parse errors only). */
-  | { kind: 'invalid'; message: string }
+  | { kind: 'invalid'; message: string; reason: ChallengeLinkReason }
   /** The link is fine; reading its passage failed and can be tried again. */
   | { kind: 'failed' }
   | { kind: 'joined'; goal: Goal }
@@ -68,19 +76,20 @@ export default function ChallengeRoute() {
 
 function ChallengeScreen() {
   const colors = useThemeColors();
-  const { t: tr } = useTranslation(['challenge', 'goals', 'common']);
+  const { t: tr } = useTranslation(['challenge', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
   // Key the parse on the raw values: a second challenge link opened while
   // this modal is already up must replace its content, not show the first.
   const { v, c, t, s, e, n, d } = useLocalSearchParams<Record<string, string>>();
-  const parsed = useMemo<{ challenge: Challenge } | { error: string }>(() => {
+  const parsed = useMemo<
+    { challenge: Challenge } | { error: string; reason: ChallengeLinkReason }
+  >(() => {
     try {
       return { challenge: parseChallengeParams({ v, c, t, s, e, n, d }) };
     } catch (err) {
-      return {
-        error:
-          err instanceof ChallengeLinkError ? err.message : translate('challenge:errors.malformed'),
-      };
+      return err instanceof ChallengeLinkError
+        ? { error: err.message, reason: err.reason }
+        : { error: translate('challenge:errors.malformed'), reason: 'malformed' };
     }
   }, [v, c, t, s, e, n, d]);
   const challenge = 'challenge' in parsed ? parsed.challenge : null;
@@ -136,10 +145,18 @@ function ChallengeScreen() {
   // A parse error always wins over whatever the async check last produced.
   const view: JoinState =
     'error' in parsed
-      ? { kind: 'invalid', message: parsed.error }
+      ? { kind: 'invalid', message: parsed.error, reason: parsed.reason }
       : state && state.code === parsed.challenge.code
         ? state.result
         : { kind: 'loading' };
+
+  // An old link's date may be behind us, and a plan joined late may not fit
+  // before its date: the preview says which, and a past date is not saved.
+  const due = targetDateStanding(
+    challenge?.targetDate,
+    localToday(),
+    view.kind === 'ready' ? view.preview.projectedDays : 0,
+  );
 
   const accept = async () => {
     if (!challenge || busy) return;
@@ -150,7 +167,7 @@ function ChallengeScreen() {
         translationId,
         range: challenge.range,
         title: challenge.title,
-        targetDate: challengeTargetDate(challenge),
+        targetDate: due === 'past' ? undefined : challengeTargetDate(challenge),
         challengeId: challenge.code,
       });
       router.replace(`/practice/${goal.id}`);
@@ -162,7 +179,7 @@ function ChallengeScreen() {
   };
 
   // The spinner gives way to the invitation in place: say what arrived. The
-  // failed state speaks for itself (Unavailable).
+  // failed and bad-link states speak for themselves (Unavailable).
   const arrived =
     view.kind === 'ready' && challenge
       ? `${tr('invitation')}: ${
@@ -172,12 +189,22 @@ function ChallengeScreen() {
         }`
       : view.kind === 'joined'
         ? tr('joinedHeading')
-        : view.kind === 'invalid'
-          ? tr('invalidHeading')
-          : null;
+        : null;
   useEffect(() => {
     if (arrived) announce(arrived);
   }, [arrived]);
+
+  // A link that can't be used still leads somewhere: the store when it needs
+  // a newer Meno (iOS, where the listing is known), otherwise choosing a
+  // passage here instead.
+  const nextStep =
+    view.kind === 'invalid' && view.reason === 'newerVersion' && Platform.OS === 'ios'
+      ? {
+          label: tr('update'),
+          // Nothing to add if the store can't open: the message already says to update.
+          onPress: () => void Linking.openURL(APP_STORE_URL).catch(() => {}),
+        }
+      : { label: tr('choosePassage'), onPress: () => router.replace('/goal-wizard') };
 
   // "Not now" while there is an invitation to decline, "Close" otherwise.
   const dismissLabel = view.kind === 'ready' ? tr('common:notNow') : tr('common:close');
@@ -219,16 +246,12 @@ function ChallengeScreen() {
         )}
 
         {view.kind === 'invalid' && (
-          <>
-            <Text
-              accessibilityRole="header"
-              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {tr('invalidHeading')}
-            </Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {view.message}
-            </Text>
-          </>
+          <Unavailable
+            kind="failed"
+            title={tr('invalidHeading')}
+            message={view.message}
+            action={nextStep}
+          />
         )}
 
         {view.kind === 'failed' && (
@@ -275,18 +298,20 @@ function ChallengeScreen() {
               {formatRange(challenge.range)}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {challenge.targetDate
-                ? tr('translationDue', {
+              {challenge.targetDate && (due === 'reachable' || due === 'tight')
+                ? tr(due === 'tight' ? 'translationAiming' : 'translationDue', {
                     abbrev: getTranslation(translationId).abbrev,
                     date: friendlyDate(challenge.targetDate),
                   })
                 : getTranslation(translationId).abbrev}
             </Text>
-            <View style={styles.statsRow}>
-              <Stat label={tr('goals:stats.verses')} value={String(view.preview.verseCount)} />
-              <Stat label={tr('goals:stats.chunks')} value={String(view.preview.chunks.length)} />
-              <Stat label={tr('goals:stats.estDays')} value={`~${view.preview.projectedDays}`} />
-            </View>
+            {/* What joining takes on, in words a newcomer knows. */}
+            <Text style={[styles.summary, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              {tr('summary', {
+                verses: tr('common:verseCount', { count: view.preview.verseCount }),
+                days: tr('aboutDays', { count: view.preview.projectedDays }),
+              })}
+            </Text>
             {translationSwapped && (
               <Text style={[styles.note, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {tr('swapped', {
@@ -328,21 +353,6 @@ function JoinFailedNote({ message }: { message: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  const colors = useThemeColors();
-  return (
-    // One element, "14 Verses": apart they read as a number, then a word.
-    <View accessible accessibilityLabel={`${value} ${label}`}>
-      <Text style={[styles.statValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-        {value}
-      </Text>
-      <Text style={[styles.statLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { padding: spacing.xl, paddingBottom: spacing.xxxl, gap: spacing.sm },
@@ -357,16 +367,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderCurve: 'continuous',
   },
-  // Wraps: at accessibility sizes three stats are wider than the sheet.
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: spacing.xl,
-    rowGap: spacing.md,
-    marginVertical: spacing.md,
-  },
-  statValue: { fontSize: 28 },
-  statLabel: { fontSize: 13 },
+  summary: { fontSize: 17, lineHeight: 22, fontWeight: '600', marginTop: spacing.md },
   // The one confirming action; dismissing is the bar's job.
   footer: {
     paddingHorizontal: spacing.xl,

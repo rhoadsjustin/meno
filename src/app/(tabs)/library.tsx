@@ -26,7 +26,7 @@ import { removeGoal, stopPassage } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getTranslation } from '@/services/bible';
-import { shareGoalChallenge } from '@/services/challenges';
+import { shareGoalChallengeOrAlert } from '@/services/challenges';
 import {
   activeGoal,
   chunksForGoal,
@@ -294,7 +294,7 @@ export default function LibraryScreen() {
                   weight="semibold"
                   label={t('goal.share')}
                   accessibilityLabel={t('goal.shareSpoken', { title: goal.title })}
-                  onPress={() => shareGoalChallenge(goal).catch(() => {})}
+                  onPress={() => void shareGoalChallengeOrAlert(goal)}
                 />
                 {activeCount > 1 &&
                   (goal.id === focusId ? (

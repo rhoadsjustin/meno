@@ -9,6 +9,10 @@ export default {
   startShort: 'Or a shorter one: {{passage}}',
   dismiss: 'Not this year',
   dismissed: 'Advent plan hidden',
+  /** Spoken when the card is closed: the Undo row follows it. */
+  dismissedSpoken: 'Advent plan hidden. Undo is available.',
+  undo: 'Undo',
+  restored: 'Advent plan restored',
   /** The goal's name, e.g. "Advent: Luke 2:1–14". */
   goalTitle: 'Advent: {{passage}}',
   progress: {
