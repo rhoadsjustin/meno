@@ -31,10 +31,11 @@ tags:
     element: "On your widgets"
     direction: UP
 - tapOn: "Library"
-# Library marks the focus passage and offers the switch on the other one.
+# Library marks the focus passage and offers the switch in the other one's
+# More menu. The oldest passage is listed first and is no longer the focus,
+# so the first More button is its.
 - scrollUntilVisible:
     element: "On your widgets"
     direction: DOWN
-- scrollUntilVisible:
-    element: "Show John 1:1 on your widgets"
-    direction: DOWN
+- tapOn: "More actions for John 1:1"
+- assertVisible: "Show on widgets"

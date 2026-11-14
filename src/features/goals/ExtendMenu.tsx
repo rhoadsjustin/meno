@@ -1,6 +1,8 @@
-import { Host, Picker } from '@expo/ui';
+import { MenuView, type MenuComponentRef } from '@expo/ui/community/menu';
+import { useRef } from 'react';
 import type { ColorValue } from 'react-native';
 
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 
 export type ExtendMenuProps = {
@@ -13,22 +15,25 @@ export type ExtendMenuProps = {
 /**
  * Runs the passage through the end of a later chapter — how whole books get
  * chosen without a second set of pickers. iOS renders a system menu of
- * actions (`ExtendMenu.ios.tsx`); elsewhere the platform dropdown stands in.
+ * actions (`ExtendMenu.ios.tsx`); elsewhere a Material dropdown of the same
+ * actions opens from a link. A menu, not a picker: each row acts, and
+ * nothing stays selected.
  */
-export function ExtendMenu({ chapters, onExtend, tint }: ExtendMenuProps) {
+export function ExtendMenu({ chapters, onExtend }: ExtendMenuProps) {
   const { t } = useTranslation('goals');
+  const menu = useRef<MenuComponentRef>(null);
   return (
-    <Host matchContents seedColor={tint}>
-      <Picker
-        selectedValue={0}
-        onValueChange={(c) => {
-          if (c > 0) onExtend(c);
-        }}>
-        <Picker.Item label={t('passage.extendThrough')} value={0} />
-        {chapters.map((c) => (
-          <Picker.Item key={c} label={t('passage.chapter', { chapter: c })} value={c} />
-        ))}
-      </Picker>
-    </Host>
+    <MenuView
+      ref={menu}
+      actions={chapters.map((c) => ({
+        id: String(c),
+        title: t('passage.chapter', { chapter: c }),
+      }))}
+      onPressAction={(e) => {
+        const chapter = Number(e.nativeEvent.event);
+        if (chapters.includes(chapter)) onExtend(chapter);
+      }}>
+      <TextLink label={t('passage.extendThrough')} onPress={() => menu.current?.show()} />
+    </MenuView>
   );
 }

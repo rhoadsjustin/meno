@@ -40,7 +40,7 @@ export function mayStopGoal(
   return goal.status === 'active' && chunks.some(isMemorized) && !chunks.every(isMemorized);
 }
 
-/** What the card's trash button does for this goal, if it shows one. */
+/** What the card's More menu offers to take this goal off the shelf, if anything. */
 export function goalRemoval(
   goal: DeletionCandidate,
   chunks: readonly DeletionCandidate[],
