@@ -57,6 +57,9 @@ export function ScoreHeadline({
 
   return (
     <Text
+      // Maestro flow 03 checks by id that an ungraded round shows no score:
+      // a bare "\d+%" also matches the progress bar's value.
+      testID="round-score"
       accessibilityLabel={label}
       maxFontSizeMultiplier={1.5}
       style={[styles.score, short && styles.scoreShort, { color, fontFamily: fonts?.scripture }]}>

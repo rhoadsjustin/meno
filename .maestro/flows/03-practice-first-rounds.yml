@@ -20,8 +20,10 @@ appId: com.rhoadsdev.meno
 - extendedWaitUntil:
     visible: "Read cleared"
     timeout: 10000
-# Read is not graded (docs/03 §1): its result carries no score.
-- assertNotVisible: "\\d+%"
+# Read is not graded (docs/03 §1): its result carries no score. By id: a
+# bare "\\d+%" also matches the progress bar's value ("11%").
+- assertNotVisible:
+    id: "round-score"
 - tapOn: "Continue"
 # Next tier loads in the same screen: First Letters.
 - extendedWaitUntil:
@@ -35,5 +37,6 @@ appId: com.rhoadsdev.meno
 - extendedWaitUntil:
     visible: "Round passed"
     timeout: 10000
-- assertNotVisible: "\\d+%"
+- assertNotVisible:
+    id: "round-score"
 - assertVisible: "Continue"
