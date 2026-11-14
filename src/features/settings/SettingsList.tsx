@@ -22,7 +22,7 @@ import {
 import { MIN_TOUCH_TARGET } from '@/components/button';
 import { Card } from '@/components/card';
 import { SectionHeader } from '@/components/section-header';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { useThemeColors, fonts, layout, spacing, textStyle } from '@/theme';
 
 export type SettingsSectionProps = PropsWithChildren<{
@@ -112,9 +112,9 @@ export function SettingsRow({
   const quiet = selected ? colors.ink : colors.inkFaint;
   const mark =
     disclosure === 'external' ? (
-      <Symbol ios="arrow.up.right" android="open_in_new" size={13} weight="semibold" color={quiet} />
+      <SymbolIcon ios="arrow.up.right" android="open_in_new" size={13} weight="semibold" color={quiet} />
     ) : disclosure === 'chevron' && Platform.OS === 'ios' ? (
-      <Symbol ios="chevron.right" android="chevron_right" size={13} weight="semibold" color={quiet} />
+      <SymbolIcon ios="chevron.right" android="chevron_right" size={13} weight="semibold" color={quiet} />
     ) : null;
 
   const content = (
