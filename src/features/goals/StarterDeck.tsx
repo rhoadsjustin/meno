@@ -9,6 +9,7 @@ import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-n
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { Button } from '@/components/button';
+import { LoadingState } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import {
   formatRange,
@@ -79,9 +80,11 @@ export function StarterDeck({
           </Text>
         </View>
         <Button
-          label={starting ? t('starter.starting') : t('starter.practiceThisVerse')}
+          label={t('starter.practiceThisVerse')}
           accessibilityLabel={t('starter.practiceReference', { reference })}
-          disabled={startingId !== null}
+          // The tapped card's button shows a spinner; the others only dim.
+          busy={starting}
+          disabled={startingId !== null && !starting}
           onPress={() => onStart(passage)}
           style={styles.button}
         />
@@ -114,7 +117,22 @@ export function StarterDeck({
   );
 }
 
+/**
+ * Holds the deck's place while the starter verses load (ESV can take a
+ * moment), so the empty state is not a headline over nothing and the page
+ * does not jump when the cards arrive.
+ */
+export function StarterDeckPlaceholder() {
+  return (
+    <Card style={styles.placeholder}>
+      <LoadingState layout="inline" />
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  // About one card of a short verse at the default text size.
+  placeholder: { minHeight: 260, justifyContent: 'center' },
   root: { gap: spacing.md },
   row: { gap: spacing.md },
   stack: { gap: spacing.md },

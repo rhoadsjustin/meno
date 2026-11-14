@@ -45,14 +45,15 @@ export default {
   stitch: {
     title: 'Stitch it together',
     body: 'Recite everything you’ve learned so far as one passage.',
-    begin: 'Begin stitch',
   },
 
   due: {
     title: 'Due for review',
     body_one: '{{count}} verse is ready to be kept fresh.',
     body_other: '{{count}} verses are ready to be kept fresh.',
-    action: 'Review {{count}}',
+    // The row's detail once the references are known: the first three, most overdue first.
+    refs: '{{count}} to keep fresh: {{refs}}',
+    refsAndMore: '{{count}} to keep fresh: {{refs}} and {{more}} more',
   },
 
   others: {
@@ -74,9 +75,5 @@ export default {
 
   ladder: {
     title: 'Where it stands',
-    withStreak_one: '{{progress}} · {{count}}-day streak',
-    withStreak_other: '{{progress}} · {{count}}-day streak',
-    withStreakSecured_one: '{{progress}} · {{count}}-day streak, secured today',
-    withStreakSecured_other: '{{progress}} · {{count}}-day streak, secured today',
   },
 } as const;

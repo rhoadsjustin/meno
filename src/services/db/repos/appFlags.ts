@@ -104,6 +104,22 @@ export async function setAdventDismissed(year: number, dismissed: boolean): Prom
   await writeFlag(`adventDismissed:${year}`, dismissed ? 'true' : 'false');
 }
 
+/**
+ * Which Today recap card was closed for the year (docs/10 §5.5: quiet,
+ * dismissible): `notYet` is the "opens after 3 days" line, `ready` the card
+ * that opens the recap. Closing the first does not hide the second.
+ */
+export type RecapCardDismissal = 'notYet' | 'ready';
+
+export async function recapCardDismissed(year: number): Promise<RecapCardDismissal | null> {
+  const value = await readFlag(`wrappedCardDismissed:${year}`);
+  return value === 'notYet' || value === 'ready' ? value : null;
+}
+
+export async function dismissRecapCard(year: number, which: RecapCardDismissal): Promise<void> {
+  await writeFlag(`wrappedCardDismissed:${year}`, which);
+}
+
 async function readFlag(key: string): Promise<string | undefined> {
   const rows = await db.select().from(tables.settings).where(eq(tables.settings.key, key)).limit(1);
   return rows[0]?.value;

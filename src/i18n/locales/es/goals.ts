@@ -84,6 +84,5 @@ export default {
   starter: {
     practiceReference: 'Practicar {{reference}}',
     practiceThisVerse: 'Practicar este versículo',
-    starting: 'Empezando…',
   },
 } satisfies Catalog<typeof en>;
