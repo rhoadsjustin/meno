@@ -37,8 +37,11 @@ export type SymbolProps = {
  * button around it carries the words.
  *
  * Toolbar icons are a different case; see `useBarIcon`.
+ *
+ * Not named `Symbol`: a binding of that name shadows the global the React
+ * Compiler's output calls (`Symbol.for`), which throws at render.
  */
-export function Symbol({
+export function SymbolIcon({
   ios,
   android,
   size = 17,
