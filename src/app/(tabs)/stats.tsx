@@ -268,10 +268,12 @@ export default function StatsScreen() {
   );
 
   return (
-    <Screen title={t('app:tabs.stats')} wide>
+    <Screen title={t('app:tabs.stats')} wide panes={twoPane}>
       {/* Always the row: with no second pane the first keeps its place in
-          the tree, so folding and unfolding does not remount the screen. */}
-      <FoldAwareRow>
+          the tree, so folding and unfolding does not remount the screen.
+          Side by side, each pane scrolls on its own: the numerals stay put
+          while the badges are read. */}
+      <FoldAwareRow scroll={twoPane}>
         <>
           {numerals}
           <RecapStatsRow offer={recapOffer} />

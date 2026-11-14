@@ -286,7 +286,7 @@ export default function LibraryScreen() {
   );
 
   return (
-    <Screen title={t('app:tabs.library')} wide>
+    <Screen title={t('app:tabs.library')} wide panes={twoPane && !loadFailed}>
       {loadFailed ? (
         // In place of both shelves: "No passages yet" here would read as
         // lost data, and the add prompt would be beside the point.
@@ -315,8 +315,9 @@ export default function LibraryScreen() {
           {/* Always the row, and each shelf under its own key: crossing the
               two-pane breakpoint (folding or unfolding iPhone Duo) changes
               only the control and the headers, so the cards — and a delete
-              confirmation open on one — are not remounted. */}
-          <FoldAwareRow>
+              confirmation open on one — are not remounted. Side by side,
+              each shelf scrolls on its own. */}
+          <FoldAwareRow scroll={twoPane}>
             <>
               {twoPane && header(t('inProgress'))}
               <Fragment key={firstShelf}>

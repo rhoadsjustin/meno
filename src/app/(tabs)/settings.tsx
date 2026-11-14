@@ -302,10 +302,11 @@ export default function SettingsScreen() {
     );
 
   return (
-    <Screen title={t('app:tabs.settings')} wide>
+    <Screen title={t('app:tabs.settings')} wide panes={twoPane}>
       {/* Always the row: with no second pane the rows keep their place in
-          the tree, so folding and unfolding does not remount them. */}
-      <FoldAwareRow>
+          the tree, so folding and unfolding does not remount them. Side by
+          side, the rows stay put while the guide beside them is read. */}
+      <FoldAwareRow scroll={twoPane}>
         {rows}
         {twoPane ? detailPane : null}
       </FoldAwareRow>

@@ -626,7 +626,12 @@ export default function TodayScreen() {
   const adventProgress = <AdventProgressCard offer={advent.offer} />;
 
   return (
-    <Screen title={t('app:tabs.today')} accessory={titleAccessory || undefined} wide>
+    <Screen
+      title={t('app:tabs.today')}
+      accessory={titleAccessory || undefined}
+      wide
+      // Side by side, each pane scrolls on its own under the title.
+      panes={twoPane && !loadFailed}>
       {loadFailed ? (
         // Not the first-run empty state: someone with passages in progress
         // must not be told they have memorized nothing.
@@ -637,7 +642,7 @@ export default function TodayScreen() {
           action={{ label: t('common:retry'), busy: retrying, onPress: () => void retryLoad() }}
         />
       ) : twoPane ? (
-        <FoldAwareRow>
+        <FoldAwareRow scroll>
           <>
             {emptyIntro}
             {emptyActions}
