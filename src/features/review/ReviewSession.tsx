@@ -6,12 +6,13 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
 import { db, tables } from '@/services/db';
@@ -24,7 +25,7 @@ import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
 import { WordFeedback } from '@/features/practice/WordFeedback';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing } from '@/theme';
 import { eq } from 'drizzle-orm';
 
 type QueueEntry = {
@@ -193,12 +194,11 @@ export function ReviewSession() {
               <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {t('emptyBody')}
               </Text>
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label={t('common:done')}
                 onPress={() => router.back()}
-                style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-              </Pressable>
+                style={styles.button}
+              />
             </>
           )}
 
@@ -273,12 +273,11 @@ export function ReviewSession() {
                 </Text>
               )}
               <WordFeedback result={phase.result} tone={tone === 'almost' ? 'almost' : 'error'} />
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label={t('common:continue')}
                 onPress={advance}
-                style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
-              </Pressable>
+                style={styles.button}
+              />
             </>
           )}
 
@@ -291,12 +290,11 @@ export function ReviewSession() {
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {t('keptFresh', { count: phase.reviewed })}
               </Text>
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label={t('common:done')}
                 onPress={() => router.back()}
-                style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-              </Pressable>
+                style={styles.button}
+              />
             </>
           )}
         </KeyboardScroll>
@@ -313,11 +311,5 @@ const styles = StyleSheet.create({
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   body: { fontSize: 15, lineHeight: 20 },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
-  button: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  button: { marginTop: spacing.xxl },
 });

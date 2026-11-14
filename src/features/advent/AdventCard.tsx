@@ -13,6 +13,8 @@ import { useCallback, useState } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { Button } from '@/components/button';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { adventFor, adventPlan, adventWeek, type AdventPlan, type AdventTrack } from '@/services/advent';
 import { formatRange, refToOsis } from '@/services/bible';
@@ -21,7 +23,7 @@ import { CHALLENGE_VERSION } from '@/services/challenges';
 import { adventDismissed, adventPreview, setAdventDismissed } from '@/services/db/repos/appFlags';
 import { activeGoal, goalByChallengeId, type Goal } from '@/services/db/repos/goals';
 import { localToday } from '@/services/db/repos/streaks';
-import { fonts, radius, spacing, useThemeColors } from '@/theme';
+import { fonts, spacing, useThemeColors } from '@/theme';
 
 export type AdventOffer = {
   plan: AdventPlan;
@@ -112,32 +114,25 @@ export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | nu
       <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {t('body', { passage: main })}
       </Text>
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label={t('start', { passage: main })}
         onPress={() => join(offer, offer.plan.main, t('goalTitle', { passage: main }))}
-        style={[styles.button, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('start', { passage: main })}</Text>
-      </Pressable>
+        style={styles.button}
+      />
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => join(offer, offer.plan.short, t('goalTitle', { passage: short }))}>
-          <Text style={[styles.action, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('startShort', { passage: short })}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
+        <TextLink
+          weight="semibold"
+          label={t('startShort', { passage: short })}
+          onPress={() => join(offer, offer.plan.short, t('goalTitle', { passage: short }))}
+        />
+        <TextLink
+          tone="quiet"
+          label={t('dismiss')}
           onPress={() => {
             onDismiss();
             AccessibilityInfo.announceForAccessibility(t('dismissed'));
-          }}>
-          <Text style={[styles.action, styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('dismiss')}
-          </Text>
-        </Pressable>
+          }}
+        />
       </View>
     </Card>
   );
@@ -162,7 +157,8 @@ export function AdventProgressCard({ offer }: { offer: AdventOffer | null }) {
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${detail}`}
       accessibilityHint={t('progress.hint')}
-      onPress={() => router.push(`/practice/${joined.goal.id}`)}>
+      onPress={() => router.push(`/practice/${joined.goal.id}`)}
+      style={({ pressed }) => pressed && styles.pressed}>
       <Card>
         <View style={styles.row}>
           <View style={styles.text}>
@@ -190,24 +186,18 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, lineHeight: 28, fontWeight: '600' },
   body: { fontSize: 15, lineHeight: 20, marginTop: spacing.xs },
-  button: {
-    marginTop: spacing.lg,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
+  button: { marginTop: spacing.lg },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
-    marginTop: spacing.md,
+    columnGap: spacing.md,
+    // The links are 44pt targets: their own height is the gap above them
+    // and between wrapped rows, and the card's padding absorbs the rest.
+    marginBottom: -spacing.md,
   },
-  action: { fontSize: 15, fontWeight: '600' },
-  quiet: { fontWeight: '400' },
+  pressed: { opacity: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   text: { flex: 1 },
   rowTitle: { fontSize: 17, fontWeight: '600' },

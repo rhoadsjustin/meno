@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { firstLetters } from '@/services/practice';
-import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, spacing, scriptureType } from '@/theme';
 
 /** Tier 1: first-letter prompt, recite, self-check against the reveal. */
 export function FirstLettersRound({
@@ -29,12 +30,11 @@ export function FirstLettersRound({
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('firstLetters.hint')}
           </Text>
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label={t('firstLetters.reveal')}
             onPress={() => setRevealed(true)}
-            style={[styles.button, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('firstLetters.reveal')}</Text>
-          </Pressable>
+            style={styles.button}
+          />
         </>
       ) : (
         <>
@@ -45,20 +45,17 @@ export function FirstLettersRound({
             {t('firstLetters.howDidItGo')}
           </Text>
           <View style={styles.row}>
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              variant="secondary"
+              label={t('firstLetters.notYet')}
               onPress={() => onResult(false)}
-              style={[styles.secondary, { borderColor: colors.separator }]}>
-              <Text style={[styles.secondaryText, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {t('firstLetters.notYet')}
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={styles.choice}
+            />
+            <Button
+              label={t('firstLetters.mostly')}
               onPress={() => onResult(true)}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('firstLetters.mostly')}</Text>
-            </Pressable>
+              style={styles.choice}
+            />
           </View>
         </>
       )}
@@ -74,26 +71,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   hint: { fontSize: 15, marginTop: spacing.lg },
-  button: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  button: { marginTop: spacing.xxl },
   row: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
-  primary: {
-    flex: 1,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  secondary: {
-    flex: 1,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  secondaryText: { fontSize: 17, fontWeight: '600' },
+  // Even halves of the row.
+  choice: { flex: 1 },
 });

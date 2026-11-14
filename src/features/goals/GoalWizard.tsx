@@ -4,8 +4,6 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +14,7 @@ import {
 import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { loadFailureMessage, PassageStep } from '@/features/goals/PassageStep';
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import {
   BOOKS,
@@ -210,42 +209,28 @@ export function GoalWizard() {
             paddingBottom: Math.max(spacing.xl, insets.bottom + spacing.sm),
           },
         ]}>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          variant="plain"
+          label={step === 'passage' ? t('common:cancel') : t('common:back')}
+          maxFontSizeMultiplier={FOOTER_MAX_SCALE}
           onPress={() => {
             setError(null);
             if (step === 'passage') closeModal();
             else setStep('passage');
           }}
-          style={styles.footerSecondary}>
-          <Text
-            maxFontSizeMultiplier={FOOTER_MAX_SCALE}
-            style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {step === 'passage' ? t('common:cancel') : t('common:back')}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canAdvance, busy }}
+          style={styles.footerSecondary}
+        />
+        <Button
+          label={step === 'plan' ? t('wizard.startMemorizing') : t('common:continue')}
+          maxFontSizeMultiplier={FOOTER_MAX_SCALE}
           disabled={!canAdvance}
+          busy={busy}
           onPress={() => {
             if (step === 'passage') void toPlan();
             else void confirm();
           }}
-          style={[
-            styles.footerPrimary,
-            { backgroundColor: colors.lapis, opacity: canAdvance ? 1 : 0.6 },
-          ]}>
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text
-              maxFontSizeMultiplier={FOOTER_MAX_SCALE}
-              style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>
-              {step === 'plan' ? t('wizard.startMemorizing') : t('common:continue')}
-            </Text>
-          )}
-        </Pressable>
+          style={styles.footerPrimary}
+        />
       </View>
     </View>
   );
@@ -309,14 +294,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerSecondary: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-  footerSecondaryText: { fontSize: 17 },
-  footerPrimary: {
-    borderRadius: 999,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    minWidth: 160,
-    alignItems: 'center',
-  },
-  footerPrimaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  footerSecondary: { paddingHorizontal: spacing.sm },
+  footerPrimary: { paddingHorizontal: spacing.xxl, minWidth: 160 },
 });

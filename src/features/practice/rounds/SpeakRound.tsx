@@ -34,13 +34,15 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { Button } from '@/components/button';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { getTranslation } from '@/services/bible';
 import { gradeSpoken, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
 import { fallbackLocale, recognizerLocale } from '@/services/speech/locale';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 export type SpeakOutcome = {
   accuracy: number;
@@ -343,11 +345,12 @@ export function SpeakRound({
           onDone={(o) => onDone({ ...o, typed: true })}
         />
         {!unavailable && (
-          <Pressable accessibilityRole="button" onPress={() => setTypeMode(false)}>
-            <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('speak.speakInstead')}
-            </Text>
-          </Pressable>
+          <TextLink
+            weight="semibold"
+            label={t('speak.speakInstead')}
+            onPress={() => setTypeMode(false)}
+            style={styles.toggle}
+          />
         )}
       </>
     );
@@ -385,11 +388,12 @@ export function SpeakRound({
             {t(pack === 'missing' ? 'speak.packMissing' : 'speak.packDownloading')}
           </Text>
           {pack === 'missing' && (
-            <Pressable accessibilityRole="button" onPress={() => void downloadPack()}>
-              <Text style={[styles.packButton, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                {t('speak.packDownload')}
-              </Text>
-            </Pressable>
+            <TextLink
+              weight="semibold"
+              label={t('speak.packDownload')}
+              onPress={() => void downloadPack()}
+              style={styles.packButton}
+            />
           )}
         </View>
       )}
@@ -449,12 +453,7 @@ export function SpeakRound({
       <View style={styles.bottom}>
         {canCheck && (
           <Animated.View entering={entering()} style={styles.checkWrap}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={submitTranscript}
-              style={[styles.button, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('speak.check')}</Text>
-            </Pressable>
+            <Button label={t('speak.check')} onPress={submitTranscript} />
           </Animated.View>
         )}
 
@@ -469,7 +468,9 @@ export function SpeakRound({
             onPress={() => void toggleListening()}
             hitSlop={8}>
             <Animated.View style={[styles.micButton, micStyle]}>
-              <Text style={styles.micGlyph}>{listening ? '⏸' : '🎙️'}</Text>
+              <Text style={[styles.micGlyph, { color: colors.onLapis }]}>
+                {listening ? '⏸' : '🎙️'}
+              </Text>
             </Animated.View>
           </Pressable>
           <Animated.Text
@@ -485,11 +486,12 @@ export function SpeakRound({
           </Animated.Text>
         </View>
 
-        <Pressable accessibilityRole="button" onPress={() => setTypeMode(true)}>
-          <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('speak.typeInstead')}
-          </Text>
-        </Pressable>
+        <TextLink
+          weight="semibold"
+          label={t('speak.typeInstead')}
+          onPress={() => setTypeMode(true)}
+          style={styles.typeInstead}
+        />
       </View>
     </View>
   );
@@ -501,7 +503,7 @@ const styles = StyleSheet.create({
   error: { fontSize: 14, lineHeight: 19, marginTop: spacing.md, textAlign: 'center' },
   notice: { fontSize: 14, lineHeight: 19, marginBottom: spacing.lg, textAlign: 'center' },
   packArea: { alignItems: 'center' },
-  packButton: { fontSize: 15, fontWeight: '600', marginTop: spacing.sm, padding: spacing.sm },
+  packButton: { paddingHorizontal: spacing.sm },
   transcriptArea: { flexGrow: 1, marginTop: spacing.xl },
   transcript: { fontSize: 19, lineHeight: 30 },
   transcriptInput: { padding: 0, textAlignVertical: 'top' },
@@ -525,14 +527,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  micGlyph: { fontSize: 36, color: '#FFFFFF' },
+  micGlyph: { fontSize: 36 },
   micLabel: { fontSize: 14 },
-  button: {
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  toggle: { fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  toggle: { alignSelf: 'center', paddingHorizontal: spacing.md },
+  // The 44pt target reaches up into the gap under the mic caption, so the
+  // link adds only half its extra height to a short window.
+  typeInstead: { marginTop: -spacing.md, paddingHorizontal: spacing.md },
 });

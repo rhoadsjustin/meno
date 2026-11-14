@@ -101,13 +101,19 @@ export function Dissolution({
 
   return (
     // Skippable, never blocks input for >1.5s (07 §8).
+    // While it runs it is a button that skips; once settled it is plain text
+    // naming what is left on the stage, with nothing to activate.
     <Pressable
+      accessibilityRole={done ? 'text' : 'button'}
       accessibilityLabel={
         memorized
           ? t('dissolution.memorizedLabel', { reference })
-          : t('dissolution.dissolvingLabel')
+          : done
+            ? reference
+            : t('dissolution.dissolvingLabel')
       }
-      onPress={skip}
+      accessibilityHint={done ? undefined : t('dissolution.skipHint')}
+      onPress={done ? undefined : skip}
       style={[styles.stage, compact && styles.stageCompact]}>
       {/* The full text stays in flow so the stage is as tall as the passage; the
           cipher and reference layers sit over it. All-absolute layers left the

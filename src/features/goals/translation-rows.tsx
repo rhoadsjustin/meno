@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t as translate } from '@/i18n';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import type { CatalogRefreshState } from '@/features/goals/translation-catalog';
 import { translationCoverage, type LanguageSummary, type Translation } from '@/services/bible';
@@ -213,11 +214,7 @@ export function CatalogStatusRow({
         style={[styles.statusText, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {t('picker.catalogFailed')}
       </Text>
-      <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
-        <Text style={[styles.statusText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-          {t('common:retry')}
-        </Text>
-      </Pressable>
+      <TextLink label={t('common:retry')} onPress={onRetry} />
     </View>
   );
 }

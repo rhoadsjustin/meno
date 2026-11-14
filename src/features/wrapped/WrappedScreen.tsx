@@ -31,6 +31,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { RecapCard } from '@/features/wrapped/RecapCard';
 import { loadRecapView, type RecapView } from '@/features/wrapped/recap-view';
 import { ShareStage, type ShareFormat, type ShareStageHandle } from '@/features/wrapped/ShareStage';
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { shareGoalChallenge } from '@/services/challenges';
 import { markRecapSeen } from '@/services/db/repos/appFlags';
@@ -192,14 +193,11 @@ export function WrappedScreen({ year }: { year: number }) {
   );
 
   const inviteButton = view.passage && (
-    <Pressable
-      accessibilityRole="button"
+    <Button
+      label={t('cards.summary.invite', { next: year + 1 })}
       onPress={() => void invite()}
-      style={[styles.invite, { backgroundColor: colors.lapis }]}>
-      <Text style={[styles.inviteText, { fontFamily: fonts?.ui }]}>
-        {t('cards.summary.invite', { next: year + 1 })}
-      </Text>
-    </Pressable>
+      style={styles.invite}
+    />
   );
 
   const pager = (
@@ -262,16 +260,13 @@ export function WrappedScreen({ year }: { year: number }) {
         {t('screen.shareHeading')}
       </Text>
       {(['story', 'square'] as const).map((format) => (
-        <Pressable
+        <Button
           key={format}
-          accessibilityRole="button"
+          variant="secondary"
+          label={t(format === 'story' ? 'screen.storyFormat' : 'screen.postFormat')}
           disabled={sharing}
           onPress={() => void share(format)}
-          style={[styles.shareButton, { borderColor: colors.separator, backgroundColor: colors.surfaceRaised }]}>
-          <Text style={[styles.shareButtonText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t(format === 'story' ? 'screen.storyFormat' : 'screen.postFormat')}
-          </Text>
-        </Pressable>
+        />
       ))}
       {current === 'summary' && inviteButton}
     </View>
@@ -300,13 +295,6 @@ const styles = StyleSheet.create({
   notYetBody: { fontSize: 17, lineHeight: 24, textAlign: 'center', maxWidth: 360 },
   sharePane: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingHorizontal: layout.screenMargin },
   shareHeading: { fontSize: 22, fontWeight: '600', marginBottom: spacing.sm },
-  shareButton: {
-    borderRadius: radius.capsule,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  shareButtonText: { fontSize: 17, fontWeight: '600' },
   ticks: {
     flexDirection: 'row',
     gap: spacing.xs,
@@ -337,12 +325,8 @@ const styles = StyleSheet.create({
   tapForward: { right: 0, width: '67%' },
   invite: {
     marginTop: spacing.lg,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xxl,
-    alignItems: 'center',
     width: '100%',
     maxWidth: CARD_MAX_WIDTH,
   },
-  inviteText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
 });

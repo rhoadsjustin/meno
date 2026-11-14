@@ -5,13 +5,14 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { closeModal } from '@/components/close-modal';
 import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
 import { t as translate } from '@/i18n';
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import {
   availableTranslations,
@@ -211,34 +212,26 @@ function ChallengeScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { borderTopColor: colors.separator }]}>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          variant="plain"
+          label={view.kind === 'ready' ? tr('common:notNow') : tr('common:close')}
           onPress={closeModal}
-          style={styles.footerSecondary}>
-          <Text style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {view.kind === 'ready' ? tr('common:notNow') : tr('common:close')}
-          </Text>
-        </Pressable>
+          style={styles.footerSecondary}
+        />
         {view.kind === 'ready' && (
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
+          <Button
+            label={tr('join')}
+            busy={busy}
             onPress={() => void accept()}
-            style={[styles.footerPrimary, { backgroundColor: colors.lapis, opacity: busy ? 0.6 : 1 }]}>
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>{tr('join')}</Text>
-            )}
-          </Pressable>
+            style={styles.footerPrimary}
+          />
         )}
         {view.kind === 'joined' && (
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label={tr('practice')}
             onPress={() => router.replace(`/practice/${view.goal.id}`)}
-            style={[styles.footerPrimary, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>{tr('practice')}</Text>
-          </Pressable>
+            style={styles.footerPrimary}
+          />
         )}
       </View>
     </SafeAreaView>
@@ -287,14 +280,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerSecondary: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-  footerSecondaryText: { fontSize: 17 },
-  footerPrimary: {
-    borderRadius: 999,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    minWidth: 160,
-    alignItems: 'center',
-  },
-  footerPrimaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  footerSecondary: { paddingHorizontal: spacing.sm },
+  footerPrimary: { paddingHorizontal: spacing.xxl, minWidth: 160 },
 });

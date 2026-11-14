@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { dismissReminderPrompt, reminderPromptDismissed } from '@/services/db/repos/appFlags';
@@ -77,26 +78,26 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
       </Text>
       <View style={styles.actions}>
         {viaIphoneSettings ? (
-          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => void Linking.openSettings()}>
-            <Text style={[styles.action, text, { color: colors.lapis }]}>{t('prompt.openSettings')}</Text>
-          </Pressable>
+          <TextLink
+            accessibilityRole="link"
+            weight="semibold"
+            label={t('prompt.openSettings')}
+            onPress={() => void Linking.openSettings()}
+          />
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => void setNotificationsEnabled(true)}>
-            <Text style={[styles.action, text, { color: colors.lapis }]}>
-              {blocked ? t('prompt.allow') : t('prompt.turnOn')}
-            </Text>
-          </Pressable>
+          <TextLink
+            weight="semibold"
+            label={blocked ? t('prompt.allow') : t('prompt.turnOn')}
+            onPress={() => void setNotificationsEnabled(true)}
+          />
         )}
-        <Pressable
-          accessibilityRole="button"
+        <TextLink
+          tone="quiet"
+          weight="semibold"
+          label={t('common:notNow')}
           accessibilityHint={t('prompt.dismissHint')}
-          hitSlop={8}
-          onPress={dismiss}>
-          <Text style={[styles.action, text, { color: colors.inkFaint }]}>{t('common:notNow')}</Text>
-        </Pressable>
+          onPress={dismiss}
+        />
       </View>
     </Card>
   );
@@ -109,8 +110,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.md,
+    columnGap: spacing.lg,
+    // The links are 44pt targets: their own height is the gap above them
+    // and between wrapped rows, and the card's padding absorbs the rest.
+    marginBottom: -spacing.md,
   },
-  action: { fontSize: 15, fontWeight: '600' },
 });

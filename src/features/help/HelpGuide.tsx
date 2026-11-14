@@ -28,6 +28,7 @@ import {
 
 import { Card } from '@/components/card';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { formatRef } from '@/services/bible';
 import { loadLockConfig } from '@/services/db/repos/lock';
@@ -39,7 +40,7 @@ import {
   setNotificationsEnabled,
   type ReminderStatus,
 } from '@/services/notifications';
-import { useThemeColors, fonts, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing } from '@/theme';
 
 export type SectionKey = 'quizzes' | 'homeWidget' | 'lockWidget' | 'speak' | 'lock';
 
@@ -280,7 +281,7 @@ export function HelpGuide({
                   t('steps.comeBack'),
                 ]}
               />
-              <Action label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
+              <Button label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.quizzes === 'ready' ? (
             <>
@@ -292,7 +293,7 @@ export function HelpGuide({
               <Text style={[styles.tip, faint]}>
                 {reminders?.overall === 'off' ? t('quizzes.offTip') : t('quizzes.askTip')}
               </Text>
-              <Action
+              <Button
                 label={
                   reminders?.canAsk ? t('actions.allowNotifications') : t('actions.turnOnReminders')
                 }
@@ -361,14 +362,14 @@ export function HelpGuide({
           {statuses.speak === 'openSettings' ? (
             <>
               <Steps items={[t('steps.tapOpenSettings'), t('speak.turnOn'), t('steps.comeBack')]} />
-              <Action label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
+              <Button label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.speak === 'ready' ? (
             <Text style={[styles.tip, faint]}>{t('speak.readyTip')}</Text>
           ) : (
             <>
               <Text style={[styles.tip, faint]}>{t('speak.askTip')}</Text>
-              <Action label={t('actions.allowMicrophone')} onPress={() => void allowMicrophone()} />
+              <Button label={t('actions.allowMicrophone')} onPress={() => void allowMicrophone()} />
             </>
           )}
         </Section>
@@ -395,7 +396,7 @@ export function HelpGuide({
                   t('lock.steps.chooseWhen'),
                 ]}
               />
-              <Action label={t('actions.setUpLock')} onPress={openLockSetup} />
+              <Button label={t('actions.setUpLock')} onPress={openLockSetup} />
             </>
           )}
         </Section>
@@ -518,17 +519,6 @@ function Steps({ items }: { items: string[] }) {
   );
 }
 
-function Action({ label, onPress }: { label: string; onPress: () => void }) {
-  const colors = useThemeColors();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[styles.action, { backgroundColor: colors.lapis }]}>
-      <Text style={[styles.actionText, { fontFamily: fonts?.ui }]}>{label}</Text>
-    </Pressable>
-  );
-}
 
 const styles = StyleSheet.create({
   guide: { gap: spacing.lg },
@@ -544,13 +534,6 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: 'row', gap: spacing.sm },
   stepNumber: { fontSize: 16, lineHeight: 23, fontWeight: '700', minWidth: 22 },
   stepText: { flex: 1, fontSize: 16, lineHeight: 23 },
-  action: {
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  actionText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
   faqHeading: { marginTop: spacing.sm },
   faqRow: {
     flexDirection: 'row',

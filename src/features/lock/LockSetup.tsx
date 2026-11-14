@@ -9,6 +9,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { Button } from '@/components/button';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { loadLockConfig, saveLockConfig } from '@/services/db/repos/lock';
 import {
@@ -124,9 +126,7 @@ export function LockSetup() {
           <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('setup.unavailableBody')}
           </Text>
-          <Pressable accessibilityRole="button" onPress={() => router.back()} style={[styles.primary, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:back')}</Text>
-          </Pressable>
+          <Button label={t('common:back')} onPress={() => router.back()} style={styles.primary} />
         </ScrollView>
       </View>
     );
@@ -148,12 +148,11 @@ export function LockSetup() {
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {t('setup.explainerPrivacy')}
             </Text>
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              label={t('common:continue')}
               onPress={() => setStep(authStatus === 'approved' ? 'pick' : 'authorize')}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
-            </Pressable>
+              style={styles.primary}
+            />
           </>
         )}
 
@@ -167,15 +166,12 @@ export function LockSetup() {
                 ? t('setup.authDenied')
                 : t('setup.authBody')}
             </Text>
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              label={authStatus === 'denied' ? t('common:retry') : t('setup.grantPermission')}
               disabled={busy}
               onPress={() => void authorize()}
-              style={[styles.primary, { backgroundColor: colors.lapis, opacity: busy ? 0.6 : 1 }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                {authStatus === 'denied' ? t('common:retry') : t('setup.grantPermission')}
-              </Text>
-            </Pressable>
+              style={styles.primary}
+            />
           </>
         )}
 
@@ -187,23 +183,17 @@ export function LockSetup() {
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {t('setup.pickBody')}
             </Text>
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              label={hasSelection ? t('setup.changeApps') : t('setup.pickApps')}
               onPress={() => setPickerVisible(true)}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                {hasSelection ? t('setup.changeApps') : t('setup.pickApps')}
-              </Text>
-            </Pressable>
+              style={styles.primary}
+            />
             {hasSelection && (
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                variant="secondary"
+                label={t('common:continue')}
                 onPress={() => setStep('configure')}
-                style={[styles.secondary, { borderColor: colors.lapis }]}>
-                <Text style={[styles.secondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                  {t('common:continue')}
-                </Text>
-              </Pressable>
+              />
             )}
             {pickerVisible && SheetPicker && (
               <SheetPicker
@@ -265,13 +255,12 @@ export function LockSetup() {
                 </Pressable>
               );
             })}
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              label={t('setup.turnOn')}
               disabled={busy}
               onPress={() => void finish()}
-              style={[styles.primary, { backgroundColor: colors.lapis, opacity: busy ? 0.6 : 1 }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('setup.turnOn')}</Text>
-            </Pressable>
+              style={styles.primary}
+            />
           </>
         )}
 
@@ -283,27 +272,26 @@ export function LockSetup() {
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {t('setup.doneBody')}
             </Text>
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              label={t('common:done')}
               onPress={() => router.back()}
-              style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-            </Pressable>
+              style={styles.primary}
+            />
           </>
         )}
 
         {step !== 'done' && step !== 'explainer' && (
-          <Pressable
-            accessibilityRole="button"
+          <TextLink
+            tone="quiet"
+            label={t('setup.cancelSetup')}
             onPress={() => {
               killSwitch();
               void saveLockConfig({ enabled: false });
               router.back();
-            }}>
-            <Text style={[styles.cancel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t('setup.cancelSetup')}
-            </Text>
-          </Pressable>
+            }}
+            style={styles.cancel}
+            labelStyle={styles.cancelLabel}
+          />
         )}
       </ScrollView>
     </View>
@@ -323,19 +311,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   optionTitle: { fontSize: 17, fontWeight: '600' },
-  primary: {
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  primaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  secondary: {
-    borderRadius: radius.capsule,
-    borderWidth: 1.5,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  secondaryText: { fontSize: 17, fontWeight: '600' },
-  cancel: { fontSize: 15, textAlign: 'center', marginTop: spacing.xl },
+  primary: { marginTop: spacing.md },
+  // The 44pt target supplies 12pt of the 20pt the text used to sit below.
+  cancel: { marginTop: spacing.sm },
+  cancelLabel: { textAlign: 'center' },
 });

@@ -15,6 +15,8 @@ import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { Screen } from '@/components/screen';
 import { t } from '@/i18n';
+import { Button } from '@/components/button';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { AdventInviteCard, AdventProgressCard, useAdventOffer } from '@/features/advent/AdventCard';
 import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
@@ -44,7 +46,7 @@ import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { describeStep, firstLetters, type PracticeStep } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
 import { showGoalOnWidgets } from '@/services/widgets';
-import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, spacing, scriptureType } from '@/theme';
 
 /** Where one passage in progress stands. */
 type GoalProgress = {
@@ -307,15 +309,11 @@ export default function TodayScreen() {
           {t('empty.startFailed')}
         </Text>
       )}
-      <Pressable
-        accessibilityRole="button"
-        hitSlop={8}
+      <TextLink
+        label={t('empty.chooseOwn')}
         onPress={() => router.push('/goal-wizard')}
-        style={styles.quietAction}>
-        <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-          {t('empty.chooseOwn')}
-        </Text>
-      </Pressable>
+        labelStyle={styles.readingLink}
+      />
     </>
   );
 
@@ -377,15 +375,12 @@ export default function TodayScreen() {
             }
             return (
               <>
-                <Pressable
-                  accessibilityRole="button"
+                <Button
+                  label={copy.button}
                   accessibilityLabel={copy.spoken}
                   onPress={() => router.push(practiceHref(data.goal.id))}
-                  style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-                  <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-                    {copy.button}
-                  </Text>
-                </Pressable>
+                  style={styles.primaryButton}
+                />
                 <Text
                   // Hidden from VoiceOver: the button's label already says it.
                   // (`accessible={false}` alone still leaves text readable.)
@@ -408,7 +403,11 @@ export default function TodayScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={t('hero.sealSpoken', { ref: sealRef })}
                   onPress={() => router.push(practiceHref(data.goal.id, sealChunk))}
-                  style={[styles.sealOffer, { borderTopColor: colors.inkFaint }]}>
+                  style={({ pressed }) => [
+                    styles.sealOffer,
+                    { borderTopColor: colors.inkFaint },
+                    pressed && styles.pressed,
+                  ]}>
                   <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                     {t('hero.sealOffer', { ref: sealRef })}
                   </Text>
@@ -430,14 +429,11 @@ export default function TodayScreen() {
           <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('hero.memorizedBody')}
           </Text>
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label={t('hero.chooseAnother')}
             onPress={() => router.push('/goal-wizard')}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-              {t('hero.chooseAnother')}
-            </Text>
-          </Pressable>
+            style={styles.primaryButton}
+          />
         </Card>
       )}
     </>
@@ -449,7 +445,8 @@ export default function TodayScreen() {
         <Card>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push(`/stitch/${data.goal.id}`)}>
+            onPress={() => router.push(`/stitch/${data.goal.id}`)}
+            style={({ pressed }) => pressed && styles.pressed}>
             <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {t('stitch.title')}
             </Text>
@@ -465,7 +462,10 @@ export default function TodayScreen() {
 
       {dueCount > 0 && (
         <Card>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/review')}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/review')}
+            style={({ pressed }) => pressed && styles.pressed}>
             <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {t('due.title')}
             </Text>
@@ -521,38 +521,27 @@ export default function TodayScreen() {
                 </Text>
                 <View style={styles.otherActions}>
                   {action && (
-                    <Pressable
-                      accessibilityRole="button"
+                    <Button
+                      size="small"
+                      label={action.label}
                       accessibilityLabel={action.spoken}
                       onPress={() => router.push(action.href)}
-                      style={[styles.smallButton, { backgroundColor: colors.lapis }]}>
-                      <Text style={[styles.smallButtonText, { fontFamily: fonts?.ui }]}>
-                        {action.label}
-                      </Text>
-                    </Pressable>
+                    />
                   )}
                   {sealChunk && (
-                    <Pressable
-                      accessibilityRole="button"
+                    <TextLink
+                      weight="semibold"
+                      label={t('others.seal', { ref: chunkRangeLabel(sealChunk) })}
                       accessibilityLabel={t('others.sealSpoken', { ref: chunkRangeLabel(sealChunk) })}
-                      hitSlop={8}
-                      onPress={() => router.push(practiceHref(o.goal.id, sealChunk))}>
-                      <Text
-                        style={[styles.textAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                        {t('others.seal', { ref: chunkRangeLabel(sealChunk) })}
-                      </Text>
-                    </Pressable>
+                      onPress={() => router.push(practiceHref(o.goal.id, sealChunk))}
+                    />
                   )}
-                  <Pressable
-                    accessibilityRole="button"
+                  <TextLink
+                    weight="semibold"
+                    label={t('others.showOnWidgets')}
                     accessibilityLabel={t('others.showOnWidgetsSpoken', { title: o.goal.title })}
-                    hitSlop={8}
-                    onPress={() => void showOnWidgets(o.goal)}>
-                    <Text
-                      style={[styles.textAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                      {t('others.showOnWidgets')}
-                    </Text>
-                  </Pressable>
+                    onPress={() => void showOnWidgets(o.goal)}
+                  />
                 </View>
               </Card>
             );
@@ -565,38 +554,39 @@ export default function TodayScreen() {
   const links = (
     <>
       {data && (
-        <Pressable
+        <TextLink
           accessibilityRole="link"
+          label={t('continueReading', {
+            range: formatRange({
+              start: {
+                bookId: data.goal.startBookId,
+                chapter: data.goal.startChapter,
+                verse: data.goal.startVerse,
+              },
+              end: {
+                bookId: data.goal.endBookId,
+                chapter: data.goal.endChapter,
+                verse: data.goal.endVerse,
+              },
+            }),
+          })}
           onPress={() =>
             router.push(
               `/reader/${data.goal.startBookId}.${data.chunk?.startChapter ?? data.goal.startChapter}.1?translation=${data.goal.translationId}`,
             )
-          }>
-          <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('continueReading', {
-              range: formatRange({
-                start: {
-                  bookId: data.goal.startBookId,
-                  chapter: data.goal.startChapter,
-                  verse: data.goal.startVerse,
-                },
-                end: {
-                  bookId: data.goal.endBookId,
-                  chapter: data.goal.endChapter,
-                  verse: data.goal.endVerse,
-                },
-              }),
-            })}
-          </Text>
-        </Pressable>
+          }
+          style={styles.bottomLink}
+          labelStyle={styles.readingLink}
+        />
       )}
 
       {data && (
-        <Pressable accessibilityRole="button" onPress={() => router.push('/goal-wizard')}>
-          <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('practiceAnother')}
-          </Text>
-        </Pressable>
+        <TextLink
+          label={t('practiceAnother')}
+          onPress={() => router.push('/goal-wizard')}
+          style={styles.bottomLink}
+          labelStyle={styles.readingLink}
+        />
       )}
     </>
   );
@@ -682,7 +672,6 @@ function chunkRangeLabel(chunk: Chunk): string {
 
 const styles = StyleSheet.create({
   emptyIntro: { paddingHorizontal: spacing.xs },
-  quietAction: { paddingVertical: spacing.sm },
   emptyTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },
   emptyBody: { fontSize: 15, lineHeight: 20 },
   scripture: {
@@ -691,15 +680,8 @@ const styles = StyleSheet.create({
   },
   attribution: { fontSize: 13, marginTop: spacing.md },
   subline: { fontSize: 13, marginTop: spacing.sm, textAlign: 'center' },
-  primaryButton: {
-    marginTop: spacing.lg,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  // Centred and padded: "Continue 1 Thessalonians 5:16–18" wraps at large text.
-  primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
+  primaryButton: { marginTop: spacing.lg },
+  pressed: { opacity: 0.6 },
   restNote: { marginTop: spacing.lg },
   restTitle: { fontSize: 17, fontWeight: '600', textAlign: 'center' },
   sealOffer: {
@@ -707,7 +689,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  readingLink: { fontSize: 15, paddingHorizontal: spacing.xs },
+  readingLink: { paddingHorizontal: spacing.xs },
+  // The two links under the cards are 44pt targets that reach into the
+  // screen's gap, so they sit about as close together as they did as text.
+  bottomLink: { marginVertical: -spacing.sm },
   reviewLink: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
   ember: { fontSize: 17, fontWeight: '600' },
   focusLabel: {
@@ -737,14 +722,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.md,
+    // Every action is a 44pt target, so wrapped rows need no gap of their own.
+    columnGap: spacing.lg,
+    marginTop: spacing.sm,
   },
-  smallButton: {
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
-  },
-  smallButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  textAction: { fontSize: 15, fontWeight: '600' },
 });

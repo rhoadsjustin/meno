@@ -11,6 +11,9 @@ export default defineConfig({
     // Pure services only (no React Native imports) — see docs/02 §2.2.
     include: [
       'src/services/**/__tests__/**/*.test.ts',
-      'src/i18n/**/__tests__/**/*.test.ts', 'scripts/**/__tests__/**/*.test.ts'],
+      'src/i18n/**/__tests__/**/*.test.ts',
+      // palette.ts is pure data: the contrast pairs the shared buttons use.
+      'src/theme/**/__tests__/**/*.test.ts',
+      'scripts/**/__tests__/**/*.test.ts'],
   },
 });

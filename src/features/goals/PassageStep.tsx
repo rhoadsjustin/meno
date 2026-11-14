@@ -34,6 +34,7 @@ import { ExtendMenu } from '@/features/goals/ExtendMenu';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
 import { useAvailableChapters } from '@/features/reader/use-available-chapters';
 import { t as translate } from '@/i18n';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import {
   BOOKS,
@@ -247,8 +248,9 @@ export function PassageStep({
           {t('passage.translation')}
         </Text>
         {translation && (
-          <Pressable
-            accessibilityRole="button"
+          <TextLink
+            size="large"
+            label={`${translation.abbrev} · ${translation.name} ›`}
             accessibilityLabel={t('passage.translationLabel', {
               name: translation.name,
               abbrev: translation.abbrev,
@@ -257,11 +259,7 @@ export function PassageStep({
             onPress={() =>
               router.push({ pathname: '/translation-picker', params: { selected: translation.id } })
             }
-            style={styles.textButton}>
-            <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {translation.abbrev} · {translation.name} ›
-            </Text>
-          </Pressable>
+          />
         )}
       </View>
       <View style={styles.controlRow}>
@@ -283,19 +281,15 @@ export function PassageStep({
         )}
       </View>
       <View style={styles.controlRow}>
-        <Pressable
-          accessibilityRole="button"
+        <TextLink
+          size="large"
+          label={t('passage.wholeChapter')}
           accessibilityLabel={t('passage.selectWholeChapter', { chapter: bookChapter(chapter) })}
-          accessibilityState={{ disabled: lastVerse === null }}
           disabled={lastVerse === null}
           onPress={() => {
             if (lastVerse !== null) commit(selectWholeChapter(bookId, chapter, lastVerse));
           }}
-          style={[styles.textButton, { opacity: lastVerse === null ? 0.4 : 1 }]}>
-          <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('passage.wholeChapter')}
-          </Text>
-        </Pressable>
+        />
         {extendable.length > 0 && (
           <ExtendMenu chapters={extendable} onExtend={(c) => void extend(c)} tint={colors.lapis} />
         )}
@@ -318,23 +312,17 @@ export function PassageStep({
         {translationId && loadFailureMessage(translationId, bookChapter(chapter))}
       </Text>
       <View style={styles.controlRow}>
-        <Pressable
-          accessibilityRole="button"
+        <TextLink
+          size="large"
+          label={t('common:retry')}
           onPress={() => setAttempt((n) => n + 1)}
-          style={styles.textButton}>
-          <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('common:retry')}
-          </Text>
-        </Pressable>
+        />
         {translationId !== DEFAULT_TRANSLATION_ID && (
-          <Pressable
-            accessibilityRole="button"
+          <TextLink
+            size="large"
+            label={t('passage.useInstead', { abbrev: getTranslation(DEFAULT_TRANSLATION_ID).abbrev })}
             onPress={() => onTranslationChange(DEFAULT_TRANSLATION_ID)}
-            style={styles.textButton}>
-            <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('passage.useInstead', { abbrev: getTranslation(DEFAULT_TRANSLATION_ID).abbrev })}
-            </Text>
-          </Pressable>
+          />
         )}
       </View>
     </View>
@@ -406,17 +394,13 @@ export function PassageStep({
             </Text>
           </View>
           {selection && (
-            <Pressable
-              accessibilityRole="button"
+            <TextLink
+              size="large"
+              label={t('passage.clear')}
               accessibilityLabel={t('passage.clearSelection')}
+              maxFontSizeMultiplier={BAR_MAX_SCALE}
               onPress={() => commit(null)}
-              style={styles.textButton}>
-              <Text
-                maxFontSizeMultiplier={BAR_MAX_SCALE}
-                style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                {t('passage.clear')}
-              </Text>
-            </Pressable>
+            />
           )}
         </View>
       </View>
@@ -489,8 +473,6 @@ const styles = StyleSheet.create({
     rowGap: spacing.xs,
   },
   controlLabel: { fontSize: 15 },
-  textButton: { minHeight: 44, justifyContent: 'center' },
-  textButtonLabel: { fontSize: 17 },
   notice: { fontSize: 15 },
   empty: { padding: spacing.xl, gap: spacing.md, alignItems: 'flex-start' },
   emptyText: { fontSize: 17, lineHeight: 24 },

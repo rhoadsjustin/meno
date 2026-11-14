@@ -5,13 +5,14 @@
 import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { t as translate } from '@/i18n';
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
@@ -22,7 +23,7 @@ import { rescheduleAll } from '@/services/notifications';
 import type { GradeResult } from '@/services/grading';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
 import { WordFeedback } from '@/features/practice/WordFeedback';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
@@ -184,20 +185,18 @@ export default function StitchRoute() {
                     : t('failed')}
               </Text>
               <WordFeedback result={phase.result} />
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label={phase.passed ? t('common:done') : t('common:retry')}
                 onPress={() => (phase.passed ? router.back() : setPhase({ kind: 'quiz' }))}
-                style={[styles.primary, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-                  {phase.passed ? t('common:done') : t('common:retry')}
-                </Text>
-              </Pressable>
+                style={styles.primary}
+              />
               {!phase.passed && (
-                <Pressable accessibilityRole="button" onPress={() => router.back()}>
-                  <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                    {t('later')}
-                  </Text>
-                </Pressable>
+                <Button
+                  variant="plain"
+                  label={t('later')}
+                  onPress={() => router.back()}
+                  style={styles.later}
+                />
               )}
             </>
           )}
@@ -214,12 +213,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, lineHeight: 21 },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
-  primary: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  primaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  quiet: { fontSize: 15, textAlign: 'center', marginTop: spacing.lg },
+  primary: { marginTop: spacing.xxl },
+  // Same pair as practice's feedback: filled action, plain one under it.
+  later: { marginTop: spacing.sm },
 });

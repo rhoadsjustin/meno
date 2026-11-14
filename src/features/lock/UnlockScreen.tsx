@@ -6,10 +6,12 @@
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { t as translate } from '@/i18n';
+import { Button } from '@/components/button';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage } from '@/services/bible';
 import { activeGoal, chunksForGoal, currentChunk, type Chunk } from '@/services/db/repos/goals';
@@ -19,7 +21,7 @@ import { rescheduleAll } from '@/services/notifications';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { clearShields, registerUnlockMount, scheduleRelock } from '@/services/lock';
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
 /** Forgiving threshold — friction-with-grace, not an exam (04 §4). */
 const UNLOCK_THRESHOLD = 0.85;
@@ -141,9 +143,11 @@ export function UnlockScreen() {
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {phase.message}
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => void override()} style={[styles.primary, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('unlock.unlockAnyway')}</Text>
-            </Pressable>
+            <Button
+              label={t('unlock.unlockAnyway')}
+              onPress={() => void override()}
+              style={styles.primary}
+            />
           </>
         )}
 
@@ -166,28 +170,26 @@ export function UnlockScreen() {
               {phase.attempt === 1 ? t('unlock.missedRetry') : t('unlock.missedFinal')}
             </Text>
             {phase.attempt === 1 ? (
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label={t('common:retry')}
                 onPress={() => setPhase({ kind: 'quiz', attempt: 2 })}
-                style={[styles.primary, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:retry')}</Text>
-              </Pressable>
+                style={styles.primary}
+              />
             ) : (
               // After a second miss, Override is the prominent path —
               // never a failed-quiz loop (04 §4).
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label={t('unlock.unlockAnyway')}
                 onPress={() => void override()}
-                style={[styles.primary, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('unlock.unlockAnyway')}</Text>
-              </Pressable>
+                style={styles.primary}
+              />
             )}
             {phase.attempt === 2 && (
-              <Pressable accessibilityRole="button" onPress={() => setPhase({ kind: 'quiz', attempt: 3 })}>
-                <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                  {t('unlock.keepTrying')}
-                </Text>
-              </Pressable>
+              <Button
+                variant="plain"
+                label={t('unlock.keepTrying')}
+                onPress={() => setPhase({ kind: 'quiz', attempt: 3 })}
+              />
             )}
           </>
         )}
@@ -205,11 +207,12 @@ export function UnlockScreen() {
       </ScrollView>
 
       {(phase.kind === 'quiz' || phase.kind === 'error') && (
-        <Pressable accessibilityRole="button" onPress={() => void override()} style={styles.override}>
-          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('unlock.override')}
-          </Text>
-        </Pressable>
+        <TextLink
+          tone="quiet"
+          label={t('unlock.override')}
+          onPress={() => void override()}
+          style={styles.override}
+        />
       )}
     </View>
   );
@@ -220,13 +223,8 @@ const styles = StyleSheet.create({
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
   body: { fontSize: 16, lineHeight: 22, marginTop: spacing.lg },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
-  primary: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  primaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  quiet: { fontSize: 15, textAlign: 'center', marginTop: spacing.lg },
-  override: { paddingBottom: spacing.xxxl, alignItems: 'center' },
+  primary: { marginTop: spacing.xxl },
+  // The whole strip under the quiz is the target: the override is never a
+  // small thing to hit (04 §6).
+  override: { paddingTop: spacing.lg, paddingBottom: spacing.xxxl, alignItems: 'center' },
 });
