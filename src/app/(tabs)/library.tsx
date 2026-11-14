@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { Fragment, useCallback, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -49,10 +49,11 @@ type GoalWithChunks = { goal: Goal; chunks: Chunk[] };
 export default function LibraryScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation(['library', 'app', 'common']);
-  // Wide windows (iPhone Duo opened, Split View) show both shelves side by
-  // side — In progress on the left, Memorized on the right — instead of the
-  // segmented control (HIG: show the next level of hierarchy when it fits).
-  const { isWide } = useContentLayout();
+  // Windows wider than tall (iPhone Duo opened, Split View) show both
+  // shelves side by side — In progress on the left, Memorized on the right —
+  // instead of the segmented control (HIG: show the next level of hierarchy
+  // when it fits). Opened and rotated (669×951) keeps the segmented column.
+  const { twoPane } = useContentLayout();
   const buttonBelow = useWindowDimensions().fontScale >= BUTTON_BELOW_TEXT_SCALE;
   const [segment, setSegment] = useState<Segment>('inProgress');
   const [items, setItems] = useState<GoalWithChunks[]>([]);
@@ -208,6 +209,10 @@ export default function LibraryScreen() {
   const memorizedChunks = items.flatMap(({ goal, chunks }) =>
     chunks.filter((c) => c.status === 'memorized').map((c) => ({ goal, chunk: c })),
   );
+
+  // Two panes: In progress leads and Memorized is the second pane. One
+  // column: the segment chooses the shelf.
+  const firstShelf: Segment = twoPane ? 'inProgress' : segment;
 
   const header = (label: string) => (
     <Text
@@ -414,46 +419,54 @@ export default function LibraryScreen() {
           message={t('loadFailed.body')}
           action={{ label: t('common:retry'), busy: retrying, onPress: () => void retryLoad() }}
         />
-      ) : isWide ? (
-        <FoldAwareRow>
-          <>
-            {header(t('inProgress'))}
-            {inProgress}
-          </>
-          <>
-            {header(t('memorized'))}
-            {memorized}
-          </>
-        </FoldAwareRow>
       ) : (
         <>
-          <View style={[styles.segmented, { backgroundColor: colors.lapisWash }]}>
-            {(
-              [
-                ['inProgress', t('inProgress')],
-                ['memorized', t('memorized')],
-              ] as const
-            ).map(([value, label]) => {
-              const selected = segment === value;
-              return (
-                <Pressable
-                  key={value}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected }}
-                  onPress={() => setSegment(value)}
-                  style={[styles.segment, selected && { backgroundColor: colors.surfaceRaised }]}>
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      { color: selected ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
-                    ]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {segment === 'inProgress' ? inProgress : memorized}
+          {!twoPane && (
+            <View style={[styles.segmented, { backgroundColor: colors.lapisWash }]}>
+              {(
+                [
+                  ['inProgress', t('inProgress')],
+                  ['memorized', t('memorized')],
+                ] as const
+              ).map(([value, label]) => {
+                const selected = segment === value;
+                return (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    onPress={() => setSegment(value)}
+                    style={[styles.segment, selected && { backgroundColor: colors.surfaceRaised }]}>
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        { color: selected ? colors.ink : colors.inkFaint, fontFamily: fonts?.ui },
+                      ]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+          {/* Always the row, and each shelf under its own key: crossing the
+              two-pane breakpoint (folding or unfolding iPhone Duo) changes
+              only the control and the headers, so the cards — and a delete
+              confirmation open on one — are not remounted. */}
+          <FoldAwareRow>
+            <>
+              {twoPane && header(t('inProgress'))}
+              <Fragment key={firstShelf}>
+                {firstShelf === 'inProgress' ? inProgress : memorized}
+              </Fragment>
+            </>
+            {twoPane ? (
+              <>
+                {header(t('memorized'))}
+                {memorized}
+              </>
+            ) : null}
+          </FoldAwareRow>
         </>
       )}
     </Screen>

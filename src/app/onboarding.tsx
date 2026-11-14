@@ -13,6 +13,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -68,13 +69,18 @@ export default function OnboardingRoute() {
   );
 }
 
+/** From the accessibility text sizes up, the actions scroll with the step:
+ * pinned, three or four of them would take most of a short window. */
+const SCROLL_ACTIONS_TEXT_SCALE = 1.4;
+
 /** The verse the widget captures and the shield preview show. */
 const PREVIEW_REF = { bookId: 'Phil', chapter: 4, verse: 4 };
 
 function Onboarding() {
   const colors = useThemeColors();
   const { t } = useTranslation(['onboarding', 'common']);
-  const { insets, sides, fold, foldAxis, isWide, width, height } = useContentLayout();
+  const { insets, sides, fold, foldAxis, isWide, twoPane } = useContentLayout();
+  const { fontScale } = useWindowDimensions();
   // iPhone Duo half-open: a centred column would put its buttons on the
   // crease, so the column moves into the leading half, clear of the folding
   // region, and returns to the centre when the phone is flat again.
@@ -338,6 +344,14 @@ function Onboarding() {
   };
   const current = steps[step];
 
+  // Two panes: a step with a picture and a title, on a window wider than tall.
+  const split = twoPane && !!current.visual && !!current.title;
+  // In the one-column layouts the actions are pinned under the scrolling
+  // step, so they stay on screen on short windows (iPhone Duo's cover panel,
+  // where the widget captures pushed Continue below the fold) and clear the
+  // home indicator. The two-pane layout already fits them beside the picture.
+  const pinActions = !split && fontScale < SCROLL_ACTIONS_TEXT_SCALE;
+
   let body: ReactNode;
   if (!isWide) {
     // Phones and iPhone Duo's cover panel: one column, picture above the words.
@@ -346,10 +360,10 @@ function Onboarding() {
         {current.title}
         {current.visual}
         {current.copy}
-        {current.actions}
+        {!pinActions && current.actions}
       </>
     );
-  } else if (current.visual && current.title && width > height) {
+  } else if (split) {
     // Wide, short windows (iPhone Duo opened in its landscape pose): the
     // words and buttons on the leading pane, the preview on the trailing one,
     // so the step fits on one screen instead of scrolling past a full-width
@@ -373,7 +387,7 @@ function Onboarding() {
         {current.title}
         {current.visual}
         {current.copy}
-        {current.actions}
+        {!pinActions && current.actions}
       </View>
     );
   }
@@ -388,6 +402,24 @@ function Onboarding() {
         }>
         {body}
       </ScrollView>
+      {pinActions && (
+        // The same column as the step above it, so the buttons line up with
+        // the words and move beside the fold with them when half-open.
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, layout.screenMargin) },
+            isWide ? contentColumnWide : [contentColumn, besideFold],
+          ]}>
+          {isWide ? (
+            <View style={[styles.narrowColumn, besideFold ?? styles.centred]}>
+              {current.actions}
+            </View>
+          ) : (
+            current.actions
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -430,6 +462,9 @@ const styles = StyleSheet.create({
   // and each step sits in the middle of the window rather than at its top.
   contentWide: { flexGrow: 1, justifyContent: 'center', paddingTop: layout.screenMargin },
   wideRow: { alignItems: 'center' },
+  // Pinned actions: the step's side margins and gap. The first action's own
+  // top margin separates it from the scrolling step.
+  footer: { paddingHorizontal: layout.screenMargin, gap: spacing.lg },
   narrowColumn: { width: '100%', maxWidth: 520, gap: spacing.lg },
   centred: { alignSelf: 'center' },
   mark: { fontSize: 64 },

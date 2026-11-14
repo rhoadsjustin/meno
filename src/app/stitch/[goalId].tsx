@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { closeModal } from '@/components/close-modal';
+import { ActionFooter } from '@/components/action-footer';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
@@ -45,7 +46,9 @@ export default function StitchRoute() {
   const colors = useThemeColors();
   const { t } = useTranslation(['stitch', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
-  const { sides } = useContentLayout();
+  // A short window (iPhone Duo opened is 669pt high): the score takes less
+  // room, as on practice's feedback screen.
+  const { sides, short } = useContentLayout();
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [data, setData] = useState<{
     text: string;
@@ -211,6 +214,7 @@ export default function StitchRoute() {
               <Text
                 style={[
                   styles.accuracy,
+                  short && styles.accuracyShort,
                   {
                     color: phase.goalCompleted
                       ? colors.gold
@@ -234,22 +238,21 @@ export default function StitchRoute() {
                     : t('failed')}
               </Text>
               <WordFeedback result={phase.result} />
-              <Button
-                label={phase.passed ? t('common:done') : t('common:retry')}
-                onPress={() => (phase.passed ? closeModal() : setPhase({ kind: 'quiz' }))}
-                style={styles.primary}
-              />
-              {!phase.passed && (
-                <Button
-                  variant="plain"
-                  label={t('later')}
-                  onPress={closeModal}
-                  style={styles.later}
-                />
-              )}
             </>
           )}
         </KeyboardScroll>
+        {/* Pinned under the marked passage, which runs to several chunks:
+            the actions stay on screen without scrolling past it. */}
+        {phase.kind === 'result' && (
+          <ActionFooter>
+            <Button
+              label={phase.passed ? t('common:done') : t('common:retry')}
+              onPress={() => (phase.passed ? closeModal() : setPhase({ kind: 'quiz' }))}
+            />
+            {/* Same pair as practice's feedback: filled action, plain one under it. */}
+            {!phase.passed && <Button variant="plain" label={t('later')} onPress={closeModal} />}
+          </ActionFooter>
+        )}
       </View>
     </View>
   );
@@ -262,7 +265,5 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, lineHeight: 21 },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
-  primary: { marginTop: spacing.xxl },
-  // Same pair as practice's feedback: filled action, plain one under it.
-  later: { marginTop: spacing.sm },
+  accuracyShort: { fontSize: 44, marginTop: 0 },
 });

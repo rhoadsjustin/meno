@@ -14,6 +14,8 @@ export default defineConfig({
       'src/i18n/**/__tests__/**/*.test.ts',
       // palette.ts is pure data: the contrast pairs the shared buttons use.
       'src/theme/**/__tests__/**/*.test.ts',
+      // window-layout.ts is pure: which window sizes split into two panes.
+      'src/components/**/__tests__/**/*.test.ts',
       'scripts/**/__tests__/**/*.test.ts'],
   },
 });

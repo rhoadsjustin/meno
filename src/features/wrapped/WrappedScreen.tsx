@@ -48,8 +48,8 @@ export function WrappedScreen({ year }: { year: number }) {
   const colors = useThemeColors();
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const { t } = useTranslation(['wrapped', 'common']);
-  const { width, height } = useWindowDimensions();
-  const { sides } = useContentLayout();
+  const { width } = useWindowDimensions();
+  const { sides, twoPane } = useContentLayout();
   // The pager's own width: a page is as wide as its pane, not the window.
   const [pagerWidth, setPagerWidth] = useState(0);
   const { bottom } = useSafeAreaInsets();
@@ -209,9 +209,9 @@ export function WrappedScreen({ year }: { year: number }) {
     );
   }
 
-  // Wider than tall (iPhone Duo opened): cards on one side, sharing on the
-  // other, as even halves that keep the crease between them when folded.
-  const twoPane = width >= layout.wideBreakpoint && width > height;
+  // `twoPane` — wider than tall (iPhone Duo opened): cards on one side,
+  // sharing on the other, as even halves that keep the crease between them
+  // when folded.
   const page = pagerWidth || width;
 
   const ticks = (

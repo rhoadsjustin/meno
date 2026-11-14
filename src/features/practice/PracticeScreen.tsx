@@ -121,11 +121,10 @@ export function PracticeScreen({
   // round keeps its reading column and a context rail sits beside it —
   // reference, chunk progress, ladder. Narrower windows keep one column so
   // Blanks and Arrange have room to work.
-  const { sides, height, isExtraWide: showRail } = useContentLayout();
+  const { sides, short, isExtraWide: showRail } = useContentLayout();
   // A short window (iPhone Duo opened in its landscape pose is 669pt high):
   // the feedback screen spends less on air so both its actions fit without
   // scrolling — the stopping point's "Keep going" sat on the bottom edge.
-  const short = height < layout.shortHeight;
 
   const [goal, setGoal] = useState<Goal | null>(null);
   const [chunk, setChunk] = useState<Chunk | null>(null);

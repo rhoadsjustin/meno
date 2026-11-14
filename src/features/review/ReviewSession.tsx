@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { closeModal } from '@/components/close-modal';
+import { ActionFooter } from '@/components/action-footer';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
@@ -58,7 +59,9 @@ export function ReviewSession() {
   const colors = useThemeColors();
   const { t } = useTranslation(['review', 'practice', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
-  const { sides } = useContentLayout();
+  // A short window (iPhone Duo opened is 669pt high): the score takes less
+  // room, as on practice's feedback screen.
+  const { sides, short } = useContentLayout();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [accuracies, setAccuracies] = useState<number[]>([]);
@@ -284,6 +287,7 @@ export function ReviewSession() {
                 })}
                 style={[
                   styles.accuracy,
+                  short && styles.accuracyShort,
                   {
                     color:
                       tone === 'pass'
@@ -302,18 +306,17 @@ export function ReviewSession() {
                 </Text>
               )}
               <WordFeedback result={phase.result} tone={tone === 'almost' ? 'almost' : 'error'} />
-              <Button
-                label={t('common:continue')}
-                onPress={advance}
-                style={styles.button}
-              />
             </>
           )}
 
           {phase.kind === 'summary' && (
             <>
               <Text
-                style={[styles.accuracy, { color: colors.lapis, fontFamily: fonts?.scripture }]}>
+                style={[
+                  styles.accuracy,
+                  short && styles.accuracyShort,
+                  { color: colors.lapis, fontFamily: fonts?.scripture },
+                ]}>
                 {t('common:percent', { value: Math.round(phase.averageAccuracy * 100) })}
               </Text>
               <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -324,14 +327,21 @@ export function ReviewSession() {
                   {t('comeBack', { count: phase.reset })}
                 </Text>
               )}
-              <Button
-                label={t('common:done')}
-                onPress={closeModal}
-                style={styles.button}
-              />
             </>
           )}
         </KeyboardScroll>
+        {/* Pinned under the marked verse: the way on stays on screen without
+            scrolling past it. Only in the phases without a text field. */}
+        {phase.kind === 'feedback' && (
+          <ActionFooter>
+            <Button label={t('common:continue')} onPress={advance} />
+          </ActionFooter>
+        )}
+        {phase.kind === 'summary' && (
+          <ActionFooter>
+            <Button label={t('common:done')} onPress={closeModal} />
+          </ActionFooter>
+        )}
       </View>
     </View>
   );
@@ -345,5 +355,5 @@ const styles = StyleSheet.create({
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
   summaryNote: { fontSize: 15, lineHeight: 20, marginBottom: spacing.md },
   accuracy: { fontSize: 56, marginTop: spacing.xl },
-  button: { marginTop: spacing.xxl },
+  accuracyShort: { fontSize: 44, marginTop: 0 },
 });
