@@ -27,6 +27,7 @@ const base: GoalProgress = {
   step: { kind: 'continue', chunkId: 'c1', tier: 3 } as GoalProgress['step'],
   thenChunk: null,
   sealChunk: null,
+  chunks: [chunk],
   totalChunks: 2,
   stitchDue: false,
 };

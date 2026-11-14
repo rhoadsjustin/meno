@@ -58,15 +58,11 @@ export default {
 
   others: {
     header: 'Also practicing',
-    chunkAndDetail: '{{ref}} · {{detail}}',
-    allMemorized: 'Every chunk memorized',
     stitch: 'Stitch',
     stitchSpoken: 'Stitch {{title}}',
     stepSpoken: '{{title}}. {{spoken}}',
     sealSpoken: 'Optional. Seal {{ref}} with one clean recitation.',
     seal: 'Seal {{ref}}',
-    showOnWidgetsSpoken: 'Make {{title}} your focus. Your widgets and Recite to Unlock will use it.',
-    showOnWidgets: 'Make this my focus',
   },
 
   continueReading: 'Continue reading {{range}}',

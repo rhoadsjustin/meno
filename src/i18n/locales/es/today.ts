@@ -56,15 +56,11 @@ export default {
 
   others: {
     header: 'También practicando',
-    chunkAndDetail: '{{ref}} · {{detail}}',
-    allMemorized: 'Todos los fragmentos memorizados',
     stitch: 'Unir',
     stitchSpoken: 'Unir {{title}}',
     stepSpoken: '{{title}}. {{spoken}}',
     sealSpoken: 'Opcional. Sella {{ref}} con una recitación sin errores.',
     seal: 'Sellar {{ref}}',
-    showOnWidgetsSpoken: 'Hacer de {{title}} tu enfoque. Tus widgets y Recitar para desbloquear lo usarán.',
-    showOnWidgets: 'Hacer mi enfoque',
   },
 
   continueReading: 'Seguir leyendo {{range}}',

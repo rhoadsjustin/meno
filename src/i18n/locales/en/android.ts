@@ -9,10 +9,6 @@ export default {
   today: {
     focusLabel: 'Current passage',
     nowOnWidgets: '{{title}} is now your current passage.',
-    others: {
-      showOnWidgetsSpoken: 'Make {{title}} your current passage',
-      showOnWidgets: 'Make current',
-    },
   },
   library: {
     nowOnWidgets: '{{title}} is now your current passage.',

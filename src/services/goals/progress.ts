@@ -21,6 +21,8 @@ export type GoalProgress = {
   thenChunk: Chunk | null;
   /** A verse one recitation from memorized, offered beside the new work. */
   sealChunk: Chunk | null;
+  /** Every chunk of the passage, in order (the card's heatmap). */
+  chunks: Chunk[];
   totalChunks: number;
   stitchDue: boolean;
 };
@@ -38,6 +40,7 @@ export async function progressFor(goal: Goal): Promise<GoalProgress> {
     step: plan.next,
     thenChunk: chunkOf(plan.then),
     sealChunk: chunkOf(plan.optionalSeal),
+    chunks,
     totalChunks: chunks.length,
     stitchDue: stitch.due,
   };

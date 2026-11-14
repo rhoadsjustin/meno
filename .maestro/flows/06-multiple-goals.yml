@@ -1,5 +1,6 @@
 # Two passages in progress → Today lists the second under "Also practicing",
-# and "Make this my focus" swaps which one is the focus (the widget verse).
+# and "Make this my focus" in its More menu swaps which one is the focus (the
+# widget verse).
 # The wizard's native menus aren't Maestro-friendly, so both goals use the
 # wizard defaults (John 1:1); the flow checks structure, not titles.
 appId: com.rhoadsdev.meno
@@ -21,10 +22,12 @@ tags:
     visible: "Also practicing"
     timeout: 10000
 - assertVisible: "Your focus"
+# Its card is the Library's: the switch is in the More menu.
 - scrollUntilVisible:
-    element: "Make John 1:1 your focus.*"
+    element: "More actions for John 1:1"
     direction: DOWN
-- tapOn: "Make John 1:1 your focus.*"
+- tapOn: "More actions for John 1:1"
+- tapOn: "Make this my focus"
 # The other passage is now the focus; the first moves under "Also practicing".
 - assertVisible: "Also practicing"
 - scrollUntilVisible:

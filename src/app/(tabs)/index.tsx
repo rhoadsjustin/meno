@@ -23,6 +23,8 @@ import { SymbolIcon } from '@/components/symbol';
 import { TextLink } from '@/components/text-link';
 import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
+import { PassageCard } from '@/features/goals/PassageCard';
+import { useGoalRemoval } from '@/features/goals/useGoalRemoval';
 import { AdventInviteCard, AdventProgressCard, useAdventOffer } from '@/features/advent/AdventCard';
 import {
   chunkRangeLabel,
@@ -54,6 +56,7 @@ import {
   listGoals,
   type Goal,
 } from '@/services/db/repos/goals';
+import { shareGoalChallengeOrAlert } from '@/services/challenges';
 import { countDueReviews, dueReviewChunks } from '@/services/db/repos/reviews';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { firstLetters } from '@/services/practice';
@@ -242,6 +245,10 @@ export default function TodayScreen() {
     },
     [reload, t],
   );
+
+  // Delete or Stop in an Also practicing card's menu, as in Library.
+  const reloadNow = useCallback(() => reload(() => false), [reload]);
+  const removalFor = useGoalRemoval(reloadNow);
 
   // Quick start: the same path as onboarding's last step (useStartStarter).
   const openPractice = useCallback((goal: Goal) => router.push(`/practice/${goal.id}`), []);
@@ -566,41 +573,24 @@ export default function TodayScreen() {
         <>
           <SectionHeader title={t('others.header')} style={styles.sectionHeader} />
           {others.map((o) => {
-            const copy =
-              o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
-            // A stitch outranks the next chunk; a resting verse has no button
-            // (its sub-line already says it seals tomorrow).
-            const next = goalAction(o);
-            const action = next?.kind === 'open' ? next : null;
             const sealChunk = o.sealChunk;
             return (
-              <Card key={o.goal.id}>
-                <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                  {o.goal.title}
-                </Text>
-                <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  {o.chunk && copy
-                    ? // A one-verse passage is its own chunk: no need to name it twice.
-                      chunkRangeLabel(o.chunk) === o.goal.title
-                      ? copy.subline
-                      : t('others.chunkAndDetail', {
-                          ref: chunkRangeLabel(o.chunk),
-                          detail: copy.subline,
-                        })
-                    : t('others.allMemorized')}
-                </Text>
-                <View style={styles.otherActions}>
-                  {action && (
-                    // Tinted: the hero's is the one filled button (07 §6).
-                    <Button
-                      variant="tinted"
-                      size="small"
-                      label={action.label}
-                      accessibilityLabel={action.spoken}
-                      onPress={() => router.push(action.href)}
-                    />
-                  )}
-                  {sealChunk && (
+              // The Library's card for a passage in progress, so the two
+              // lists read as one. Tinted: the hero's is the one filled
+              // button (07 §6). Making it the focus is in the More menu.
+              <PassageCard
+                key={o.goal.id}
+                goal={o.goal}
+                chunks={o.chunks}
+                action={goalAction(o)}
+                actionVariant="tinted"
+                menu={{
+                  onShare: () => void shareGoalChallengeOrAlert(o.goal),
+                  onShowOnWidgets: () => void showOnWidgets(o.goal),
+                  removal: removalFor(o.goal, o.chunks),
+                }}
+                secondary={
+                  sealChunk && (
                     <TextLink
                       weight="semibold"
                       label={t('others.seal', { ref: chunkRangeLabel(sealChunk) })}
@@ -609,15 +599,9 @@ export default function TodayScreen() {
                       })}
                       onPress={() => router.push(practiceHref(o.goal.id, sealChunk))}
                     />
-                  )}
-                  <TextLink
-                    weight="semibold"
-                    label={t('others.showOnWidgets')}
-                    accessibilityLabel={t('others.showOnWidgetsSpoken', { title: o.goal.title })}
-                    onPress={() => void showOnWidgets(o.goal)}
-                  />
-                </View>
-              </Card>
+                  )
+                }
+              />
             );
           })}
         </>
@@ -748,13 +732,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: -spacing.sm,
     paddingHorizontal: spacing.xs,
-  },
-  otherActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    // Every action is a 44pt target, so wrapped rows need no gap of their own.
-    columnGap: spacing.lg,
-    marginTop: spacing.sm,
   },
 });

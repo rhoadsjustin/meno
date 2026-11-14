@@ -14,13 +14,13 @@ import {
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
-import { Button, MIN_TOUCH_TARGET } from '@/components/button';
+import { MIN_TOUCH_TARGET } from '@/components/button';
 import { Unavailable } from '@/components/unavailable';
 import { Screen } from '@/components/screen';
 import { SectionHeader } from '@/components/section-header';
-import { GoalMenu, type GoalMenuProps } from '@/features/goals/GoalMenu';
+import { PassageCard } from '@/features/goals/PassageCard';
+import { useGoalRemoval } from '@/features/goals/useGoalRemoval';
 import { goalAction, progressFor, type GoalAction } from '@/services/goals/progress';
-import { removeGoal, stopPassage } from '@/features/goals/remove-goal';
 import { t } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getTranslation } from '@/services/bible';
@@ -33,7 +33,6 @@ import {
   type Goal,
 } from '@/services/db/repos/goals';
 import { itemHealth, reviewItemsForChunks } from '@/services/db/repos/reviews';
-import { deleteGoalPrompt, goalRemoval, stopGoalPrompt } from '@/services/goals/deletion';
 import { sortByRisk } from '@/services/goals/memorized-order';
 import type { Health } from '@/services/scheduler';
 import { showGoalOnWidgets } from '@/services/widgets';
@@ -149,55 +148,9 @@ export default function LibraryScreen() {
     [reload, t],
   );
 
-  const remove = useCallback(
-    async (goal: Goal) => {
-      try {
-        await removeGoal(goal.id);
-        AccessibilityInfo.announceForAccessibility(t('remove.delete.done', { title: goal.title }));
-      } catch {
-        Alert.alert(t('remove.delete.failed', { title: goal.title }), t('remove.tryAgain'));
-      } finally {
-        await reload(() => false);
-      }
-    },
-    [reload, t],
-  );
-
-  const stop = useCallback(
-    async (goal: Goal) => {
-      try {
-        await stopPassage(goal.id);
-        AccessibilityInfo.announceForAccessibility(t('remove.stop.done', { title: goal.title }));
-      } catch {
-        Alert.alert(t('remove.stop.failed', { title: goal.title }), t('remove.tryAgain'));
-      } finally {
-        await reload(() => false);
-      }
-    },
-    [reload, t],
-  );
-
-  /** Delete or Stop in the card's menu. Memorized Scripture is never deleted
-   * (services/goals/deletion): with nothing memorized yet the passage is
-   * deleted; partway through it is stopped, keeping what is memorized. */
-  const removalFor = (goal: Goal, chunks: Chunk[]): GoalMenuProps['removal'] => {
-    switch (goalRemoval(goal, chunks)) {
-      case 'delete':
-        return {
-          kind: 'delete',
-          prompt: deleteGoalPrompt(goal.title),
-          onConfirm: () => void remove(goal),
-        };
-      case 'stop':
-        return {
-          kind: 'stop',
-          prompt: stopGoalPrompt(goal.title),
-          onConfirm: () => void stop(goal),
-        };
-      default:
-        return undefined;
-    }
-  };
+  // Delete or Stop in the card's menu (useGoalRemoval).
+  const reloadNow = useCallback(() => reload(() => false), [reload]);
+  const removalFor = useGoalRemoval(reloadNow);
 
   const active = items.filter(({ goal }) => goal.status === 'active');
   // Only offer a choice once there is more than one passage in progress.
@@ -225,95 +178,19 @@ export default function LibraryScreen() {
       {active.length > 0 && (
         <View style={styles.stack}>
           {active.map(({ goal, chunks }) => (
-            <Card key={goal.id}>
-              <View style={styles.titleRow}>
-                <Text
-                  style={[
-                    styles.goalTitle,
-                    styles.titleText,
-                    { color: colors.ink, fontFamily: fonts?.ui },
-                  ]}>
-                  {goal.title}
-                </Text>
-                <GoalMenu
-                  label={t('goal.moreSpoken', { title: goal.title })}
-                  tint={colors.inkFaint}
-                  onShare={() => void shareGoalChallengeOrAlert(goal)}
-                  onShowOnWidgets={
-                    activeCount > 1 && goal.id !== focusId
-                      ? () => void showOnWidgets(goal)
-                      : undefined
-                  }
-                  removal={removalFor(goal, chunks)}
-                />
-              </View>
-              <Text style={[styles.goalSub, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {t('goal.summary', {
-                  translation: getTranslation(goal.translationId).abbrev,
-                  done: chunks.filter((c) => c.status === 'memorized').length,
-                  count: chunks.length,
-                })}
-              </Text>
-              {activeCount > 1 && goal.id === focusId && (
-                // A status, not a control: it sits with the summary.
-                <Text style={[styles.focusNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  {t('goal.onWidgets')}
-                </Text>
-              )}
-              <View
-                style={styles.heatmap}
-                accessible
-                accessibilityLabel={t('goal.heatmap', {
-                  title: goal.title,
-                  memorized: chunks.filter((c) => c.status === 'memorized').length,
-                  learning: chunks.filter((c) => c.status === 'learning' || c.status === 'active')
-                    .length,
-                  locked: chunks.filter((c) => c.status === 'locked').length,
-                })}>
-                {chunks.map((c) => (
-                  <View
-                    key={c.id}
-                    style={[
-                      styles.cell,
-                      c.status === 'locked'
-                        ? // Not started: an outline, so it differs from a
-                          // started chunk by shape as well as colour.
-                          { borderWidth: 1, borderColor: colors.inkFaint }
-                        : { backgroundColor: cellColor(c, colors) },
-                    ]}
-                  />
-                ))}
-              </View>
-              {(() => {
-                // The one action on the card is the step Today would name
-                // for this passage: Start, Continue, Seal or Stitch. A
-                // resting verse has a status in its place, as there is
-                // nothing to open today. The rest is in the More menu.
-                const action = actions[goal.id];
-                if (!action) return null;
-                if (action.kind === 'resting') {
-                  return (
-                    <Text
-                      accessibilityLabel={action.spoken}
-                      style={[
-                        styles.resting,
-                        { color: colors.inkFaint, fontFamily: fonts?.ui },
-                      ]}>
-                      {action.label}
-                    </Text>
-                  );
-                }
-                return (
-                  <Button
-                    size="small"
-                    label={action.label}
-                    accessibilityLabel={action.spoken}
-                    onPress={() => router.push(action.href)}
-                    style={styles.primaryAction}
-                  />
-                );
-              })()}
-            </Card>
+            <PassageCard
+              key={goal.id}
+              goal={goal}
+              chunks={chunks}
+              action={actions[goal.id] ?? null}
+              focus={activeCount > 1 && goal.id === focusId}
+              menu={{
+                onShare: () => void shareGoalChallengeOrAlert(goal),
+                onShowOnWidgets:
+                  activeCount > 1 && goal.id !== focusId ? () => void showOnWidgets(goal) : undefined,
+                removal: removalFor(goal, chunks),
+              }}
+            />
           ))}
         </View>
       )}
@@ -472,36 +349,12 @@ function healthLabel(health: Health): string {
       : t('library:health.atRisk');
 }
 
-/** lapisWash → lapis by tier; gold when memorized (docs/07 §6). */
-function cellColor(chunk: Chunk, colors: ThemeColors): string {
-  if (chunk.status === 'memorized') return colors.gold;
-  if (chunk.status === 'locked') return colors.separator;
-  const level = Math.min(chunk.tier, 5) / 5;
-  // Blend lapisWash → lapis in 6 steps via opacity layering approximation.
-  return level < 0.2 ? colors.lapisWash : level < 0.6 ? `${colors.lapis}88` : colors.lapis;
-}
-
 const styles = StyleSheet.create({
   // Matches the Screen scaffold's vertical rhythm between cards.
   stack: { gap: spacing.lg },
   shelfTitle: { marginBottom: -spacing.xs },
   goalTitle: { fontSize: 17, fontWeight: '600' },
-  // The title wraps beside the More button, which stays top-right.
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  titleText: { flex: 1 },
   goalSub: { fontSize: 13, marginTop: spacing.xs },
-  heatmap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: spacing.md,
-  },
-  cell: { width: 16, height: 16, borderRadius: radius.cell },
-  // "On your widgets", a caption under the summary.
-  focusNote: { fontSize: 13, marginTop: spacing.xs },
-  // The card's one action, sized to its label at the leading edge.
-  primaryAction: { alignSelf: 'flex-start', marginTop: spacing.md },
-  resting: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
   pressed: { opacity: 0.6 },
   newGoal: {
     borderWidth: 1.5,

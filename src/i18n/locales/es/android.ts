@@ -6,10 +6,6 @@ export default {
   today: {
     focusLabel: 'Pasaje actual',
     nowOnWidgets: '{{title}} ya es tu pasaje actual.',
-    others: {
-      showOnWidgetsSpoken: 'Hacer de {{title}} tu pasaje actual',
-      showOnWidgets: 'Hacer actual',
-    },
   },
   library: {
     nowOnWidgets: '{{title}} ya es tu pasaje actual.',
