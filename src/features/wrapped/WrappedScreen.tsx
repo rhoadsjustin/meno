@@ -8,6 +8,7 @@ import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -29,6 +30,7 @@ import { closeModal } from '@/components/close-modal';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
 import { RecapCard } from '@/features/wrapped/RecapCard';
 import { loadRecapView, type RecapView } from '@/features/wrapped/recap-view';
 import { ShareStage, type ShareFormat, type ShareStageHandle } from '@/features/wrapped/ShareStage';
@@ -40,7 +42,7 @@ import { markRecapSeen } from '@/services/db/repos/appFlags';
 import { getGoal } from '@/services/db/repos/goals';
 import { rescheduleAll } from '@/services/notifications';
 import type { CardId } from '@/services/wrapped';
-import { fonts, layout, radius, spacing, useThemeColors } from '@/theme';
+import { fonts, layout, radius, spacing, textStyle, useThemeColors } from '@/theme';
 import { useMotion } from '@/theme/motion';
 
 /** Card content never spreads wider than this, even on the Duo's inner panel. */
@@ -165,6 +167,8 @@ export function WrappedScreen({ year }: { year: number }) {
     async (format: ShareFormat) => {
       if (!current || sharing) return;
       setSharing(true);
+      // The capture takes a moment before the share sheet appears.
+      announce(t('screen.sharing'));
       try {
         await stage.current?.share(current, format);
       } catch {
@@ -360,6 +364,23 @@ export function WrappedScreen({ year }: { year: number }) {
         {pager}
         {sharePane}
       </FoldAwareRow>
+      {/* One pane: the bar's menu can only dim while the image is made, so
+          say so here. Two panes show it on the share buttons instead. */}
+      {sharing && !twoPane && (
+        <View
+          pointerEvents="none"
+          style={[styles.sharingNote, { bottom: Math.max(bottom, spacing.xl) }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants">
+          <View
+            style={[styles.sharingPill, { backgroundColor: colors.surfaceRaised, borderColor: colors.separator }]}>
+            <ActivityIndicator color={colors.inkFaint} />
+            <Text style={[styles.sharingText, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              {t('screen.sharing')}
+            </Text>
+          </View>
+        </View>
+      )}
       <ShareStage ref={stage} view={view} scheme={scheme} />
     </View>
   );
@@ -371,6 +392,18 @@ const styles = StyleSheet.create({
   pager: { flex: 1, overflow: 'hidden' },
   sharePane: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingHorizontal: layout.screenMargin },
   shareHeading: { fontSize: 22, fontWeight: '600', marginBottom: spacing.sm },
+  sharingNote: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  sharingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    maxWidth: '90%',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.capsule,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  sharingText: { ...textStyle.subheadline, flexShrink: 1 },
   ticks: {
     flexDirection: 'row',
     gap: spacing.xs,

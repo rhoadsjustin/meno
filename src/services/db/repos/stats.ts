@@ -52,7 +52,9 @@ export type Stats = {
   totalReviews: number;
   recitations: number;
   overrides: number;
-  /** ISO date → practiced?, for the last `weeks` full weeks (Mon-start). */
+  /** ISO date → practiced?, for the last `weeks` × 7 days, oldest first,
+   * ending today. Not week-aligned: the Stats grid pads it into Mon-start
+   * weeks (services/stats/practice-grid); the widget takes the last seven. */
   practiceDays: { date: string; practiced: boolean }[];
 };
 
