@@ -7,7 +7,9 @@ export default {
   emptyBody: 'Memorized verses come back here as their review dates arrive.',
   loadFailedTitle: 'Couldn’t load your reviews',
   loadFailedBody: 'Nothing is lost: the verses that are due will still be here.',
-  roundHeader: 'Review · {{reference}}',
+  // Above a review: its place in the queue (`position`), then the verse.
+  roundHeader: '{{position}} · {{reference}}',
+  positionLabel: 'Review {{index}} of {{total}}',
   almost: 'Almost',
   almostMarked: 'Almost — the slipped words are marked below',
   // Under the score after each review: what the schedule did with the verse.
