@@ -6,9 +6,9 @@ export default {
   streak_other: 'Racha de {{count}} días',
   streakSecured_one: 'Racha de {{count}} día, asegurada hoy',
   streakSecured_other: 'Racha de {{count}} días, asegurada hoy',
-  focusLabel: 'En tus widgets',
-  nowOnWidgets: '{{title}} ya está en tus widgets.',
-  widgetsFailed: 'No se pudo poner {{title}} en tus widgets',
+  focusLabel: 'Tu enfoque',
+  nowOnWidgets: '{{title}} es ahora tu enfoque. Tus widgets también lo muestran.',
+  widgetsFailed: 'No se pudo hacer de {{title}} tu enfoque',
   loadFailed: {
     title: 'No se pudo cargar Hoy',
     body: 'Tus pasajes y tu progreso siguen en este dispositivo.',
@@ -63,8 +63,8 @@ export default {
     stepSpoken: '{{title}}. {{spoken}}',
     sealSpoken: 'Opcional. Sella {{ref}} con una recitación sin errores.',
     seal: 'Sellar {{ref}}',
-    showOnWidgetsSpoken: 'Mostrar {{title}} en tus widgets',
-    showOnWidgets: 'Mostrar en widgets',
+    showOnWidgetsSpoken: 'Hacer de {{title}} tu enfoque. Tus widgets y Recitar para desbloquear lo usarán.',
+    showOnWidgets: 'Hacer mi enfoque',
   },
 
   continueReading: 'Seguir leyendo {{range}}',

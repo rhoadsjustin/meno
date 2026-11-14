@@ -4,8 +4,8 @@ import type en from '@/i18n/locales/en/library';
 export default {
   inProgress: 'En curso',
   memorized: 'Memorizados',
-  nowOnWidgets: '{{title}} ya está en tus widgets.',
-  widgetsFailed: 'No se pudo poner {{title}} en tus widgets',
+  nowOnWidgets: '{{title}} es ahora tu enfoque. Tus widgets también lo muestran.',
+  widgetsFailed: 'No se pudo hacer de {{title}} tu enfoque',
   loadFailed: {
     title: 'No se pudo cargar tu biblioteca',
     body: 'Tus pasajes siguen en este dispositivo.',
@@ -17,8 +17,8 @@ export default {
     heatmap:
       'Progreso de los fragmentos de {{title}}: {{memorized}} memorizados, {{learning}} en curso, {{locked}} sin empezar',
     share: 'Compartir reto',
-    onWidgets: 'En tus widgets',
-    showOnWidgets: 'Mostrar en widgets',
+    onWidgets: 'Tu enfoque',
+    showOnWidgets: 'Hacer mi enfoque',
     moreSpoken: 'Más acciones para {{title}}',
   },
 

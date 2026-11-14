@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Alert,
+  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -134,60 +135,63 @@ export default function TodayScreen() {
   );
 
   // Reads everything this screen shows; `isCancelled` guards a blurred screen.
-  const load = useCallback(async (isCancelled: () => boolean) => {
-    const [goal, goals] = await Promise.all([activeGoal(), listActiveGoals()]);
-    // First launch: run onboarding before anything else.
-    if (!goal) {
-      const { onboardingDone } = await import('@/services/db/repos/appFlags');
-      if (!(await onboardingDone()) && !isCancelled()) {
-        router.push('/onboarding');
-        setLoaded(true);
+  const load = useCallback(
+    async (isCancelled: () => boolean) => {
+      const [goal, goals] = await Promise.all([activeGoal(), listActiveGoals()]);
+      // First launch: run onboarding before anything else.
+      if (!goal) {
+        const { onboardingDone } = await import('@/services/db/repos/appFlags');
+        if (!(await onboardingDone()) && !isCancelled()) {
+          router.push('/onboarding');
+          setLoaded(true);
+          return;
+        }
+      }
+      const streakNow = await currentStreakDisplay();
+      const [due, dueChunks] = await Promise.all([
+        countDueReviews(),
+        dueReviewChunks(DUE_REFS_SHOWN),
+      ]);
+      if (!isCancelled()) {
+        setDueCount(due);
+        setDueRefs(dueChunks.map(chunkRangeLabel));
+      }
+      if (!goal) {
+        const finished = (await listGoals()).length > 0;
+        if (!isCancelled()) {
+          setHasFinished(finished);
+          setData(null);
+          setOthers([]);
+          setStreak(streakNow);
+          setLoaded(true);
+        }
+        // The empty state doesn't wait on the cards: bundled text is instant,
+        // but ESV may take a moment (and gives way to KJV if it can't be had).
+        if (!isCancelled()) loadStarters(isCancelled);
         return;
       }
-    }
-    const streakNow = await currentStreakDisplay();
-    const [due, dueChunks] = await Promise.all([
-      countDueReviews(),
-      dueReviewChunks(DUE_REFS_SHOWN),
-    ]);
-    if (!isCancelled()) {
-      setDueCount(due);
-      setDueRefs(dueChunks.map(chunkRangeLabel));
-    }
-    if (!goal) {
-      const finished = (await listGoals()).length > 0;
+      const [focus, rest] = await Promise.all([
+        progressFor(goal),
+        Promise.all(goals.filter((g) => g.id !== goal.id).map(progressFor)),
+      ]);
+      let chunkText = '';
+      if (focus.chunk) {
+        const c = focus.chunk;
+        const verses = await getPassage(goal.translationId, {
+          start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+          end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+        });
+        chunkText = verses.map((v) => v.text).join(' ');
+      }
       if (!isCancelled()) {
-        setHasFinished(finished);
-        setData(null);
-        setOthers([]);
+        setData({ ...focus, chunkText });
+        setOthers(rest);
         setStreak(streakNow);
         setLoaded(true);
       }
-      // The empty state doesn't wait on the cards: bundled text is instant,
-      // but ESV may take a moment (and gives way to KJV if it can't be had).
-      if (!isCancelled()) loadStarters(isCancelled);
-      return;
-    }
-    const [focus, rest] = await Promise.all([
-      progressFor(goal),
-      Promise.all(goals.filter((g) => g.id !== goal.id).map(progressFor)),
-    ]);
-    let chunkText = '';
-    if (focus.chunk) {
-      const c = focus.chunk;
-      const verses = await getPassage(goal.translationId, {
-        start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
-        end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
-      });
-      chunkText = verses.map((v) => v.text).join(' ');
-    }
-    if (!isCancelled()) {
-      setData({ ...focus, chunkText });
-      setOthers(rest);
-      setStreak(streakNow);
-      setLoaded(true);
-    }
-  }, [loadStarters]);
+    },
+    [loadStarters],
+  );
 
   // `load` with its outcome recorded. Never rejects.
   const reload = useCallback(
@@ -356,6 +360,55 @@ export default function TodayScreen() {
     </>
   );
 
+  // Reading the passage in context belongs with the passage: a quiet row at
+  // the foot of its card, not a link under everything else on the page.
+  const readingRow = data && (
+    <View style={[styles.cardFoot, { borderTopColor: colors.inkFaint }]}>
+      <TextLink
+        accessibilityRole="link"
+        label={t('continueReading', {
+          range: formatRange({
+            start: {
+              bookId: data.goal.startBookId,
+              chapter: data.goal.startChapter,
+              verse: data.goal.startVerse,
+            },
+            end: {
+              bookId: data.goal.endBookId,
+              chapter: data.goal.endChapter,
+              verse: data.goal.endVerse,
+            },
+          }),
+        })}
+        onPress={() =>
+          router.push(
+            `/reader/${data.goal.startBookId}.${data.chunk?.startChapter ?? data.goal.startChapter}.1?translation=${data.goal.translationId}`,
+          )
+        }
+        labelStyle={styles.readingLink}
+      />
+    </View>
+  );
+
+  // Adding a passage sits with the title, where a bar button would be. The
+  // memorized card already offers the wizard, so it is not repeated there.
+  const addPassage = data?.chunk && (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('addPassage')}
+      hitSlop={spacing.sm}
+      onPress={() => router.push('/goal-wizard')}
+      style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
+      <SymbolIcon ios="plus" android="add" size={20} weight="semibold" color={colors.lapis} />
+    </Pressable>
+  );
+  const titleAccessory = (ember || addPassage) && (
+    <View style={styles.titleAccessory}>
+      {ember}
+      {addPassage}
+    </View>
+  );
+
   const hero = (
     <>
       {data && data.chunk && data.step && (
@@ -415,7 +468,8 @@ export default function TodayScreen() {
             return (
               <>
                 <Button
-                  label={copy.button}
+                  // The reference is on the line above; the button only names the step.
+                  label={copy.verb}
                   accessibilityLabel={copy.spoken}
                   onPress={() => router.push(practiceHref(data.goal.id))}
                   style={styles.primaryButton}
@@ -439,7 +493,8 @@ export default function TodayScreen() {
               const sealRef = chunkRangeLabel(sealChunk);
               return (
                 <View style={[styles.sealOffer, { borderTopColor: colors.inkFaint }]}>
-                  <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  <Text
+                    style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                     {t('hero.sealOffer', { ref: sealRef })}
                   </Text>
                   <TextLink
@@ -451,6 +506,7 @@ export default function TodayScreen() {
                 </View>
               );
             })()}
+          {readingRow}
         </Card>
       )}
 
@@ -468,6 +524,7 @@ export default function TodayScreen() {
             onPress={() => router.push('/goal-wizard')}
             style={styles.primaryButton}
           />
+          {readingRow}
         </Card>
       )}
     </>
@@ -509,7 +566,8 @@ export default function TodayScreen() {
         <>
           <SectionHeader title={t('others.header')} style={styles.sectionHeader} />
           {others.map((o) => {
-            const copy = o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
+            const copy =
+              o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
             // A stitch outranks the next chunk; a resting verse has no button
             // (its sub-line already says it seals tomorrow).
             const next = goalAction(o);
@@ -546,7 +604,9 @@ export default function TodayScreen() {
                     <TextLink
                       weight="semibold"
                       label={t('others.seal', { ref: chunkRangeLabel(sealChunk) })}
-                      accessibilityLabel={t('others.sealSpoken', { ref: chunkRangeLabel(sealChunk) })}
+                      accessibilityLabel={t('others.sealSpoken', {
+                        ref: chunkRangeLabel(sealChunk),
+                      })}
                       onPress={() => router.push(practiceHref(o.goal.id, sealChunk))}
                     />
                   )}
@@ -561,48 +621,6 @@ export default function TodayScreen() {
             );
           })}
         </>
-      )}
-    </>
-  );
-
-  const links = (
-    <>
-      {data && (
-        <TextLink
-          accessibilityRole="link"
-          label={t('continueReading', {
-            range: formatRange({
-              start: {
-                bookId: data.goal.startBookId,
-                chapter: data.goal.startChapter,
-                verse: data.goal.startVerse,
-              },
-              end: {
-                bookId: data.goal.endBookId,
-                chapter: data.goal.endChapter,
-                verse: data.goal.endVerse,
-              },
-            }),
-          })}
-          onPress={() =>
-            router.push(
-              `/reader/${data.goal.startBookId}.${data.chunk?.startChapter ?? data.goal.startChapter}.1?translation=${data.goal.translationId}`,
-            )
-          }
-          style={styles.bottomLink}
-          labelStyle={styles.readingLink}
-        />
-      )}
-
-      {/* The memorized hero already offers the wizard ("Choose another
-          passage"); a second entry under it would only repeat that. */}
-      {data?.chunk && (
-        <TextLink
-          label={t('addPassage')}
-          onPress={() => router.push('/goal-wizard')}
-          style={styles.bottomLink}
-          labelStyle={styles.readingLink}
-        />
       )}
     </>
   );
@@ -636,7 +654,7 @@ export default function TodayScreen() {
   const adventProgress = <AdventProgressCard offer={advent.offer} />;
 
   return (
-    <Screen title={t('app:tabs.today')} accessory={ember || undefined} wide>
+    <Screen title={t('app:tabs.today')} accessory={titleAccessory || undefined} wide>
       {loadFailed ? (
         // Not the first-run empty state: someone with passages in progress
         // must not be told they have memorized nothing.
@@ -652,7 +670,6 @@ export default function TodayScreen() {
             {emptyIntro}
             {emptyActions}
             {hero}
-            {links}
           </>
           <>
             {isEmpty && adventInvite}
@@ -680,7 +697,6 @@ export default function TodayScreen() {
           {data && adventInvite}
           {recapCard}
           {reminderPrompt}
-          {links}
         </>
       )}
     </Screen>
@@ -707,10 +723,23 @@ const styles = StyleSheet.create({
     // The link under the line is a 44pt target; the card's padding absorbs it.
     marginBottom: -spacing.md,
   },
-  readingLink: { paddingHorizontal: spacing.xs },
-  // The two links under the cards are 44pt targets that reach into the
-  // screen's gap, so they sit about as close together as they did as text.
-  bottomLink: { marginVertical: -spacing.sm },
+  readingLink: { paddingHorizontal: 0 },
+  cardFoot: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    // The link is a 44pt target; the card's padding absorbs its lower half.
+    marginBottom: -spacing.md,
+  },
+  titleAccessory: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  addButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -spacing.md,
+  },
+  pressed: { opacity: 0.5 },
   ember: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   emberCount: { fontSize: 17, fontWeight: '600' },
   focusLabel: { marginBottom: spacing.sm },

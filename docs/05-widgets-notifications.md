@@ -42,7 +42,7 @@ offers:
 ### Which passage — the focus goal
 
 With several passages in progress, every widget shows the **focus goal**: the
-passage the user marked **Show on widgets** (Today or Library), else the oldest
+passage the user marked **Make this my focus** (Today or Library), else the oldest
 active goal (`services/focus`). The same goal drives the recite-to-unlock
 shield and the widget's `/practice` tap target. The pick lives in the app, not
 the Edit Widget sheet: expo-widgets parameters are string/number/boolean or a

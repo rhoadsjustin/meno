@@ -56,7 +56,7 @@ export default {
       pickSize: 'Swipe left or right to pick a size, then tap Add Widget.',
       tapDone: 'Tap Done in the top-right corner.',
     },
-    tip: 'Tip: learning more than one passage? Tap “Show on widgets” under the one you want on Today or in Library. To choose how much of the verse shows, touch and hold the widget and tap Edit Widget.',
+    tip: 'Tip: learning more than one passage? Tap “Make this my focus” under the one you want on Today or in Library. To choose how much of the verse shows, touch and hold the widget and tap Edit Widget.',
   },
   lockWidget: {
     body: 'Puts your verse right under the clock, so you see it every time you pick up your phone.',
@@ -100,7 +100,7 @@ export default {
     },
     widgetVerse: {
       q: 'How do I choose which verse my widgets show?',
-      a: 'On Today or in Library, tap “Show on widgets” under the passage you want. Every Meno widget switches to it within a moment, and Recite to Unlock asks for that verse too.',
+      a: 'On Today or in Library, tap “Make this my focus” under the passage you want. Every Meno widget switches to it within a moment, and Recite to Unlock asks for that verse too.',
     },
     oldVerse: {
       q: 'My widget shows an old verse.',
