@@ -309,7 +309,7 @@ async function main() {
 ✔ Published. On an iPhone with that build:
   - fully close Meno and reopen it (it downloads), then once more (it applies), or
   - open Settings and tap "Restart Meno now" once the update has downloaded.
-  The Settings footer then reads "Meno ${runtime}, updated <today>".
+  Settings → About then shows Version "${runtime}, updated <today>".
 
   Bad update? npx eas-cli@latest update:rollback  (see docs/ship/ota-updates.md)`);
 }
