@@ -10,6 +10,7 @@ import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { useBarIcon } from '@/components/bar-icon';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ScreenHeader } from '@/components/screen-header';
+import { useScreenReader } from '@/components/screen-reader';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { BookSpread } from '@/features/reader/BookSpread';
 import { useTranslation } from '@/i18n/react';
@@ -41,6 +42,7 @@ export default function ReaderRoute() {
   // The chapter is paged, one page each side of the crease, and turns like
   // a book instead of scrolling; the sidebar steps aside.
   const book = isWide && foldAxis === 'vertical';
+  const screenReader = useScreenReader();
 
   const translationId = translation ?? DEFAULT_TRANSLATION_ID;
   // What the last finished load produced, tagged with the chapter it was
@@ -206,11 +208,25 @@ export default function ReaderRoute() {
             {current === null && (
               <LoadingState layout="inline" label={t('loadingChapter', { chapter: title })} />
             )}
-            {verses.length > 0 && (
-              <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-                {renderVerses(verses, colors.inkFaint)}
-              </Text>
-            )}
+            {verses.length > 0 &&
+              (screenReader ? (
+                // One element per verse, "Verse 2. The same was…": VoiceOver
+                // moves verse by verse and can find its place again, where
+                // the flowed paragraph is a single element for the chapter.
+                verses.map((v) => (
+                  <Text
+                    key={`${v.chapter}:${v.verse}`}
+                    accessibilityLabel={t('verse', { verse: v.verse, text: v.text })}
+                    style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                    <Text style={[styles.verseNum, { color: colors.inkFaint }]}>{v.verse} </Text>
+                    {v.text}
+                  </Text>
+                ))
+              ) : (
+                <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+                  {renderVerses(verses, colors.inkFaint)}
+                </Text>
+              ))}
             {verses.length > 0 && (
               <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {getTranslation(translationId).attribution}

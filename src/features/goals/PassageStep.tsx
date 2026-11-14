@@ -366,6 +366,7 @@ export function PassageStep({
             </Text>
             <Text
               maxFontSizeMultiplier={BAR_MAX_SCALE}
+              accessibilityRole={error ? 'alert' : undefined}
               style={[
                 styles.barHint,
                 { color: error ? colors.error : colors.inkFaint, fontFamily: fonts?.ui },

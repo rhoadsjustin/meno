@@ -27,6 +27,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { PageCurlView } from '@modules/page-curl';
 import { useContentLayout } from '@/components/content-layout';
+import { announce } from '@/components/screen-reader';
 import { useTranslation } from '@/i18n/react';
 import {
   buildFlow,
@@ -38,7 +39,7 @@ import {
   type Page,
   type Run,
 } from '@/features/reader/paginate';
-import { getChapter, getTranslation, type Verse } from '@/services/bible';
+import { bookName, getChapter, getTranslation, type Verse } from '@/services/bible';
 import { fonts, layout, scriptureType, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 type Side = 'left' | 'right';
@@ -92,6 +93,7 @@ export function BookSpread({
   onChapterChange: (chapter: number) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('reader');
   const { fold, insets } = useContentLayout();
   const { fontScale } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
@@ -194,6 +196,12 @@ export function BookSpread({
   const jump = (to: Target) => {
     dispatch({ type: 'jump', to });
     if (to.chapter !== pos.chapter) onChapterChange(to.chapter);
+    // The pages change in place: tell VoiceOver where the turn landed.
+    announce(
+      `${t('title', { book: bookName(bookId), chapter: to.chapter })}, ${t('page', {
+        page: to.spread * 2 + 1,
+      })}`,
+    );
   };
 
   // The turn itself belongs to UIKit's page curl: the sheet bends from where
@@ -387,12 +395,10 @@ function PageContent({
     <Text
       accessible
       accessibilityRole={onTurn ? 'button' : 'text'}
-      accessibilityLabel={
-        onTurn
-          ? side === 'left'
-            ? t('previousPage')
-            : t('nextPage')
-          : t('page', { page: face.number })
+      // The number is the label; what a double-tap does is the hint.
+      accessibilityLabel={t('page', { page: face.number })}
+      accessibilityHint={
+        onTurn ? (side === 'left' ? t('previousPage') : t('nextPage')) : undefined
       }
       // VoiceOver's double-tap: the standard "activate" action replaces the
       // onAccessibilityTap prop React Native 0.88 removed.
@@ -406,7 +412,16 @@ function PageContent({
   return (
     <>
       <View style={[styles.text, box, { top: geo.top, height: geo.pageHeight }]}>
-        <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+        <Text
+          // Spoken as "Page 3. Verse 2. The same was…": the page, then each
+          // number named as a verse instead of a bare digit mid-sentence.
+          accessibilityLabel={[
+            t('pageSpoken', { page: face.number }),
+            ...face.runs.map((r) =>
+              r.kind === 'num' ? t('verseSpoken', { verse: r.text.trim() }) : r.text.trim(),
+            ),
+          ].join(' ')}
+          style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
           {face.runs.map((r) => (
             <Text
               key={r.key}

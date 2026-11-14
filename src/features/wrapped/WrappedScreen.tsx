@@ -19,6 +19,7 @@ import {
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
@@ -102,6 +103,14 @@ export function WrappedScreen({ year }: { year: number }) {
     [cards.length],
   );
 
+  // For VoiceOver's stepping, further down.
+  const indexNow = useRef(index);
+  useEffect(() => {
+    indexNow.current = index;
+  }, [index]);
+  const cardViews = useRef(new Map<number, ViewInstance>());
+  const steppedByAction = useRef(false);
+
   // A light tick per card; a success when the summary arrives (07 §8).
   const lastIndex = useRef(0);
   useEffect(() => {
@@ -109,8 +118,24 @@ export function WrappedScreen({ year }: { year: number }) {
     lastIndex.current = index;
     if (cards[index] === 'summary') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     else void Haptics.selectionAsync();
-    AccessibilityInfo.announceForAccessibility(t('screen.position', { index: index + 1, total: cards.length }));
-  }, [index, view, cards, t]);
+    if (!steppedByAction.current) {
+      // Swiped or tapped: say where the pager landed.
+      AccessibilityInfo.announceForAccessibility(t('screen.position', { index: index + 1, total: cards.length }));
+      return;
+    }
+    // Stepped with VoiceOver's adjust gesture: focus was on the card that
+    // just scrolled away, so move it to the new one, which reads itself and
+    // its position (its accessibility value) — no separate announcement.
+    steppedByAction.current = false;
+    const timer = setTimeout(
+      () => {
+        const card = cardViews.current.get(index);
+        if (card) AccessibilityInfo.sendAccessibilityEvent(card, 'focus');
+      },
+      reduceMotion ? 50 : 400,
+    );
+    return () => clearTimeout(timer);
+  }, [index, view, cards, t, reduceMotion]);
 
   const go = useCallback(
     (to: number) => {
@@ -119,6 +144,20 @@ export function WrappedScreen({ year }: { year: number }) {
       setIndex(to);
     },
     [cards.length, reduceMotion],
+  );
+
+  // VoiceOver's increment / decrement, from whichever card has focus. It
+  // steps from the page on screen, not from the focused card's own place:
+  // focus can stay on a card that has scrolled away, and stepping from that
+  // one would ask for the page already showing.
+  const step = useCallback(
+    (by: 1 | -1) => {
+      const to = indexNow.current + by;
+      if (to < 0 || to >= cards.length) return;
+      steppedByAction.current = true;
+      go(to);
+    },
+    [cards.length, go],
   );
 
   const share = useCallback(
@@ -250,13 +289,18 @@ export function WrappedScreen({ year }: { year: number }) {
               showsVerticalScrollIndicator={false}>
               <View
                 style={styles.cardColumn}
+                ref={(node) => {
+                  if (node) cardViews.current.set(i, node);
+                  else cardViews.current.delete(i);
+                }}
                 accessible
-                accessibilityHint={t('screen.position', { index: i + 1, total: cards.length })}
+                // A value, not a hint: hints can be switched off.
+                accessibilityValue={{ text: t('screen.position', { index: i + 1, total: cards.length }) }}
                 accessibilityActions={[
                   { name: 'increment', label: t('screen.next') },
                   { name: 'decrement', label: t('screen.previous') },
                 ]}
-                onAccessibilityAction={(e) => go(e.nativeEvent.actionName === 'increment' ? i + 1 : i - 1)}
+                onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
                 accessibilityRole="adjustable">
                 {i === index ? (
                   <Animated.View

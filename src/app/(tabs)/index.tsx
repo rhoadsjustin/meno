@@ -14,6 +14,7 @@ import {
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
+import { useScreenReader } from '@/components/screen-reader';
 import { Screen } from '@/components/screen';
 import { Button } from '@/components/button';
 import { TextLink } from '@/components/text-link';
@@ -76,6 +77,9 @@ export default function TodayScreen() {
   // there is nothing to swipe and the stack is long: the way into the picker
   // goes above it instead of several screens below.
   const stackedStarters = useWindowDimensions().fontScale >= STARTER_STACK_TEXT_SCALE;
+  // With VoiceOver the deck is some thirty stops (eight cards of four), so
+  // "Choose my own passage" comes before it there too.
+  const actionsFirst = useScreenReader() || stackedStarters;
   const [data, setData] = useState<TodayData | null>(null);
   const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
@@ -650,9 +654,9 @@ export default function TodayScreen() {
           {recapCard}
           {adventInvite}
           {emptyIntro}
-          {stackedStarters && emptyActions}
+          {actionsFirst && emptyActions}
           {emptyDeck}
-          {!stackedStarters && emptyActions}
+          {!actionsFirst && emptyActions}
           {hero}
           {adventProgress}
           {secondary}

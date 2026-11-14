@@ -23,6 +23,7 @@ import { contentColumn, contentColumnWide, useContentLayout } from '@/components
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ModalSafeArea } from '@/components/modal-safe-area';
+import { announce } from '@/components/screen-reader';
 import { Button } from '@/components/button';
 import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
@@ -102,6 +103,16 @@ function Onboarding() {
       ? afterNotifications
       : chosenStep;
 
+  // Each step replaces the last in place, so nothing tells VoiceOver the page
+  // changed (the live region on the blocked title is Android-only): say the
+  // new step's title. Not the first one, which the screen opens on.
+  const announced = useRef(step);
+  useEffect(() => {
+    if (announced.current === step) return;
+    announced.current = step;
+    announce(t(`${step}.title`));
+  }, [step, t]);
+
   // Android's back button walks back through the steps (the modal can't be
   // swiped away on iOS either). From the first step it leaves the app rather
   // than closing onboarding, which Today would only open again.
@@ -151,11 +162,19 @@ function Onboarding() {
 
   const welcome = {
     visual: (
-      <Text style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>M</Text>
+      // Decoration: VoiceOver would read it as the letter M.
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>
+        M
+      </Text>
     ),
     copy: (
       <>
-        <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
           {t('welcome.title')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -179,7 +198,9 @@ function Onboarding() {
     visual: null,
     copy: (
       <>
-        <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        <Text
+        accessibilityRole="header"
+        style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
           {t('notifications.title')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -243,7 +264,9 @@ function Onboarding() {
 
   const widget = {
     title: (
-      <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {t('widget.title')}
       </Text>
     ),
@@ -277,7 +300,9 @@ function Onboarding() {
 
   const lock = {
     title: (
-      <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {t('lock.title')}
       </Text>
     ),

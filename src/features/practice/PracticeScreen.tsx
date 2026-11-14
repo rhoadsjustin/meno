@@ -18,6 +18,7 @@ import { useTranslation } from '@/i18n/react';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
 import { formatRange, getPassage, getTranslation, loadFailureMessage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
@@ -400,6 +401,49 @@ export function PracticeScreen({
         : t('feedback.slipsForgiven', { count: phase.slips })
       : null;
 
+  // The result's heading, also what VoiceOver is told when the round is graded.
+  const verdict =
+    phase.kind === 'feedback' && session
+      ? phase.memorized
+        ? t('feedback.memorized')
+        : almost
+          ? phase.needsCleanPass
+            ? t('feedback.almostNotClean')
+            : phase.result
+              ? t('feedback.almostMarked')
+              : t('feedback.almostMoveOn')
+          : phase.tierCleared
+            ? forgiven
+              ? t('feedback.tierClearedForgiven', { tier: tierName(session.tier), forgiven })
+              : t('feedback.tierCleared', { tier: tierName(session.tier) })
+            : phase.passed
+              ? forgiven
+                ? t('feedback.passedForgiven', { forgiven })
+                : t('feedback.roundPassed')
+              : phase.result
+                ? t('feedback.notQuiteMarked')
+                : t('feedback.notQuiteRetry')
+      : null;
+
+  // The graded round is replaced by its result (the scroll view below is
+  // keyed by phase), which drops VoiceOver's focus: say the outcome rather
+  // than leave it to be found by swiping. Same for the resting screen and the
+  // summary, which also arrive in place.
+  const spoken =
+    phase.kind === 'feedback' && verdict
+      ? `${t('feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })}. ${verdict}`
+      : phase.kind === 'summary'
+        ? phase.memorized
+          ? t('summary.memorized', { reference })
+          : t('feedback.doneForToday')
+        : phase.kind === 'sealsTomorrow'
+          ? t('restingTitle', { reference })
+          : null;
+  useEffect(() => {
+    if (spoken) announce(spoken);
+    // `phase` and not just the text: two rounds can end on the same words.
+  }, [spoken, phase]);
+
   // The round itself; on extra-wide windows it shares the row with the rail.
   const round = (
     // Keyed by phase so each screen opens at its top: at large text sizes
@@ -438,17 +482,15 @@ export function PracticeScreen({
 
       {phase.kind === 'sealsTomorrow' && (
         <>
-          <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {t('restingTitle', { reference })}
           </Text>
           <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('restingBody', { tier: tierName(6) })}
           </Text>
-          <Button
-            label={t('common:done')}
-            onPress={closeModal}
-            style={styles.primaryButton}
-          />
+          <Button label={t('common:done')} onPress={closeModal} style={styles.primaryButton} />
         </>
       )}
 
@@ -513,26 +555,10 @@ export function PracticeScreen({
               compact={short}
             />
           )}
-          <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            {phase.memorized
-              ? t('feedback.memorized')
-              : almost
-                ? phase.needsCleanPass
-                  ? t('feedback.almostNotClean')
-                  : phase.result
-                    ? t('feedback.almostMarked')
-                    : t('feedback.almostMoveOn')
-                : phase.tierCleared
-                  ? forgiven
-                    ? t('feedback.tierClearedForgiven', { tier: tierName(session.tier), forgiven })
-                    : t('feedback.tierCleared', { tier: tierName(session.tier) })
-                  : phase.passed
-                    ? forgiven
-                      ? t('feedback.passedForgiven', { forgiven })
-                      : t('feedback.roundPassed')
-                    : phase.result
-                      ? t('feedback.notQuiteMarked')
-                      : t('feedback.notQuiteRetry')}
+          <Text
+            accessibilityRole="header"
+            style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            {verdict}
           </Text>
           {phase.result && (almost || !phase.tierCleared) && (
             <WordFeedback result={phase.result} tone={almost ? 'almost' : 'error'} />
@@ -799,7 +825,9 @@ function SessionSummary({
 
   return (
     <>
-      <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {memorized ? t('summary.memorized', { reference }) : t('feedback.doneForToday')}
       </Text>
       <View style={styles.summaryStats}>

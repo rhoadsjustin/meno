@@ -9,6 +9,7 @@ export default {
     memorized_one: 'versículo memorizado',
     memorized_other: 'versículos memorizados',
     spoken: '{{value}} {{label}}',
+    accuracyNone: 'Precisión en 30 días: todavía no hay intentos',
   },
   practice: 'Práctica',
   practiceDays: 'Días de práctica',

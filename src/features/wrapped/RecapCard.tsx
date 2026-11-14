@@ -7,7 +7,7 @@
  * Engraving style (07 §7): a double-rule border, New York numerals, no
  * gradients or imagery. Gold only where something was memorized (07 §3).
  */
-import { StyleSheet, Text, View, type TextStyle } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View, type TextStyle } from 'react-native';
 
 import type { RecapView } from '@/features/wrapped/recap-view';
 import { locale } from '@/i18n';
@@ -115,7 +115,13 @@ function CardBody({
   const n = (value: number) => value.toLocaleString(locale());
 
   // Share images are fixed pictures; on screen, text follows Dynamic Type.
+  // The cap is for the display sizes (a 96pt numeral has nowhere to grow);
+  // running text follows the reader's size all the way, and the page scrolls.
   const scale = share ? { allowFontScaling: false } : { maxFontSizeMultiplier: 1.6 };
+  const bodyScale = share ? { allowFontScaling: false } : {};
+  // Two stats to a row until large text needs the whole width for a label.
+  const { fontScale } = useWindowDimensions();
+  const oneColumn = !share && fontScale >= 1.4;
   const type = {
     kicker: { color: colors.lapis, fontFamily: fonts?.ui, fontSize: 12 * u, fontWeight: '600', letterSpacing: 1.4 * u, textTransform: 'uppercase' },
     heading: { color: colors.ink, fontFamily: fonts?.scripture, fontSize: 26 * u, lineHeight: 32 * u, fontWeight: '600' },
@@ -127,7 +133,7 @@ function CardBody({
   } satisfies Record<string, TextStyle>;
 
   const kicker = (
-    <Text {...scale} style={[type.kicker, { marginBottom: 20 * u }]}>
+    <Text {...bodyScale} style={[type.kicker, { marginBottom: 20 * u }]}>
       {view.kicker}
     </Text>
   );
@@ -154,7 +160,7 @@ function CardBody({
           {!share && (
             <>
               {gap(24)}
-              <Text {...scale} style={type.detail}>
+              <Text {...bodyScale} style={type.detail}>
                 {t('coverHint')}
               </Text>
             </>
@@ -170,21 +176,21 @@ function CardBody({
           {kicker}
           {heading(t('cards.words.heading'))}
           {numeral(lead, colors.gold)}
-          <Text {...scale} style={type.label}>
+          <Text {...bodyScale} style={type.label}>
             {words !== null
               ? t('cards.words.words', { count: words })
               : t('cards.words.verses', { count: recap.versesMemorized })}
           </Text>
           {words !== null && (
-            <Text {...scale} style={[type.detail, { marginTop: 4 * u }]}>
+            <Text {...bodyScale} style={[type.detail, { marginTop: 4 * u }]}>
               {t('cards.words.across', { count: recap.versesMemorized, value: n(recap.versesMemorized) })}
             </Text>
           )}
           {gap(28)}
-          <Text {...scale} style={type.verse}>
+          <Text {...bodyScale} style={type.verse}>
             {t('cards.words.echo')}
           </Text>
-          <Text {...scale} style={[type.detail, { marginTop: 6 * u }]}>
+          <Text {...bodyScale} style={[type.detail, { marginTop: 6 * u }]}>
             {t('cards.words.echoRef')}
           </Text>
         </>
@@ -200,19 +206,19 @@ function CardBody({
           <Text {...scale} style={type.title}>
             {p.reference}
           </Text>
-          <Text {...scale} style={[type.detail, { marginTop: 4 * u }]}>
+          <Text {...bodyScale} style={[type.detail, { marginTop: 4 * u }]}>
             {p.abbrev}
           </Text>
           {p.text && (
             <>
               {gap(20)}
-              <Text {...scale} style={type.verse} numberOfLines={share ? 7 : undefined}>
+              <Text {...bodyScale} style={type.verse} numberOfLines={share ? 7 : undefined}>
                 {`“${p.text}”`}
               </Text>
             </>
           )}
           {gap(20)}
-          <Text {...scale} style={type.detail}>
+          <Text {...bodyScale} style={type.detail}>
             {t('cards.passage.minutes', { count: recap.passage!.minutes, value: n(recap.passage!.minutes) })}
           </Text>
         </>
@@ -225,15 +231,15 @@ function CardBody({
           {kicker}
           {heading(t('cards.days.heading'))}
           {numeral(recap.activeDays)}
-          <Text {...scale} style={type.label}>
+          <Text {...bodyScale} style={type.label}>
             {t('cards.days.days', { count: recap.activeDays })}
           </Text>
           {gap(20)}
-          <Text {...scale} style={type.detail}>
+          <Text {...bodyScale} style={type.detail}>
             {t('cards.days.longest', { count: recap.longestRun, value: n(recap.longestRun) })}
           </Text>
           {recap.graceDaysHonored > 0 && (
-            <Text {...scale} style={[type.detail, { marginTop: 4 * u }]}>
+            <Text {...bodyScale} style={[type.detail, { marginTop: 4 * u }]}>
               {t('cards.days.grace', { count: recap.graceDaysHonored, value: n(recap.graceDaysHonored) })}
             </Text>
           )}
@@ -246,7 +252,7 @@ function CardBody({
           {kicker}
           {heading(t('cards.minutes.heading'))}
           {numeral(recap.minutes)}
-          <Text {...scale} style={type.label}>
+          <Text {...bodyScale} style={type.label}>
             {t('cards.minutes.minutes', { count: recap.minutes })}
           </Text>
         </>
@@ -258,7 +264,7 @@ function CardBody({
           {kicker}
           {heading(t('cards.spoken.heading'))}
           {numeral(recap.spokenRecitations)}
-          <Text {...scale} style={type.label}>
+          <Text {...bodyScale} style={type.label}>
             {t('cards.spoken.times', { count: recap.spokenRecitations })}
           </Text>
         </>
@@ -270,7 +276,7 @@ function CardBody({
           {kicker}
           {heading(t('cards.unlocks.heading'))}
           {numeral(recap.unlocks)}
-          <Text {...scale} style={type.label}>
+          <Text {...bodyScale} style={type.label}>
             {t('cards.unlocks.times', { count: recap.unlocks })}
           </Text>
         </>
@@ -286,21 +292,21 @@ function CardBody({
             {p.name}
           </Text>
           {gap(12)}
-          <Text {...scale} style={type.label}>
+          <Text {...bodyScale} style={type.label}>
             {p.line}
           </Text>
           {p.also.length > 0 && (
-            <Text {...scale} style={[type.detail, { marginTop: 10 * u, color: colors.ink }]}>
+            <Text {...bodyScale} style={[type.detail, { marginTop: 10 * u, color: colors.ink }]}>
               {t('cards.persona.also', { names: p.also.join(' · ') })}
             </Text>
           )}
           {gap(28)}
           {p.text && (
-            <Text {...scale} style={type.verse}>
+            <Text {...bodyScale} style={type.verse}>
               {`“${p.text}”`}
             </Text>
           )}
-          <Text {...scale} style={[type.detail, { marginTop: 6 * u }]}>
+          <Text {...bodyScale} style={[type.detail, { marginTop: 6 * u }]}>
             {p.reference}
           </Text>
         </>
@@ -313,12 +319,12 @@ function CardBody({
           {kicker}
           {heading(t('cards.badges.heading'))}
           {numeral(view.badgeNames.length, colors.gold)}
-          <Text {...scale} style={type.label}>
+          <Text {...bodyScale} style={type.label}>
             {t('cards.badges.count', { count: view.badgeNames.length })}
           </Text>
           {gap(20)}
           {view.badgeNames.map((name) => (
-            <Text key={name} {...scale} style={[type.detail, { color: colors.ink }]}>
+            <Text key={name} {...bodyScale} style={[type.detail, { color: colors.ink }]}>
               {name}
             </Text>
           ))}
@@ -346,13 +352,13 @@ function CardBody({
       }
       return (
         <>
-          <Text {...scale} style={[type.kicker, { marginBottom: 20 * u }]}>
+          <Text {...bodyScale} style={[type.kicker, { marginBottom: 20 * u }]}>
             {view.kicker}
           </Text>
           {heading(t('cards.summary.heading', { year }))}
           <View style={[styles.statGrid, { rowGap: 18 * u, columnGap: 16 * u }]}>
             {stats.slice(0, 4).map((s) => (
-              <View key={s.label} style={styles.stat}>
+              <View key={s.label} style={oneColumn ? styles.statWide : styles.stat}>
                 <Text
                   {...scale}
                   numberOfLines={1}
@@ -360,7 +366,7 @@ function CardBody({
                   style={[type.numeral, { fontSize: 44 * u, lineHeight: 50 * u, color: s.gold ? colors.gold : colors.ink }]}>
                   {n(s.value)}
                 </Text>
-                <Text {...scale} style={type.detail}>
+                <Text {...bodyScale} style={type.detail}>
                   {s.label}
                 </Text>
               </View>
@@ -369,7 +375,7 @@ function CardBody({
           {view.passage && (
             <>
               {gap(22)}
-              <Text {...scale} style={type.detail}>
+              <Text {...bodyScale} style={type.detail}>
                 {t('cards.passage.heading')}
               </Text>
               <Text {...scale} style={[type.heading, { fontSize: 20 * u, lineHeight: 26 * u }]}>
@@ -380,14 +386,14 @@ function CardBody({
           {view.persona && (
             <>
               {gap(14)}
-              <Text {...scale} style={type.detail}>
+              <Text {...bodyScale} style={type.detail}>
                 {t('cards.persona.heading')}
               </Text>
               <Text {...scale} style={[type.heading, { fontSize: 20 * u, lineHeight: 26 * u, color: colors.lapis }]}>
                 {view.persona.name}
               </Text>
               {view.persona.also.length > 0 && (
-                <Text {...scale} style={type.detail}>
+                <Text {...bodyScale} style={type.detail}>
                   {t('cards.persona.also', { names: view.persona.also.join(' · ') })}
                 </Text>
               )}
@@ -406,4 +412,5 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   stat: { width: '45%' },
+  statWide: { width: '100%' },
 });

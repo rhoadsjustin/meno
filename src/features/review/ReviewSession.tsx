@@ -14,6 +14,7 @@ import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
 import { Button } from '@/components/button';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
@@ -45,14 +46,15 @@ type QueueEntry = {
 /** A review reads as kept at this accuracy; the colour only, SM-2 is fed the score itself. */
 const REVIEW_PASS = 0.9;
 
-
 type Phase =
   | { kind: 'loading' }
   | { kind: 'empty' }
   /** The queue or a passage's text could not be read: not the same as nothing due. */
   | { kind: 'failed' }
   | { kind: 'round'; index: number }
-  | { kind: 'feedback'; index: number; accuracy: number; result: GradeResult }
+  /** `held`: the schedule kept the verse (SM-2 quality 3+), as opposed to
+   * resetting it to tomorrow. Not the same line as REVIEW_PASS. */
+  | { kind: 'feedback'; index: number; accuracy: number; held: boolean; result: GradeResult }
   | { kind: 'summary'; held: number; reset: number; averageAccuracy: number };
 
 export function ReviewSession() {
@@ -159,7 +161,13 @@ export function ReviewSession() {
           ? Haptics.NotificationFeedbackType.Success
           : Haptics.NotificationFeedbackType.Warning,
       );
-      setPhase({ kind: 'feedback', index, accuracy: outcome.accuracy, result: outcome.result });
+      setPhase({
+        kind: 'feedback',
+        index,
+        accuracy: outcome.accuracy,
+        held,
+        result: outcome.result,
+      });
     },
     [queue, startedAt],
   );
@@ -188,6 +196,44 @@ export function ReviewSession() {
     phase.kind === 'feedback'
       ? gradeBandAtLine(REVIEW_PASS, phase.accuracy, phase.result.unitCount)
       : null;
+
+  // What the schedule did with the verse, in words: the score's colour alone
+  // would carry it otherwise (07 §6, never colour alone), and a Blanks review
+  // has no marked words to back the colour up. "Back tomorrow" only when the
+  // interval really was reset, which is below 50%, not below the 90% line.
+  const outcome =
+    phase.kind !== 'feedback'
+      ? null
+      : !phase.held
+        ? t('outcome.reset')
+        : tone === 'pass'
+          ? t('outcome.kept')
+          : tone === 'almost'
+            ? phase.result.words.length > 0
+              ? t('almostMarked')
+              : t('almost')
+            : phase.result.words.length > 0
+              ? t('outcome.heldMarked')
+              : t('outcome.held');
+  const accuracyLabel =
+    phase.kind === 'feedback'
+      ? t('practice:feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })
+      : null;
+
+  // The round is replaced by its result in place: tell VoiceOver the outcome.
+  const spoken =
+    phase.kind === 'feedback'
+      ? `${accuracyLabel}. ${outcome}`
+      : phase.kind === 'summary'
+        ? [
+            t('keptFresh', { count: phase.held }),
+            ...(phase.reset > 0 ? [t('comeBack', { count: phase.reset })] : []),
+          ].join('. ')
+        : null;
+  useEffect(() => {
+    if (spoken) announce(spoken);
+    // `phase` too: two reviews in a row can end on the same words.
+  }, [spoken, phase]);
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
@@ -282,29 +328,28 @@ export function ReviewSession() {
           {phase.kind === 'feedback' && (
             <>
               <Text
-                accessibilityLabel={t('practice:feedback.accuracyLabel', {
-                  value: Math.round(phase.accuracy * 100),
-                })}
+                accessibilityLabel={accuracyLabel ?? undefined}
                 style={[
                   styles.accuracy,
                   short && styles.accuracyShort,
                   {
-                    color:
-                      tone === 'pass'
+                    // Red only for a review the schedule reset; one that
+                    // held below the pass line reads amber, like an almost.
+                    color: !phase.held
+                      ? colors.error
+                      : tone === 'pass'
                         ? colors.success
-                        : tone === 'almost'
-                          ? colors.amber
-                          : colors.error,
+                        : colors.amber,
                     fontFamily: fonts?.scripture,
                   },
                 ]}>
                 {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
               </Text>
-              {tone === 'almost' && (
-                <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                  {phase.result.words.length > 0 ? t('almostMarked') : t('almost')}
-                </Text>
-              )}
+              <Text
+                accessibilityRole="header"
+                style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                {outcome}
+              </Text>
               <WordFeedback result={phase.result} tone={tone === 'almost' ? 'almost' : 'error'} />
             </>
           )}
@@ -312,6 +357,9 @@ export function ReviewSession() {
           {phase.kind === 'summary' && (
             <>
               <Text
+                accessibilityLabel={t('averageAccuracyLabel', {
+                  value: Math.round(phase.averageAccuracy * 100),
+                })}
                 style={[
                   styles.accuracy,
                   short && styles.accuracyShort,
@@ -319,11 +367,14 @@ export function ReviewSession() {
                 ]}>
                 {t('common:percent', { value: Math.round(phase.averageAccuracy * 100) })}
               </Text>
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              <Text
+                accessibilityRole="header"
+                style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {t('keptFresh', { count: phase.held })}
               </Text>
               {phase.reset > 0 && (
-                <Text style={[styles.summaryNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                <Text
+                  style={[styles.summaryNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                   {t('comeBack', { count: phase.reset })}
                 </Text>
               )}

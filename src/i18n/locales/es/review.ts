@@ -12,6 +12,13 @@ export default {
   roundHeader: 'Repaso · {{reference}}',
   almost: 'Casi',
   almostMarked: 'Casi — abajo están marcadas las palabras que fallaron',
+  outcome: {
+    kept: 'Sigue fresco',
+    held: 'Se mantiene, con algunos deslices',
+    heldMarked: 'Se mantiene — abajo están marcadas las palabras que fallaron',
+    reset: 'Se te escapó — vuelve mañana',
+  },
+  averageAccuracyLabel: 'Precisión media: {{value}} por ciento',
   keptFresh_one: '{{count}} versículo sigue fresco',
   keptFresh_other: '{{count}} versículos siguen frescos',
   comeBack_one: '{{count}} versículo vuelve mañana',

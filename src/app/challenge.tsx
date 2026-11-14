@@ -20,6 +20,7 @@ import { closeModal } from '@/components/close-modal';
 import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
 import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
 import { t as translate } from '@/i18n';
 import { Button } from '@/components/button';
 import { Unavailable } from '@/components/unavailable';
@@ -159,6 +160,24 @@ function ChallengeScreen() {
     }
   };
 
+  // The spinner gives way to the invitation in place: say what arrived. The
+  // failed state speaks for itself (Unavailable).
+  const arrived =
+    view.kind === 'ready' && challenge
+      ? `${tr('invitation')}: ${
+          isPassageTitle(challenge.title, challenge.range)
+            ? formatRange(challenge.range)
+            : `${challenge.title}, ${formatRange(challenge.range)}`
+        }`
+      : view.kind === 'joined'
+        ? tr('joinedHeading')
+        : view.kind === 'invalid'
+          ? tr('invalidHeading')
+          : null;
+  useEffect(() => {
+    if (arrived) announce(arrived);
+  }, [arrived]);
+
   // "Not now" while there is an invitation to decline, "Close" otherwise.
   const dismissLabel = view.kind === 'ready' ? tr('common:notNow') : tr('common:close');
   const primary =
@@ -196,11 +215,15 @@ function ChallengeScreen() {
           {tr('invitation')}
         </Text>
 
-        {view.kind === 'loading' && <ActivityIndicator style={styles.spinner} />}
+        {view.kind === 'loading' && (
+          <ActivityIndicator accessibilityLabel={tr('common:loading')} style={styles.spinner} />
+        )}
 
         {view.kind === 'invalid' && (
           <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {tr('invalidHeading')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -220,7 +243,9 @@ function ChallengeScreen() {
 
         {view.kind === 'joined' && (
           <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {tr('joinedHeading')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -239,11 +264,15 @@ function ChallengeScreen() {
         {view.kind === 'ready' && challenge && (
           <>
             {!isPassageTitle(challenge.title, challenge.range) && (
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {challenge.title}
               </Text>
             )}
-            <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {formatRange(challenge.range)}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -303,7 +332,8 @@ function JoinFailedNote({ message }: { message: string }) {
 function Stat({ label, value }: { label: string; value: string }) {
   const colors = useThemeColors();
   return (
-    <View>
+    // One element, "14 Verses": apart they read as a number, then a word.
+    <View accessible accessibilityLabel={`${value} ${label}`}>
       <Text style={[styles.statValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {value}
       </Text>
@@ -329,7 +359,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderCurve: 'continuous',
   },
-  statsRow: { flexDirection: 'row', gap: spacing.xl, marginVertical: spacing.md },
+  // Wraps: at accessibility sizes three stats are wider than the sheet.
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: spacing.xl,
+    rowGap: spacing.md,
+    marginVertical: spacing.md,
+  },
   statValue: { fontSize: 28 },
   statLabel: { fontSize: 13 },
   // The one confirming action; dismissing is the bar's job.

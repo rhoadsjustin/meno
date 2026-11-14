@@ -8,6 +8,8 @@ export default {
     memorized_one: 'verses memorized',
     memorized_other: 'verses memorized',
     spoken: '{{value}} {{label}}',
+    // Spoken in place of a dash when nothing has been graded in 30 days.
+    accuracyNone: '30-day accuracy: no attempts yet',
   },
   practice: 'Practice',
   practiceDays: 'Practice days',
