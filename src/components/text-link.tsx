@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { MIN_TOUCH_TARGET } from '@/components/button';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { useThemeColors, fonts } from '@/theme';
 
 export type TextLinkProps = {
@@ -97,7 +97,7 @@ export function TextLink({
         {label}
       </Text>
       {chevron && (
-        <Symbol
+        <SymbolIcon
           ios="chevron.right"
           android="chevron_right"
           size={13}
