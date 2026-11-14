@@ -23,7 +23,7 @@ import { SymbolIcon } from '@/components/symbol';
 import { TextLink } from '@/components/text-link';
 import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
-import { PassageCard } from '@/features/goals/PassageCard';
+import { ChunkHeatmap, PassageCard } from '@/features/goals/PassageCard';
 import { useGoalRemoval } from '@/features/goals/useGoalRemoval';
 import { AdventInviteCard, AdventProgressCard, useAdventOffer } from '@/features/advent/AdventCard';
 import {
@@ -57,7 +57,7 @@ import {
   type Goal,
 } from '@/services/db/repos/goals';
 import { shareGoalChallengeOrAlert } from '@/services/challenges';
-import { countDueReviews, dueReviewChunks } from '@/services/db/repos/reviews';
+import { countDueReviews } from '@/services/db/repos/reviews';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
 import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
@@ -65,8 +65,6 @@ import { showGoalOnWidgets } from '@/services/widgets';
 import { useThemeColors, fonts, spacing, scriptureType, textStyle } from '@/theme';
 import { useMotion } from '@/theme/motion';
 
-/** How many due references the review row names (07 §6). */
-const DUE_REFS_SHOWN = 3;
 /** 07 §8, "Streak day secured: ember pulse": one bounce, then cleared. */
 const EMBER_PULSE = { effect: { type: 'bounce', wholeSymbol: true } } as const;
 const EMBER_PULSE_MS = 1200;
@@ -100,7 +98,6 @@ export default function TodayScreen() {
   const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
   const [dueCount, setDueCount] = useState(0);
-  const [dueRefs, setDueRefs] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
   // The first load threw, so there is nothing true to show: neither the
   // passages nor the first-run empty state. Once a load has succeeded, a
@@ -151,14 +148,8 @@ export default function TodayScreen() {
         }
       }
       const streakNow = await currentStreakDisplay();
-      const [due, dueChunks] = await Promise.all([
-        countDueReviews(),
-        dueReviewChunks(DUE_REFS_SHOWN),
-      ]);
-      if (!isCancelled()) {
-        setDueCount(due);
-        setDueRefs(dueChunks.map(chunkRangeLabel));
-      }
+      const due = await countDueReviews();
+      if (!isCancelled()) setDueCount(due);
       if (!goal) {
         const finished = (await listGoals()).length > 0;
         if (!isCancelled()) {
@@ -456,6 +447,9 @@ export default function TodayScreen() {
               translation: getTranslation(data.goal.translationId).abbrev,
             })}
           </Text>
+          {/* The same picture of progress as the cards under Also practicing
+              and in Library. */}
+          <ChunkHeatmap title={data.goal.title} chunks={data.chunks} style={styles.heatmap} />
           {(() => {
             const copy = stepCopy({ ...data, chunk: data.chunk, step: data.step });
             // Topped the ladder today: there is nothing to open, so this
@@ -526,6 +520,7 @@ export default function TodayScreen() {
           <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('hero.memorizedBody')}
           </Text>
+          <ChunkHeatmap title={data.goal.title} chunks={data.chunks} style={styles.heatmap} />
           <Button
             label={t('hero.chooseAnother')}
             onPress={() => router.push('/goal-wizard')}
@@ -553,17 +548,10 @@ export default function TodayScreen() {
         <Card>
           <NavRow
             title={t('due.title')}
-            detail={
-              dueRefs.length === 0
-                ? t('due.body', { count: dueCount })
-                : dueCount > dueRefs.length
-                  ? t('due.refsAndMore', {
-                      count: dueCount,
-                      refs: dueRefs.join(', '),
-                      more: dueCount - dueRefs.length,
-                    })
-                  : t('due.refs', { count: dueCount, refs: dueRefs.join(', ') })
-            }
+            // A count, not a list: the row is a nudge, and the session
+            // itself names the verses.
+            badge={dueCount}
+            accessibilityLabel={`${t('due.title')}. ${t('due.body', { count: dueCount })}`}
             onPress={() => router.push('/review')}
           />
         </Card>
@@ -696,6 +684,7 @@ const styles = StyleSheet.create({
     lineHeight: scriptureType.defaultLineHeight,
   },
   attribution: { fontSize: 13, marginTop: spacing.md },
+  heatmap: { marginTop: spacing.md },
   subline: { fontSize: 13, marginTop: spacing.sm, textAlign: 'center' },
   primaryButton: { marginTop: spacing.lg },
   restNote: { marginTop: spacing.lg },

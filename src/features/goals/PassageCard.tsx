@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Button, type ButtonVariant } from '@/components/button';
 import { Card } from '@/components/card';
@@ -73,29 +73,7 @@ export function PassageCard({
           {t('goal.onWidgets')}
         </Text>
       )}
-      <View
-        style={styles.heatmap}
-        accessible
-        accessibilityLabel={t('goal.heatmap', {
-          title: goal.title,
-          memorized,
-          learning: chunks.filter((c) => c.status === 'learning' || c.status === 'active').length,
-          locked: chunks.filter((c) => c.status === 'locked').length,
-        })}>
-        {chunks.map((c) => (
-          <View
-            key={c.id}
-            style={[
-              styles.cell,
-              c.status === 'locked'
-                ? // Not started: an outline, so it differs from a started
-                  // chunk by shape as well as colour.
-                  { borderWidth: 1, borderColor: colors.inkFaint }
-                : { backgroundColor: cellColor(c, colors) },
-            ]}
-          />
-        ))}
-      </View>
+      <ChunkHeatmap title={goal.title} chunks={chunks} style={styles.heatmap} />
       {(action || secondary) && (
         <View style={styles.actions}>
           {action?.kind === 'resting' && (
@@ -121,6 +99,51 @@ export function PassageCard({
   );
 }
 
+/**
+ * A passage's chunks as a row of cells, the one picture of progress wherever
+ * a passage is shown (07 §6): outlined when not started, lapis deepening by
+ * tier, gold when memorized. Read as one sentence by a screen reader.
+ */
+export function ChunkHeatmap({
+  title,
+  chunks,
+  style,
+}: {
+  /** The passage's name, for the spoken summary. */
+  title: string;
+  chunks: Chunk[];
+  /** Outer layout only (margins). */
+  style?: StyleProp<ViewStyle>;
+}) {
+  const colors = useThemeColors();
+  const { t } = useTranslation('library');
+  return (
+    <View
+      style={[styles.cells, style]}
+      accessible
+      accessibilityLabel={t('goal.heatmap', {
+        title,
+        memorized: chunks.filter((c) => c.status === 'memorized').length,
+        learning: chunks.filter((c) => c.status === 'learning' || c.status === 'active').length,
+        locked: chunks.filter((c) => c.status === 'locked').length,
+      })}>
+      {chunks.map((c) => (
+        <View
+          key={c.id}
+          style={[
+            styles.cell,
+            c.status === 'locked'
+              ? // Not started: an outline, so it differs from a started
+                // chunk by shape as well as colour.
+                { borderWidth: 1, borderColor: colors.inkFaint }
+              : { backgroundColor: cellColor(c, colors) },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
 /** lapisWash → lapis by tier; gold when memorized (docs/07 §6). */
 function cellColor(chunk: Chunk, colors: ThemeColors): string {
   if (chunk.status === 'memorized') return colors.gold;
@@ -135,12 +158,8 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   title: { flex: 1, fontSize: 17, fontWeight: '600' },
   sub: { fontSize: 13, marginTop: spacing.xs },
-  heatmap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: spacing.md,
-  },
+  heatmap: { marginTop: spacing.md },
+  cells: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   cell: { width: 16, height: 16, borderRadius: radius.cell },
   // The card's step at the leading edge, sized to its label; a second one
   // wraps under it when the row is too narrow for both.

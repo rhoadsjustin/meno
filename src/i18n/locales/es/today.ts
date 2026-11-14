@@ -50,8 +50,6 @@ export default {
     title: 'Para repasar',
     body_one: '{{count}} versículo está listo para mantenerlo fresco.',
     body_other: '{{count}} versículos están listos para mantenerlos frescos.',
-    refs: '{{count}} para mantener frescos: {{refs}}',
-    refsAndMore: '{{count}} para mantener frescos: {{refs}} y {{more}} más',
   },
 
   others: {

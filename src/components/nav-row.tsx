@@ -8,6 +8,12 @@ export type NavRowProps = {
   title: string;
   /** One quiet line under the title: what is behind the row. */
   detail?: string;
+  /**
+   * A count waiting behind the row, drawn as a filled capsule before the
+   * chevron, the way a system badge marks something that wants attention.
+   * It is not read on its own: say it in `accessibilityLabel`.
+   */
+  badge?: number;
   onPress: () => void;
   /** Spoken label when it differs from "title. detail". */
   accessibilityLabel?: string;
@@ -29,6 +35,7 @@ export type NavRowProps = {
 export function NavRow({
   title,
   detail,
+  badge,
   onPress,
   accessibilityLabel,
   accessibilityHint,
@@ -52,6 +59,15 @@ export function NavRow({
           </Text>
         )}
       </View>
+      {badge !== undefined && (
+        <View style={[styles.badge, { backgroundColor: colors.lapis }]}>
+          <Text
+            maxFontSizeMultiplier={1.6}
+            style={[styles.badgeText, { color: colors.onLapis, fontFamily: fonts?.ui }]}>
+            {badge}
+          </Text>
+        </View>
+      )}
       {Platform.OS === 'ios' && (
         <SymbolIcon
           ios="chevron.right"
@@ -75,5 +91,15 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: spacing.xs },
   title: textStyle.headline,
   detail: textStyle.subheadline,
+  // A circle for one digit, a capsule for more.
+  badge: {
+    minWidth: 24,
+    minHeight: 24,
+    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { ...textStyle.subheadline, fontWeight: '600', fontVariant: ['tabular-nums'] },
   pressed: { opacity: 0.6 },
 });

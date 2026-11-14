@@ -51,9 +51,6 @@ export default {
     title: 'Due for review',
     body_one: '{{count}} verse is ready to be kept fresh.',
     body_other: '{{count}} verses are ready to be kept fresh.',
-    // The row's detail once the references are known: the first three, most overdue first.
-    refs: '{{count}} to keep fresh: {{refs}}',
-    refsAndMore: '{{count}} to keep fresh: {{refs}} and {{more}} more',
   },
 
   others: {
