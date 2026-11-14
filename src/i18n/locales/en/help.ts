@@ -4,17 +4,17 @@ export default {
   intro:
     'Meno works best with a few things turned on. Each one takes about a minute. Tap any item to jump to its steps.',
   sections: {
-    quizzes: 'Reminders and quizzes',
+    quizzes: 'Reminders',
     homeWidget: 'Home Screen widget',
     lockWidget: 'Lock Screen widget',
     speak: 'Speaking your verse',
-    lock: 'Recite to unlock',
+    lock: 'Recite to Unlock',
   },
   status: {
     ready: 'Ready',
     notYet: 'Not set up yet',
     openSettings: 'Needs permission in iPhone Settings',
-    unavailable: 'Needs a real iPhone',
+    unavailable: 'Not available on this device',
     manual: 'Add it yourself — steps below',
   },
   overviewLabel: '{{title}}: {{status}}',
@@ -25,14 +25,14 @@ export default {
     allowNotifications: 'Allow notifications',
     turnOnReminders: 'Turn on reminders',
     allowMicrophone: 'Allow microphone',
-    setUpLock: 'Set up recite-to-unlock',
+    setUpLock: 'Set up Recite to Unlock',
   },
   steps: {
     tapOpenSettings: 'Tap Open iPhone Settings below.',
     comeBack: 'Come back to Meno — this page updates by itself.',
   },
   quizzes: {
-    body: 'A daily reminder to practice, at a time you choose, and short surprise quizzes on verses you’ve memorized (between 9am and 9pm). Never more than two notifications a day.',
+    body: 'A daily reminder to practice, at a time you choose, and short pop quizzes on verses you’ve memorized (between 9am and 9pm). Never more than two notifications a day.',
     blocked:
       'Reminders are on in Meno, but your iPhone isn’t letting them through, so nothing can arrive yet.',
     tapNotifications: 'Tap Notifications.',
@@ -44,7 +44,7 @@ export default {
     askTip: 'Your iPhone will ask if Meno can send notifications — tap Allow.',
   },
   homeWidget: {
-    body: 'Shows your current verse on your Home Screen. As you learn it, words disappear — a gentle nudge to fill them in from memory.',
+    body: 'Shows your current verse on your Home Screen. As you learn it, words disappear, so you fill them in from memory.',
     imageLabel:
       'Example: the Meno widget on a Home Screen, showing {{ref}} with some words blanked out',
     steps: {
@@ -78,13 +78,13 @@ export default {
       'Your iPhone will ask about the microphone and speech recognition — tap Allow for both.',
   },
   lock: {
-    body: 'Optional. Pick the apps that eat your time; before one opens, Meno asks you to recite your verse. Override is always one tap away, and you can switch it off anytime.',
+    body: 'Optional. Pick the apps that distract you; before one opens, Meno asks you to recite your verse. Override is always one tap away, and you can switch it off anytime.',
     unavailable:
-      'This uses Apple’s Screen Time, which only works on a real iPhone — not in the simulator.',
+      'Recite to Unlock relies on Apple’s Screen Time, which isn’t available on this device.',
     readyTip:
       'It’s on. To turn it off completely, go to Settings → Turn off and clear all shields now.',
     steps: {
-      tapSetUp: 'Tap Set up recite-to-unlock below.',
+      tapSetUp: 'Tap Set up Recite to Unlock below.',
       allowScreenTime:
         'When your iPhone asks about Screen Time, allow it (you may need Face ID or your passcode).',
       pickApps: 'Pick the apps that should ask for a verse first.',
@@ -95,11 +95,11 @@ export default {
   faq: {
     multiple: {
       q: 'Can I learn more than one passage at a time?',
-      a: 'Yes. Tap “+ Practice another passage” on Today (or in Library). Each passage keeps its own progress, and Today lists them all — the one on your widgets at the top.',
+      a: 'Yes. Tap “Add passage” on Today (or in Library). Each passage keeps its own progress, and Today lists them all — the one on your widgets at the top.',
     },
     widgetVerse: {
       q: 'How do I choose which verse my widgets show?',
-      a: 'On Today or in Library, tap “Show on widgets” under the passage you want. Every Meno widget switches to it within a moment, and recite-to-unlock asks for that verse too.',
+      a: 'On Today or in Library, tap “Show on widgets” under the passage you want. Every Meno widget switches to it within a moment, and Recite to Unlock asks for that verse too.',
     },
     oldVerse: {
       q: 'My widget shows an old verse.',
@@ -110,12 +110,12 @@ export default {
       a: 'That’s on purpose once you know a verse well — try reciting it from memory! To show more, touch and hold the widget, tap Edit Widget, and change “Show verse as.”',
     },
     noReminders: {
-      q: 'I’m not getting any reminders or quizzes.',
-      a: 'Open Settings → Reminders. Each kind of reminder says when the next one comes, or why none will yet. The daily reminder comes at the time you set and skips a day you’ve already practiced. Quizzes start once a verse is memorized, and only come between 9am and 9pm. If everything there looks right, check your iPhone: a Focus like Sleep or Do Not Disturb holds notifications until it ends, and Scheduled Summary saves them for set times of day. Meno can’t see either one.',
+      q: 'I’m not getting any reminders.',
+      a: 'Open Settings → Reminders. Each kind of reminder says when the next one comes, or why none will yet. The daily reminder comes at the time you set and skips a day you’ve already practiced. Pop quizzes start once a verse is memorized, and only come between 9am and 9pm. If everything there looks right, check your iPhone: a Focus like Sleep or Do Not Disturb holds notifications until it ends, and Scheduled Summary saves them for set times of day. Meno can’t see either one.',
     },
     shielded: {
       q: 'An app is shielded and I need it right now.',
-      a: 'Tap Override on the shield — it always works. To switch recite-to-unlock off completely, open Meno’s Settings and tap “Turn off and clear all shields now.”',
+      a: 'Tap Override on the shield — it always works. To switch Recite to Unlock off completely, open Meno’s Settings and tap “Turn off and clear all shields now.”',
     },
     voice: {
       q: 'Does Meno record my voice?',

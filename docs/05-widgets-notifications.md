@@ -105,7 +105,7 @@ Rules:
 
   | State | Meaning | What the user reads |
   |---|---|---|
-  | `off` | The Reminders switch is off in Meno (never turned on, or "Later" in onboarding) | "Off. Reminders are switched off in Meno." |
+  | `off` | The Reminders switch is off in Meno (never turned on, or "Not now" in onboarding) | "Off. Reminders are switched off in Meno." |
   | `blocked` | On in Meno, but iOS permission is declined, revoked, or (after a restore) never asked | "Can’t arrive. Notifications are turned off for Meno in iPhone Settings." + Open iPhone Settings, or Allow notifications when iOS can still be asked |
   | `waiting` | On and permitted, nothing to send yet | The reason: no passage in progress; no memorized verse to quiz; no streak yet |
   | `scheduled` | The next one is pending in iOS | "Next reminder today at 7:00 PM." A quiz gives its day and the 9am–9pm window, never its time |

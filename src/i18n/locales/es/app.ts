@@ -14,7 +14,10 @@ export default {
     stats: 'Progreso',
     settings: 'Ajustes',
   },
-  migrationError: 'Algo salió mal al preparar tus datos: {{message}}',
+  migrationError: {
+    title: 'Meno no pudo abrir tus datos',
+    body: 'Tus versículos y tu progreso siguen en este dispositivo. Inténtalo de nuevo, o cierra Meno y vuelve a abrirlo.',
+  },
   recovery: {
     title: 'Algo salió mal.',
     body: 'Tus versículos y tu progreso están a salvo en este dispositivo.',

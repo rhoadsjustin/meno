@@ -6,18 +6,20 @@ export default {
   invalidHeading: 'Este enlace no funcionó',
   joinedHeading: 'Ya estás participando',
   joinedBody: '“{{title}}” ya está en este dispositivo. Sigue adelante: cada recitación cuenta.',
+  joinedBodyMemorized: 'Ya memorizaste “{{title}}”.',
+  joinedBodyInactive: '“{{title}}” está en este dispositivo, pero ya no está en curso.',
   translationDue: '{{abbrev}} · terminar antes del {{date}}',
   swapped:
     'Se compartió en {{shared}}, que no está configurada en este dispositivo; memorizarás en {{local}}.',
   joinNote:
-    'Al unirte, se crea esta meta en tu dispositivo. Tu progreso es privado; por ahora solo tú lo ves.',
+    'Al unirte, este pasaje se agrega a tu dispositivo. Tu progreso es privado; por ahora solo tú lo ves.',
   join: 'Unirme al desafío',
   practice: 'Practicar',
   joinFailed: 'No se pudo unir a este desafío. Inténtalo de nuevo.',
   failedHeading: 'No se pudo cargar este pasaje',
   failedBody: 'El enlace está bien. Inténtalo de nuevo en un momento.',
   errors: {
-    malformed: 'Este enlace de desafío está incompleto o dañado.',
+    malformed: 'Está incompleto o ya no sirve. Pide uno nuevo.',
     newerVersion:
       'Este desafío necesita una versión más reciente de Meno. Actualiza la app y vuelve a abrir el enlace.',
     unknownTranslation: 'Este desafío usa una traducción que esta versión de Meno no conoce.',

@@ -106,7 +106,7 @@ describe('stopGoalPrompt', () => {
 
   it('says the memorized verses stay, and what goes', () => {
     expect(stopGoalPrompt('Romans 8').message).toBe(
-      'The verses you’ve memorized stay on your Memorized shelf and in your reviews. Your practice on the rest of this passage is deleted. You can’t undo this.',
+      'Memorized verses stay on your Memorized shelf and in your reviews. Your practice on the rest of this passage will be deleted.',
     );
   });
 
@@ -122,7 +122,7 @@ describe('deleteGoalPrompt', () => {
 
   it('says what is lost and what stays', () => {
     expect(deleteGoalPrompt('Psalm 23').message).toBe(
-      'This deletes your practice history for this passage. Your streak and badges stay. You can’t undo this.',
+      'Your practice history for this passage will be deleted. Your streak and badges stay.',
     );
   });
 

@@ -3,9 +3,9 @@ import type en from '@/i18n/locales/en/lock';
 
 export default {
   setup: {
-    unavailableTitle: 'Recitar para desbloquear necesita tu iPhone',
+    unavailableTitle: 'Recitar para desbloquear no está disponible en este dispositivo',
     unavailableBody:
-      'Las funciones de Tiempo en pantalla de Apple solo funcionan en un dispositivo físico: el simulador no puede bloquear apps. Todo lo demás en Meno funciona aquí como siempre.',
+      'Depende de Tiempo en pantalla de Apple, que este dispositivo no ofrece. Todo lo demás en Meno funciona aquí como siempre.',
     explainerTitle: 'Recitar para desbloquear',
     explainerBody:
       'Elige las apps que suelen distraerte. Cuando abras una, Meno te pedirá que recites tu versículo actual primero, y luego te dejará seguir.',
@@ -31,7 +31,7 @@ export default {
     turnOn: 'Activar',
     doneTitle: 'Todo listo',
     doneBody:
-      'La próxima vez que abras una app bloqueada, Meno te pedirá tu versículo. Omitirlo siempre está a un toque, y el interruptor de emergencia en Ajustes lo quita todo al instante.',
+      'Meno te pedirá tu versículo la próxima vez que abras una app bloqueada. Omitir siempre está a un toque, y “Desactivar y quitar todos los bloqueos ahora” en Ajustes lo quita todo.',
     cancelSetup: 'Cancelar configuración',
   },
   unlock: {
@@ -48,7 +48,7 @@ export default {
     subtitleFallback: 'Recita tu versículo para continuar.',
     primaryButton: 'Recitar para desbloquear',
     secondaryButton: 'Omitir',
-    notificationTitle: 'Recita para desbloquear',
+    notificationTitle: 'Recitar para desbloquear',
     notificationBody: 'Toca aquí para recitar y continuar.',
   },
 } satisfies Catalog<typeof en>;

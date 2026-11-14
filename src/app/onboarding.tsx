@@ -287,7 +287,7 @@ function Onboarding() {
         </Text>
         {onIos && !isLockAvailable() && (
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('lock.simulatorHint')}
+            {t('lock.unavailableHint')}
           </Text>
         )}
       </>

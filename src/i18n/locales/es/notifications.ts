@@ -11,7 +11,7 @@ export default {
     streakBodyDue_other: 'Un repaso rápido la mantiene: {{count}} versículos están listos.',
     streakBody: 'Un minuto de práctica la mantiene.',
     popQuizTitle: 'Prueba sorpresa',
-    popQuizBody: 'Un versículo que guardaste está listo para brillar. ¿30 segundos?',
+    popQuizBody: '¿Todavía recuerdas un versículo que memorizaste? 30 segundos.',
   },
   status: {
     titlePractice: 'Recordatorio diario',
@@ -21,20 +21,20 @@ export default {
     dayTomorrow: 'mañana',
     dayOn: 'el {{weekday}}',
     waitingNothingMemorized:
-      'Empiezan cuando memorices un versículo. Todavía no hay nada sobre qué preguntarte.',
+      'Empiezan cuando memorices un versículo.',
     waitingNoStreak:
-      'Aún no tienes racha. Practica hoy para empezar una, y el recordatorio diario la mencionará.',
+      'Aún no tienes racha. Practica hoy para empezar una.',
     waitingNothingToPracticeStreak:
-      'No hay nada en curso, así que no hay recordatorio que lleve tu racha. Empieza un pasaje y vuelve.',
+      'No hay nada en curso, así que no hay recordatorio que lleve tu racha.',
     waitingNothingToPractice:
-      'No hay ningún pasaje en curso, así que no hay nada que recordarte. Empieza uno y comenzará.',
+      'No hay ningún pasaje en curso, así que no hay nada que recordarte.',
     waitingNotScheduled:
       'No hay nada programado ahora. Abre Meno de nuevo y programará el siguiente.',
     off: 'Desactivado. Los recordatorios están desactivados en Meno.',
     blockedCanAsk:
       'Aún no pueden llegar. Tu iPhone todavía no ha preguntado si permites las notificaciones de Meno.',
     blocked: 'No pueden llegar. Las notificaciones de Meno están desactivadas en Ajustes del iPhone.',
-    nextQuiz: 'Próxima prueba {{day}}, a una hora sorpresa (entre {{from}} y {{to}}).',
+    nextQuiz: 'Próxima prueba sorpresa {{day}}, entre {{from}} y {{to}}.',
     streakSafe_one:
       'Tu racha de {{count}} día está a salvo por hoy. El próximo recordatorio ({{day}}, {{time}}) la mencionará.',
     streakSafe_other:
@@ -59,7 +59,7 @@ export default {
   },
   prompt: {
     titleBlocked: 'Los recordatorios aún no te llegan',
-    titleOff: '¿Un recordatorio para volver?',
+    titleOff: '¿Quieres un recordatorio diario?',
     bodyViaSettings:
       'Están activados en Meno, pero las notificaciones de Meno están desactivadas en este iPhone. Activa Permitir notificaciones y empezarán solas.',
     bodyBlocked: 'Están activados en Meno, pero tu iPhone todavía no ha preguntado si los permites.',

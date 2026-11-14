@@ -15,16 +15,12 @@ export default {
   },
 
   empty: {
-    titleFirst: 'Nothing memorized yet',
+    titleFirst: 'Start with one verse',
     titleAgain: 'Ready for another passage?',
-    bodyFirstSwipe:
-      'Start with a verse you may already half know. Swipe to choose one and try it now — it takes a couple of minutes.',
-    bodyFirstChoose:
-      'Start with a verse you may already half know. Choose one and try it now — it takes a couple of minutes.',
-    bodyAgainSwipe:
-      'Nothing is in progress. Swipe to choose a verse and start it now, or choose your own passage.',
-    bodyAgainChoose:
-      'Nothing is in progress. Choose a verse and start it now, or choose your own passage.',
+    // One body per case: it reads the same over the swipe deck and the stacked list.
+    bodyFirst:
+      'Pick one you may already half know and try it now — it takes a couple of minutes.',
+    bodyAgain: 'Nothing is in progress. Start a verse now, or choose your own passage.',
     startFailed: 'That verse couldn’t be started. Try again, or choose your own passage.',
     startersFailed: 'The starter verses couldn’t be loaded.',
     chooseOwn: 'Choose my own passage',
@@ -73,7 +69,8 @@ export default {
   },
 
   continueReading: 'Continue reading {{range}}',
-  practiceAnother: '+ Practice another passage',
+  // The way into the goal wizard once a passage exists (Library uses the same label).
+  addPassage: 'Add passage',
 
   ladder: {
     title: 'Where it stands',

@@ -10,7 +10,7 @@ export default {
     streakBodyDue_other: 'A quick review keeps it going — {{count}} verses are ready.',
     streakBody: 'A minute of practice keeps it going.',
     popQuizTitle: 'Pop quiz',
-    popQuizBody: 'A verse you’ve hidden is ready to shine. 30 seconds?',
+    popQuizBody: 'Still have a verse you’ve memorized? 30 seconds.',
   },
   status: {
     titlePractice: 'Daily reminder',
@@ -20,19 +20,19 @@ export default {
     dayTomorrow: 'tomorrow',
     dayOn: 'on {{weekday}}',
     waitingNothingMemorized:
-      'Starts once you’ve memorized a verse. There’s nothing to quiz you on yet.',
+      'Starts once you’ve memorized a verse.',
     waitingNoStreak:
-      'No streak yet. Practice today to start one, and the daily reminder will carry it.',
+      'No streak yet. Practice today to start one.',
     waitingNothingToPracticeStreak:
-      'Nothing is in progress, so there’s no reminder to carry your streak. Start a passage and it returns.',
+      'Nothing is in progress, so there’s no reminder to carry your streak.',
     waitingNothingToPractice:
-      'No passage in progress, so there’s nothing to be reminded of. Start one and it begins.',
+      'No passage in progress, so there’s nothing to be reminded of.',
     waitingNotScheduled: 'Nothing is scheduled right now. Open Meno again and it will set the next one.',
     off: 'Off. Reminders are switched off in Meno.',
     blockedCanAsk:
       'Can’t arrive yet. Your iPhone hasn’t been asked to allow notifications for Meno.',
     blocked: 'Can’t arrive. Notifications are turned off for Meno in iPhone Settings.',
-    nextQuiz: 'Next quiz {{day}}, at a surprise time between {{from}} and {{to}}.',
+    nextQuiz: 'Next pop quiz {{day}}, sometime between {{from}} and {{to}}.',
     streakSafe_one:
       'Your {{count}}-day streak is safe for today. The next reminder, {{day}} at {{time}}, will mention it.',
     streakSafe_other:
@@ -57,7 +57,7 @@ export default {
   },
   prompt: {
     titleBlocked: 'Reminders can’t reach you yet',
-    titleOff: 'A nudge to come back?',
+    titleOff: 'Want a daily reminder?',
     bodyViaSettings:
       'They’re on in Meno, but notifications are turned off for Meno on this iPhone. Turn on Allow Notifications and they start by themselves.',
     bodyBlocked: 'They’re on in Meno, but your iPhone hasn’t been asked to allow them yet.',

@@ -80,7 +80,12 @@ export async function reviewItemsForChunks(chunkIds: string[]): Promise<Map<stri
 }
 
 /** Applies one review result via SM-2 and persists the new state. */
-export async function recordReviewResult(item: ReviewItem, accuracy: number): Promise<void> {
+/**
+ * Applies one review to the item's schedule. Resolves to whether the verse
+ * held (SM-2 quality 3 or better): a review that didn't hold resets the
+ * interval, so the verse comes back tomorrow.
+ */
+export async function recordReviewResult(item: ReviewItem, accuracy: number): Promise<boolean> {
   const state: ReviewState = {
     easiness: item.easiness,
     intervalDays: item.intervalDays,
@@ -100,6 +105,8 @@ export async function recordReviewResult(item: ReviewItem, accuracy: number): Pr
       health: 'fresh',
     })
     .where(eq(tables.reviewItems.id, item.id));
+  // applyReview zeroes repetitions exactly when the review didn't hold.
+  return next.repetitions > 0;
 }
 
 /** Recomputed lazily whenever an item is displayed. */

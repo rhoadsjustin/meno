@@ -21,9 +21,10 @@ tags:
 # The guide presents as a sheet — assert through the presentation animation,
 # or the first row is checked before it has rendered (this flaked on CI and
 # was only caught because the runner's retry happened to pass).
-# Overview rows merge the feature name with its status.
+# Overview rows merge the feature name with its status ("Reminders: Not set
+# up yet"); the colon keeps this off the Settings row behind the sheet.
 - extendedWaitUntil:
-    visible: ".*Reminders and quizzes.*"
+    visible: "Reminders: .*"
     timeout: 10000
 - assertVisible: ".*Home Screen widget.*"
 - tapOn: "Done"

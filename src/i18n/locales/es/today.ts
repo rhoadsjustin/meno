@@ -15,16 +15,11 @@ export default {
   },
 
   empty: {
-    titleFirst: 'Aún no has memorizado nada',
+    titleFirst: 'Empieza con un versículo',
     titleAgain: '¿Quieres empezar otro pasaje?',
-    bodyFirstSwipe:
-      'Empieza con un versículo que quizá ya conoces a medias. Desliza para elegir uno y pruébalo ahora: toma un par de minutos.',
-    bodyFirstChoose:
-      'Empieza con un versículo que quizá ya conoces a medias. Elige uno y pruébalo ahora: toma un par de minutos.',
-    bodyAgainSwipe:
-      'No tienes nada en curso. Desliza para elegir un versículo y empezarlo ahora, o elige tu propio pasaje.',
-    bodyAgainChoose:
-      'No tienes nada en curso. Elige un versículo y empiézalo ahora, o elige tu propio pasaje.',
+    bodyFirst:
+      'Elige uno que quizá ya conoces a medias y pruébalo ahora: toma un par de minutos.',
+    bodyAgain: 'No tienes nada en curso. Empieza un versículo ahora, o elige tu propio pasaje.',
     startFailed: 'No se pudo empezar ese versículo. Inténtalo de nuevo o elige tu propio pasaje.',
     startersFailed: 'No se pudieron cargar los versículos para empezar.',
     chooseOwn: 'Elegir mi propio pasaje',
@@ -73,7 +68,7 @@ export default {
   },
 
   continueReading: 'Seguir leyendo {{range}}',
-  practiceAnother: '+ Practicar otro pasaje',
+  addPassage: 'Agregar pasaje',
 
   ladder: {
     title: 'Cómo va',

@@ -15,6 +15,7 @@ import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { PassageStep } from '@/features/goals/PassageStep';
 import { Button } from '@/components/button';
+import { locale } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import {
   BOOKS,
@@ -192,6 +193,10 @@ export function GoalWizard() {
               <Text style={[styles.planNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {t('wizard.planNote')}
               </Text>
+              {/* The estimated completion date (03 §5). */}
+              <Text style={[styles.planNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {t('wizard.finishAround', { date: finishDate(preview.projectedDays) })}
+              </Text>
             </View>
           )}
           {error && (
@@ -252,6 +257,17 @@ function StepHeading({ title, step }: { title: string; step: number }) {
       </Text>
     </View>
   );
+}
+
+/** Today plus the plan's days, e.g. "November 25" (with the year once it changes). */
+function finishDate(days: number): string {
+  const now = new Date();
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+  return date.toLocaleDateString(locale(), {
+    month: 'long',
+    day: 'numeric',
+    ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+  });
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

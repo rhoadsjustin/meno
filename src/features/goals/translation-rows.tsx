@@ -245,7 +245,7 @@ export function CatalogStatusRow({
 /**
  * The version-list refresh, at the top of the picker: a spinner while the
  * Platform is asked, then how many translations arrived, or the failure in
- * the error colour with the reason. The bar's refresh button retries.
+ * the error colour with what to try. The bar's refresh button retries.
  */
 export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) {
   const colors = useThemeColors();
@@ -257,7 +257,7 @@ export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) 
         ? t('picker.refreshAdded', { count: refresh.added })
         : t('picker.refreshUpToDate')
       : refresh.state === 'failed'
-        ? `${t('picker.refreshFailed')} ${refresh.reason ?? t('picker.refreshHint')}`
+        ? `${t('picker.refreshFailed')} ${t('picker.refreshHint')}`
         : null,
   );
   if (refresh.state === 'idle') return null;
@@ -296,7 +296,7 @@ export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) 
       </View>
     );
   }
-  const detail = refresh.reason ?? t('picker.refreshHint');
+  const detail = t('picker.refreshHint');
   return (
     <View
       style={styles.refresh}

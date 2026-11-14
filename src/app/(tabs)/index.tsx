@@ -274,13 +274,7 @@ export default function TodayScreen() {
         {hasFinished ? t('empty.titleAgain') : t('empty.titleFirst')}
       </Text>
       <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {hasFinished
-          ? stackedStarters
-            ? t('empty.bodyAgainChoose')
-            : t('empty.bodyAgainSwipe')
-          : stackedStarters
-            ? t('empty.bodyFirstChoose')
-            : t('empty.bodyFirstSwipe')}
+        {hasFinished ? t('empty.bodyAgain') : t('empty.bodyFirst')}
       </Text>
     </View>
   );
@@ -577,7 +571,7 @@ export default function TodayScreen() {
 
       {data && (
         <TextLink
-          label={t('practiceAnother')}
+          label={t('addPassage')}
           onPress={() => router.push('/goal-wizard')}
           style={styles.bottomLink}
           labelStyle={styles.readingLink}

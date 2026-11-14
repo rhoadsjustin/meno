@@ -4,14 +4,14 @@ import type en from '@/i18n/locales/en/settings';
 export default {
   guide: {
     title: 'Cómo configurar Meno',
-    body: 'Paso a paso: pruebas, widgets, recitar en voz alta y Recitar para desbloquear, además de preguntas frecuentes.',
+    body: 'Paso a paso: recordatorios, widgets, recitar en voz alta y Recitar para desbloquear, además de preguntas frecuentes.',
     hintWide: 'Muestra la guía junto a esta lista',
     hint: 'Abre una guía paso a paso',
   },
   reminders: {
     title: 'Recordatorios',
-    body: 'Un empujoncito diario para practicar, y pruebas sorpresa sobre los versículos que ya memorizaste. Nunca más de dos al día.',
-    hintWide: 'Muestra cómo funcionan las pruebas junto a esta lista',
+    body: 'Un recordatorio diario para practicar, y pruebas sorpresa sobre los versículos que ya memorizaste. Nunca más de dos al día.',
+    hintWide: 'Muestra cómo funcionan los recordatorios junto a esta lista',
     off: 'Desactivados. Meno no te enviará nada hasta que los actives.',
     remindAt: 'Recordarme a las',
     timeLabel: 'Hora del recordatorio diario',
@@ -25,9 +25,9 @@ export default {
   lock: {
     title: 'Recitar para desbloquear',
     hintWide: 'Muestra los pasos de configuración junto a esta lista',
-    onSummary: 'Activado · esta semana: {{recitations}}, {{overrides}}',
+    onSummary: 'Activado · {{recitations}}, {{overrides}}',
     offBody: 'Pide un versículo antes de que se abran tus apps que más te distraen.',
-    unavailable: 'Disponible en tu iPhone (no en el simulador).',
+    unavailable: 'No disponible en este dispositivo.',
     killSwitch: 'Desactivar y quitar todos los bloqueos ahora',
     killSwitchDone: 'Recitar para desbloquear está desactivado. Se quitaron todos los bloqueos.',
   },

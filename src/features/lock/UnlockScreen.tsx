@@ -23,6 +23,9 @@ import { clearShields, registerUnlockMount, scheduleRelock } from '@/services/lo
 import { SpeakRound, type SpeakOutcome } from '@/features/practice/rounds/SpeakRound';
 import { useThemeColors, fonts, layout, spacing } from '@/theme';
 
+/** A reason the quiz can't start, in words meant for the screen. */
+class UnlockNotice extends Error {}
+
 /** Forgiving threshold — friction-with-grace, not an exam (04 §4). */
 const UNLOCK_THRESHOLD = 0.85;
 
@@ -55,7 +58,7 @@ export function UnlockScreen() {
         const goal = await activeGoal();
         // The last passage in progress was finished or deleted while the
         // shield was up: say so, and leave unlocking one tap away (04 §6).
-        if (!goal) throw new Error(translate('lock:unlock.errorNoGoal'));
+        if (!goal) throw new UnlockNotice(translate('lock:unlock.errorNoGoal'));
         // Verse source (04 §1.3): current chunk, or a random memorized one;
         // fall back to the current chunk when nothing is memorized (04 §7).
         let chunk: Chunk | null = null;
@@ -66,7 +69,7 @@ export function UnlockScreen() {
           }
         }
         chunk ??= (await currentChunk(goal.id)) ?? null;
-        if (!chunk) throw new Error(translate('lock:unlock.errorNothingToRecite'));
+        if (!chunk) throw new UnlockNotice(translate('lock:unlock.errorNothingToRecite'));
         const range = {
           start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
           end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
@@ -80,7 +83,13 @@ export function UnlockScreen() {
         });
         setPhase({ kind: 'quiz', attempt: 1 });
       } catch (e) {
-        setPhase({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
+        // Only our own notices are shown; any other failure (a passage that
+        // didn't load) gets a plain sentence, and Unlock anyway still works.
+        setPhase({
+          kind: 'error',
+          message:
+            e instanceof UnlockNotice ? e.message : translate('common:passageUnavailable'),
+        });
       }
     })();
   }, []);

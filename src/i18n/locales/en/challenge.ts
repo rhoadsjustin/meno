@@ -4,12 +4,15 @@ export default {
   invalidHeading: 'This link didn’t work',
   joinedHeading: 'You’re already in',
   joinedBody: '“{{title}}” is on this device. Keep going — every recitation counts.',
+  // The same link reopened once the passage is finished or no longer in progress.
+  joinedBodyMemorized: 'You’ve memorized “{{title}}”.',
+  joinedBodyInactive: '“{{title}}” is on this device, but it’s no longer in progress.',
   /** Translation and target date under the passage, e.g. "WEB · finish by December 25, 2026". */
   translationDue: '{{abbrev}} · finish by {{date}}',
   swapped:
     'Shared in {{shared}}, which isn’t set up on this device — you’ll memorize in {{local}} instead.',
   joinNote:
-    'Joining creates this goal on your device. Your progress stays private; only you see it for now.',
+    'Joining adds this passage to your device. Your progress stays private; only you see it for now.',
   join: 'Join challenge',
   practice: 'Practice',
   joinFailed: 'Couldn’t join this challenge. Try again.',
@@ -17,7 +20,7 @@ export default {
   failedHeading: 'Couldn’t load this passage',
   failedBody: 'The link is fine. Try again in a moment.',
   errors: {
-    malformed: 'This challenge link is missing or malformed.',
+    malformed: 'It’s incomplete or out of date. Ask for a new one.',
     newerVersion: 'This challenge needs a newer version of Meno. Update the app and try the link again.',
     unknownTranslation: 'This challenge uses a translation this version of Meno doesn’t know.',
     passageNotFound: 'This challenge points at a passage Meno can’t find.',

@@ -116,3 +116,34 @@ Nothing loops; nothing blocks input for >1.5s.
 - Sentence case everywhere. Verbs on buttons ("Practice", "Recite", "Review 3").
 - Encouraging, never saccharine, never guilt. Errors are factual and kind ("2 words slipped — they're marked below").
 - Scripture is always attributed (translation abbreviation after reference).
+- One sentence per screen body and per alert message where it fits; mechanics belong in the setup guide (Settings → How to set up Meno).
+- No developer wording on screen: no "simulator", "kill switch", "malformed", error codes or an exception's own message. Say what happened and what to do; the raw error goes to diagnostics.
+- Register: plain by default. The devotional line ("hidden in your heart", "The Word remains in you") is kept for the welcome screen and the moment something is memorized or unlocked; everywhere else state the fact ("Chunks you've memorized appear here"). No playful asides ("secret sauce", "ready to shine").
+
+### Glossary (one name per concept)
+
+User-facing copy uses these terms and no synonyms, in `en` and `es` together. Change a term here first, then everywhere it appears (locales, widgets, notifications, Siri, `.maestro/`).
+
+| Concept | English | Spanish | Not |
+|---|---|---|---|
+| What the user sets out to memorize (a `goal` in code) | passage | pasaje | goal, meta |
+| One day's piece of a passage (03 §5) | chunk | fragmento | part, section |
+| A single verse, and the unit reviews and stats count | verse | versículo | |
+| Adding a passage (Today link, Library button) | Add passage | Agregar pasaje | "+ Practice another passage" |
+| The wizard's first step | Choose a passage | Elige un pasaje | |
+| Fully learned (03 §1) | memorized | memorizado | mastered, learned |
+| The clean recitation on a second day that makes a chunk memorized | seal, sealed | sellar, sellado | |
+| Reciting the chunks learned so far as one passage (03 §5) | stitch | unir | seams |
+| Spaced repetition of memorized verses (03 §6) | review; a verse that held is "kept fresh" | repaso; "fresco" | |
+| Review health | fresh, fading, at risk | fresco, desvaneciéndose, en riesgo | |
+| The notifications feature and its Settings switch | Reminders | Recordatorios | quizzes, nudges |
+| Its three kinds (05 §2) | Daily reminder, Pop quiz, Streak reminder | Recordatorio diario, Prueba sorpresa, Recordatorio de racha | surprise quiz, nudge |
+| The phone lock feature (04) | Recite to Unlock (capitalised, no hyphens) | Recitar para desbloquear | recite-to-unlock |
+| The shield's primary button | Recite to unlock | Recitar para desbloquear | |
+| Leaving a shield without reciting | Override | Omitir | skip, bypass |
+| An app behind the lock | shielded app, shield | app bloqueada, bloqueo | blocked, locked |
+| The global off control (the "kill switch" of 04 §6) | Turn off and clear all shields now | Desactivar y quitar todos los bloqueos ahora | kill switch |
+| The lock where Screen Time is missing | isn't available on this device | no está disponible en este dispositivo | simulator, real iPhone |
+| The system's settings app, as opposed to Meno's Settings tab | iPhone Settings (Android: Settings) | Ajustes del iPhone | |
+
+Buttons in a session: **Continue** advances (never "Next round"); **Done for today** ends the session from a result (never "Finish"); **Try again**, **Keep going** and **Stop for today** as 03 §1 and §8 name them; **Done** closes a summary. Declining an optional step is **Not now**.

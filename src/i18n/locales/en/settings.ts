@@ -2,14 +2,14 @@
 export default {
   guide: {
     title: 'How to set up Meno',
-    body: 'Step by step: quizzes, widgets, speaking, and recite-to-unlock — plus common questions.',
+    body: 'Step by step: reminders, widgets, speaking, and Recite to Unlock — plus common questions.',
     hintWide: 'Shows the guide beside this list',
     hint: 'Opens a step-by-step guide',
   },
   reminders: {
     title: 'Reminders',
-    body: 'A daily nudge to practice, plus surprise pop quizzes on verses you’ve memorized. Never more than two a day.',
-    hintWide: 'Shows how quizzes work beside this list',
+    body: 'A daily reminder to practice, plus pop quizzes on verses you’ve memorized. Never more than two a day.',
+    hintWide: 'Shows how reminders work beside this list',
     off: 'Off. Meno won’t send you anything until you turn this on.',
     remindAt: 'Remind me at',
     timeLabel: 'Daily reminder time',
@@ -24,9 +24,10 @@ export default {
     title: 'Recite to Unlock',
     hintWide: 'Shows the setup steps beside this list',
     // {{recitations}} / {{overrides}} are stats:recitationCount / overrideCount.
-    onSummary: 'On · this week: {{recitations}}, {{overrides}}',
+    // All-time counts (repos/lock lockEventCounts), so no period is named.
+    onSummary: 'On · {{recitations}}, {{overrides}}',
     offBody: 'Ask for a verse before your distracting apps open.',
-    unavailable: 'Available on your iPhone (not in the simulator).',
+    unavailable: 'Not available on this device.',
     killSwitch: 'Turn off and clear all shields now',
     killSwitchDone: 'Recite to Unlock is off. All shields are cleared.',
   },

@@ -13,7 +13,7 @@ tags:
     visible: "Let the Word remain in you\\."
     timeout: 30000
 - tapOn: "Continue"
-- tapOn: "Later"
+- tapOn: "Not now"
 - scrollUntilVisible:
     element: "Continue"
     direction: DOWN

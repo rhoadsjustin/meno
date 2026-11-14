@@ -11,8 +11,8 @@ export default {
   },
 
   goal: {
-    // English keeps "chunks" for any count, as before.
-    summary_one: '{{translation}} · {{done}} of {{count}} chunks memorized',
+    // {{count}} is the passage's chunk total: "0 of 1 chunk", "2 of 5 chunks".
+    summary_one: '{{translation}} · {{done}} of {{count}} chunk memorized',
     summary_other: '{{translation}} · {{done}} of {{count}} chunks memorized',
     heatmap:
       'Chunk progress for {{title}}: {{memorized}} memorized, {{learning}} in progress, {{locked}} not started',
@@ -24,12 +24,12 @@ export default {
   },
 
   emptyInProgressTitle: 'No passages yet',
-  emptyInProgressBody: 'Choose a passage to memorize and it will live here while you learn it.',
-  practiceAnother: '+ Practice another passage',
-  choosePassage: 'Choose a passage',
+  emptyInProgressBody: 'Add a passage and it stays here while you learn it.',
+  // One label for the way into the goal wizard, with or without passages.
+  addPassage: 'Add passage',
 
   emptyMemorizedTitle: 'Nothing memorized yet',
-  emptyMemorizedBody: 'Chunks you’ve fully hidden in your heart appear here, with their health.',
+  emptyMemorizedBody: 'Chunks you’ve memorized appear here, with how fresh each one is.',
   memorizedDetail: '{{translation}} · {{health}}',
   health: {
     fresh: 'fresh',
@@ -44,7 +44,7 @@ export default {
       spoken: 'Delete {{title}}',
       title: 'Delete {{title}}?',
       message:
-        'This deletes your practice history for this passage. Your streak and badges stay. You can’t undo this.',
+        'Your practice history for this passage will be deleted. Your streak and badges stay.',
       confirm: 'Delete passage',
       done: '{{title}} deleted.',
       failed: 'Couldn’t delete {{title}}',
@@ -54,7 +54,7 @@ export default {
       spoken: 'Stop {{title}}',
       title: 'Stop {{title}}?',
       message:
-        'The verses you’ve memorized stay on your Memorized shelf and in your reviews. Your practice on the rest of this passage is deleted. You can’t undo this.',
+        'Memorized verses stay on your Memorized shelf and in your reviews. Your practice on the rest of this passage will be deleted.',
       confirm: 'Stop passage',
       done: '{{title}} stopped. Its memorized verses are on your Memorized shelf.',
       failed: 'Couldn’t stop {{title}}',
