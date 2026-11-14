@@ -15,7 +15,7 @@ import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { announce } from '@/components/screen-reader';
 import { Button } from '@/components/button';
-import { Symbol } from '@/components/symbol';
+import { SymbolIcon } from '@/components/symbol';
 import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage, getTranslation, loadFailureMessage } from '@/services/bible';
@@ -250,7 +250,7 @@ export default function StitchRoute() {
               />
               {/* The memorized seal (07 §7), as a chunk earns in practice. */}
               {phase.goalCompleted && (
-                <Symbol
+                <SymbolIcon
                   ios="checkmark.seal.fill"
                   android="verified"
                   size={34}
