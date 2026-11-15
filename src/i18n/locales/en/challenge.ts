@@ -4,17 +4,32 @@ export default {
   invalidHeading: 'This link didn’t work',
   joinedHeading: 'You’re already in',
   joinedBody: '“{{title}}” is on this device. Keep going — every recitation counts.',
+  // The same link reopened once the passage is finished or no longer in progress.
+  joinedBodyMemorized: 'You’ve memorized “{{title}}”.',
+  joinedBodyInactive: '“{{title}}” is on this device, but it’s no longer in progress.',
   /** Translation and target date under the passage, e.g. "WEB · finish by December 25, 2026". */
   translationDue: '{{abbrev}} · finish by {{date}}',
+  /** The date is nearer than the day estimate: a date to aim for, not a promise. */
+  translationAiming: '{{abbrev}} · aiming for {{date}}',
+  /** What joining takes on, e.g. "14 verses · about 5 days". */
+  summary: '{{verses}} · {{days}}',
+  aboutDays_one: 'about {{count}} day',
+  aboutDays_other: 'about {{count}} days',
   swapped:
     'Shared in {{shared}}, which isn’t set up on this device — you’ll memorize in {{local}} instead.',
   joinNote:
-    'Joining creates this goal on your device. Your progress stays private; only you see it for now.',
+    'Joining adds this passage to your device. Your progress stays private; only you see it for now.',
   join: 'Join challenge',
   practice: 'Practice',
-  joinFailed: 'Something went wrong joining this challenge. Try the link again.',
+  joinFailed: 'Couldn’t join this challenge. Try again.',
+  // The link is fine but its passage could not be read just now.
+  failedHeading: 'Couldn’t load this passage',
+  failedBody: 'The link is fine. Try again in a moment.',
+  // The next step from a link that can't be used.
+  update: 'Update Meno',
+  choosePassage: 'Choose a passage',
   errors: {
-    malformed: 'This challenge link is missing or malformed.',
+    malformed: 'It’s incomplete or out of date. Ask for a new one.',
     newerVersion: 'This challenge needs a newer version of Meno. Update the app and try the link again.',
     unknownTranslation: 'This challenge uses a translation this version of Meno doesn’t know.',
     passageNotFound: 'This challenge points at a passage Meno can’t find.',
@@ -24,8 +39,13 @@ export default {
     message: 'Memorize {{passage}} ({{abbrev}}) with me in Meno. Join my challenge: {{url}}',
     messageDue:
       'Memorize {{passage}} ({{abbrev}}) with me by {{date}} in Meno. Join my challenge: {{url}}',
+    /** The same sentences when the link travels as its own item (iOS). */
+    text: 'Memorize {{passage}} ({{abbrev}}) with me in Meno.',
+    textDue: 'Memorize {{passage}} ({{abbrev}}) with me by {{date}} in Meno.',
     /** A named goal leads the message with its name. */
     named: '“{{title}}” — {{message}}',
     subject: 'Meno challenge: {{title}}',
+    failedTitle: 'Couldn’t share this challenge',
+    failed: 'Try again in a moment.',
   },
 } as const;

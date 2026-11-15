@@ -1,8 +1,9 @@
 import * as Notifications from 'expo-notifications';
 import { Observe, ObserveRoot, useObserve } from 'expo-observe';
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import * as Updates from 'expo-updates';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, useColorScheme, Text, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,10 +15,11 @@ import { fillPlaceholders, loadCatalog, purgeUnreferencedText } from '@/services
 import { useMigrations } from '@/services/db';
 import { maybePresentUnlock, presentUnlock, refreshShieldForCurrentVerse } from '@/services/lock';
 import { rescheduleAll } from '@/services/notifications';
+import { tapNavigation } from '@/services/notifications/tap';
 import { useUpdateLifecycle } from '@/services/updates';
 import { publishSiriContext } from '@/services/siri';
 import { publishWidgetSnapshot } from '@/services/widgets';
-import { palette } from '@/theme/tokens';
+import { palette, radius, spacing } from '@/theme/tokens';
 
 // Before any screen renders or any service formats a string.
 applyDeviceLocale();
@@ -119,6 +121,12 @@ function RootLayout() {
   // screens wait for it as they wait for migrations. An unreadable cache
   // still lets the app open — those goals show a placeholder name.
   const [catalogReady, setCatalogReady] = useState(false);
+  // The route in front, for the notification listener below.
+  const currentPath = usePathname();
+  const pathname = useRef(currentPath);
+  useEffect(() => {
+    pathname.current = currentPath;
+  }, [currentPath]);
 
   useEffect(() => {
     if (!success) return;
@@ -146,7 +154,14 @@ function RootLayout() {
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const url = response.notification.request.content.data?.url;
       if (url === '/unlock') presentUnlock();
-      else if (typeof url === 'string') router.push(url as never);
+      else if (typeof url === 'string') {
+        // Not on top of whatever is open: a second /review over the first,
+        // or a reminder over a sheet, left stale screens to walk back through.
+        const how = tapNavigation(pathname.current, url);
+        if (how === 'stay') return;
+        if (how === 'reset' && router.canDismiss()) router.dismissAll();
+        router.push(url as never);
+      }
     });
     // On every foreground: refresh local schedules and, if a shield sent
     // the user here, present the unlock quiz.
@@ -178,13 +193,30 @@ function RootLayout() {
     };
   }, [success]);
 
+  // The exception's own words go to diagnostics, never the screen.
+  useEffect(() => {
+    if (!error) return;
+    try {
+      Observe.logEvent('app.migration_error', {
+        severity: 'fatal',
+        body: `${error.name}: ${error.message}`,
+        attributes: { stack: error.stack ?? '' },
+      });
+    } catch {
+      // reporting must never rethrow
+    }
+  }, [error]);
+
   if (error) {
-    // A failed migration means user data is unreadable — surface it rather
-    // than rendering screens against a broken schema.
+    // A failed migration means user data is unreadable — say so in plain
+    // words rather than rendering screens against a broken schema. Plain RN
+    // on the palette, so it renders when nothing else has.
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <Text accessibilityRole="alert">{t('migrationError', { message: error.message })}</Text>
-      </View>
+      <RecoveryScreen
+        title={t('migrationError.title')}
+        body={t('migrationError.body')}
+        onRetry={() => void Updates.reloadAsync().catch(() => {})}
+      />
     );
   }
   if (!success || !catalogReady) return null;
@@ -202,11 +234,10 @@ function RootLayout() {
                 name="goal-wizard"
                 options={{ presentation: 'modal', headerShown: false }}
               />
-              <Stack.Screen
-                name="challenge"
-                options={{ presentation: 'modal', headerShown: false }}
-              />
-              <Stack.Screen name="help" options={{ presentation: 'modal', headerShown: false }} />
+              {/* Challenge and Help put their dismiss control and title in the
+            native bar in-page (ScreenHeader + Stack.Toolbar). */}
+              <Stack.Screen name="challenge" options={{ presentation: 'modal', title: '' }} />
+              <Stack.Screen name="help" options={{ presentation: 'modal', title: '' }} />
               {/* Opened from the goal wizard (itself a sheet); hands its
             choice back through features/goals/translation-choice. */}
               <Stack.Screen
@@ -220,7 +251,8 @@ function RootLayout() {
                 name="onboarding"
                 options={{
                   presentation: 'fullScreenModal',
-                  headerShown: false,
+                  // The bar (Back, Skip, page dots) is configured in-page.
+                  title: '',
                   gestureEnabled: false,
                 }}
               />
@@ -234,10 +266,22 @@ function RootLayout() {
               <Stack.Screen name="review/index" />
               <Stack.Screen name="reader/[osis]" />
               <Stack.Screen name="stitch/[goalId]" />
-              <Stack.Screen name="lock-setup/index" options={{ headerShown: false }} />
-              {/* No swipe-back: leaving the unlock quiz goes through its own
+              {/* Lock setup shows the bar on every step (ScreenHeader in-page),
+            so the explainer has a visible way back. */}
+              <Stack.Screen name="lock-setup/index" options={{ title: '' }} />
+              {/* A blocking task, so it is presented full screen over whatever
+            is up (a sheet included) rather than pushed beside it. No
+            swipe-dismiss: leaving the unlock quiz goes through its own
             buttons (Override / close), never a half-dismissed gesture. */}
-              <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen
+                name="unlock"
+                options={{
+                  presentation: 'fullScreenModal',
+                  // The bar (Back, Skip, page dots) is configured in-page.
+                  title: '',
+                  gestureEnabled: false,
+                }}
+              />
             </Stack>
           </ReservedRegionsProvider>
         </AppErrorBoundary>
@@ -247,37 +291,55 @@ function RootLayout() {
 }
 
 /** Render-error fallback: quiet, recoverable, on-surface — never a dead app. */
-function RecoveryScreen({ onRetry }: { onRetry: () => void }) {
+function RecoveryScreen({
+  onRetry,
+  title,
+  body,
+}: {
+  onRetry: () => void;
+  /** Defaults to the render-error copy. */
+  title?: string;
+  body?: string;
+}) {
   const scheme = useColorScheme();
   const colors = scheme === 'dark' ? palette.dark : palette.light;
   const { t } = useTranslation(['app', 'common']);
   return (
     <View style={[styles.recovery, { backgroundColor: colors.surface }]}>
       <Text accessibilityRole="alert" style={[styles.recoveryTitle, { color: colors.ink }]}>
-        {t('recovery.title')}
+        {title ?? t('recovery.title')}
       </Text>
-      <Text style={[styles.recoveryBody, { color: colors.inkFaint }]}>{t('recovery.body')}</Text>
+      <Text style={[styles.recoveryBody, { color: colors.inkFaint }]}>
+        {body ?? t('recovery.body')}
+      </Text>
       <Pressable
         accessibilityRole="button"
         onPress={onRetry}
-        style={[styles.recoveryButton, { backgroundColor: colors.lapis }]}>
-        <Text style={styles.recoveryButtonText}>{t('common:retry')}</Text>
+        style={({ pressed }) => [
+          styles.recoveryButton,
+          { backgroundColor: colors.lapis },
+          pressed && styles.recoveryButtonPressed,
+        ]}>
+        <Text style={[styles.recoveryButtonText, { color: colors.onLapis }]}>
+          {t('common:retry')}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  recovery: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 8 },
+  recovery: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl, gap: spacing.sm },
   recoveryTitle: { fontSize: 20, fontWeight: '600' },
   recoveryBody: { fontSize: 15, textAlign: 'center' },
   recoveryButton: {
-    marginTop: 16,
-    borderRadius: 999,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    marginTop: spacing.lg,
+    borderRadius: radius.capsule,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xxxl,
   },
-  recoveryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  recoveryButtonPressed: { opacity: 0.6 },
+  recoveryButtonText: { fontSize: 17, fontWeight: '600' },
 });
 
 export default ObserveRoot.wrap(RootLayout);

@@ -5,21 +5,24 @@ export default {
   streak_other: '{{count}} day streak',
   streakSecured_one: '{{count}} day streak, secured today',
   streakSecured_other: '{{count}} day streak, secured today',
-  focusLabel: 'On your widgets',
-  nowOnWidgets: '{{title}} is now on your widgets.',
+  focusLabel: 'Your focus',
+  nowOnWidgets: '{{title}} is now your focus. Your widgets show it too.',
+  widgetsFailed: 'Couldn’t make {{title}} your focus',
+  // The first load failed, so there is nothing to show (never the empty state).
+  loadFailed: {
+    title: 'Couldn’t load Today',
+    body: 'Your passages and progress are still on this device.',
+  },
 
   empty: {
-    titleFirst: 'Nothing memorized yet',
+    titleFirst: 'Start with one verse',
     titleAgain: 'Ready for another passage?',
-    bodyFirstSwipe:
-      'Start with a verse you may already half know. Swipe to choose one and try it now — it takes a couple of minutes.',
-    bodyFirstChoose:
-      'Start with a verse you may already half know. Choose one and try it now — it takes a couple of minutes.',
-    bodyAgainSwipe:
-      'Nothing is in progress. Swipe to choose a verse and start it now, or choose your own passage.',
-    bodyAgainChoose:
-      'Nothing is in progress. Choose a verse and start it now, or choose your own passage.',
+    // One body per case: it reads the same over the swipe deck and the stacked list.
+    bodyFirst:
+      'Pick one you may already half know and try it now — it takes a couple of minutes.',
+    bodyAgain: 'Nothing is in progress. Start a verse now, or choose your own passage.',
     startFailed: 'That verse couldn’t be started. Try again, or choose your own passage.',
+    startersFailed: 'The starter verses couldn’t be loaded.',
     chooseOwn: 'Choose my own passage',
   },
 
@@ -42,37 +45,28 @@ export default {
   stitch: {
     title: 'Stitch it together',
     body: 'Recite everything you’ve learned so far as one passage.',
-    begin: 'Begin stitch',
   },
 
   due: {
     title: 'Due for review',
     body_one: '{{count}} verse is ready to be kept fresh.',
     body_other: '{{count}} verses are ready to be kept fresh.',
-    action: 'Review {{count}}',
   },
 
   others: {
     header: 'Also practicing',
-    chunkAndDetail: '{{ref}} · {{detail}}',
-    allMemorized: 'Every chunk memorized',
     stitch: 'Stitch',
     stitchSpoken: 'Stitch {{title}}',
     stepSpoken: '{{title}}. {{spoken}}',
     sealSpoken: 'Optional. Seal {{ref}} with one clean recitation.',
     seal: 'Seal {{ref}}',
-    showOnWidgetsSpoken: 'Show {{title}} on your widgets',
-    showOnWidgets: 'Show on widgets',
   },
 
   continueReading: 'Continue reading {{range}}',
-  practiceAnother: '+ Practice another passage',
+  // The way into the goal wizard once a passage exists (Library uses the same label).
+  addPassage: 'Add passage',
 
   ladder: {
     title: 'Where it stands',
-    withStreak_one: '{{progress}} · {{count}}-day streak',
-    withStreak_other: '{{progress}} · {{count}}-day streak',
-    withStreakSecured_one: '{{progress}} · {{count}}-day streak, secured today',
-    withStreakSecured_other: '{{progress}} · {{count}}-day streak, secured today',
   },
 } as const;

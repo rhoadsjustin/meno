@@ -6,21 +6,22 @@ export default {
   streak_other: 'Racha de {{count}} días',
   streakSecured_one: 'Racha de {{count}} día, asegurada hoy',
   streakSecured_other: 'Racha de {{count}} días, asegurada hoy',
-  focusLabel: 'En tus widgets',
-  nowOnWidgets: '{{title}} ya está en tus widgets.',
+  focusLabel: 'Tu enfoque',
+  nowOnWidgets: '{{title}} es ahora tu enfoque. Tus widgets también lo muestran.',
+  widgetsFailed: 'No se pudo hacer de {{title}} tu enfoque',
+  loadFailed: {
+    title: 'No se pudo cargar Hoy',
+    body: 'Tus pasajes y tu progreso siguen en este dispositivo.',
+  },
 
   empty: {
-    titleFirst: 'Aún no has memorizado nada',
+    titleFirst: 'Empieza con un versículo',
     titleAgain: '¿Quieres empezar otro pasaje?',
-    bodyFirstSwipe:
-      'Empieza con un versículo que quizá ya conoces a medias. Desliza para elegir uno y pruébalo ahora: toma un par de minutos.',
-    bodyFirstChoose:
-      'Empieza con un versículo que quizá ya conoces a medias. Elige uno y pruébalo ahora: toma un par de minutos.',
-    bodyAgainSwipe:
-      'No tienes nada en curso. Desliza para elegir un versículo y empezarlo ahora, o elige tu propio pasaje.',
-    bodyAgainChoose:
-      'No tienes nada en curso. Elige un versículo y empiézalo ahora, o elige tu propio pasaje.',
+    bodyFirst:
+      'Elige uno que quizá ya conoces a medias y pruébalo ahora: toma un par de minutos.',
+    bodyAgain: 'No tienes nada en curso. Empieza un versículo ahora, o elige tu propio pasaje.',
     startFailed: 'No se pudo empezar ese versículo. Inténtalo de nuevo o elige tu propio pasaje.',
+    startersFailed: 'No se pudieron cargar los versículos para empezar.',
     chooseOwn: 'Elegir mi propio pasaje',
   },
 
@@ -43,37 +44,27 @@ export default {
   stitch: {
     title: 'Únelo todo',
     body: 'Recita todo lo que has aprendido hasta ahora como un solo pasaje.',
-    begin: 'Empezar a unir',
   },
 
   due: {
     title: 'Para repasar',
     body_one: '{{count}} versículo está listo para mantenerlo fresco.',
     body_other: '{{count}} versículos están listos para mantenerlos frescos.',
-    action: 'Repasar {{count}}',
   },
 
   others: {
     header: 'También practicando',
-    chunkAndDetail: '{{ref}} · {{detail}}',
-    allMemorized: 'Todos los fragmentos memorizados',
     stitch: 'Unir',
     stitchSpoken: 'Unir {{title}}',
     stepSpoken: '{{title}}. {{spoken}}',
     sealSpoken: 'Opcional. Sella {{ref}} con una recitación sin errores.',
     seal: 'Sellar {{ref}}',
-    showOnWidgetsSpoken: 'Mostrar {{title}} en tus widgets',
-    showOnWidgets: 'Mostrar en widgets',
   },
 
   continueReading: 'Seguir leyendo {{range}}',
-  practiceAnother: '+ Practicar otro pasaje',
+  addPassage: 'Agregar pasaje',
 
   ladder: {
     title: 'Cómo va',
-    withStreak_one: '{{progress}} · racha de {{count}} día',
-    withStreak_other: '{{progress}} · racha de {{count}} días',
-    withStreakSecured_one: '{{progress}} · racha de {{count}} día, asegurada hoy',
-    withStreakSecured_other: '{{progress}} · racha de {{count}} días, asegurada hoy',
   },
 } satisfies Catalog<typeof en>;

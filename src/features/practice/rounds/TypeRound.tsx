@@ -5,7 +5,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -14,13 +13,15 @@ import {
   type ViewInstance,
 } from 'react-native';
 
+import { Button } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { useRevealAboveKeyboard } from '@/components/keyboard-scroll';
+import { useUnsavedInput } from '@/features/practice/leave-guard';
 
 import { getTranslation } from '@/services/bible';
 import { gradeTyped, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
-import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, layout, radius, spacing, scriptureType, textStyle } from '@/theme';
 
 export function TypeRound({
   text,
@@ -42,6 +43,8 @@ export function TypeRound({
   const colors = useThemeColors();
   const { t } = useTranslation('practice');
   const [input, setInput] = useState('');
+  // Leaving now would lose what has been typed: the host asks first.
+  useUnsavedInput(input.trim().length > 0);
   // A fixed box that scrolls inside, a little taller at large text sizes.
   // Left to grow with the text, the line being typed slid under the keyboard
   // (most of all at accessibility sizes). At a fixed height the screen can
@@ -110,18 +113,13 @@ export function TypeRound({
           { color: colors.ink, borderColor: colors.separator, fontFamily: fonts?.scripture },
         ]}
       />
-      <Pressable
+      <Button
         ref={check}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: input.trim().length === 0 }}
+        label={t('type.check')}
         disabled={input.trim().length === 0}
         onPress={submit}
-        style={[
-          styles.button,
-          { backgroundColor: colors.lapis, opacity: input.trim().length === 0 ? 0.5 : 1 },
-        ]}>
-        <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('type.check')}</Text>
-      </Pressable>
+        style={styles.button}
+      />
     </>
   );
 }
@@ -131,7 +129,7 @@ const EDITOR_HEIGHT = 180;
 const EDITOR_SHORT_MIN = 96;
 
 const styles = StyleSheet.create({
-  watermark: { fontSize: 14, marginBottom: spacing.md },
+  watermark: { ...textStyle.footnote, marginBottom: spacing.md },
   editor: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radius.card,
@@ -141,11 +139,5 @@ const styles = StyleSheet.create({
     lineHeight: scriptureType.defaultLineHeight,
     textAlignVertical: 'top',
   },
-  button: {
-    marginTop: spacing.xl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  button: { marginTop: spacing.xl },
 });

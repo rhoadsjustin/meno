@@ -7,7 +7,9 @@ import {
   defaultSelection,
   extendThroughChapter,
   isVerseSelected,
+  sameSelection,
   selectWholeChapter,
+  selectionFromParams,
   selectionToRange,
   setEnd,
   setStart,
@@ -163,5 +165,44 @@ describe('passage selection', () => {
     expect(isVerseSelected(s, 'John', at(4, 3))).toBe(false);
     expect(isVerseSelected(s, 'Phil', at(3, 20))).toBe(false);
     expect(isVerseSelected(null, 'John', at(3, 16))).toBe(false);
+  });
+});
+
+describe('selection from route params', () => {
+  it('opens on the verse a link names, settled', () => {
+    const s = selectionFromParams({ bookId: 'Ps', chapter: '23', verse: '4' });
+    expect(s && echo(s)).toBe('Psalms 23:4');
+    expect(s?.open).toBe(false);
+  });
+
+  it('rejects anything that is not a verse of the canon', () => {
+    expect(selectionFromParams({})).toBeNull();
+    expect(selectionFromParams({ bookId: 'John' })).toBeNull();
+    expect(selectionFromParams({ bookId: 'Tob', chapter: '1', verse: '1' })).toBeNull();
+    expect(selectionFromParams({ bookId: 'John', chapter: '22', verse: '1' })).toBeNull();
+    expect(selectionFromParams({ bookId: 'John', chapter: '0', verse: '1' })).toBeNull();
+    expect(selectionFromParams({ bookId: 'John', chapter: '3', verse: '-1' })).toBeNull();
+    expect(selectionFromParams({ bookId: 'John', chapter: '3', verse: '1e2' })).toBeNull();
+    expect(selectionFromParams({ bookId: 'John', chapter: '3', verse: '999' })).toBeNull();
+    expect(selectionFromParams({ bookId: 'John', chapter: ['3'], verse: '16' })).toBeNull();
+    expect(selectionFromParams({ bookId: ['John'], chapter: '3', verse: '16' })).toBeNull();
+  });
+
+  it('leaves a verse past the chapter end to the clamp', () => {
+    const s = selectionFromParams({ bookId: 'John', chapter: '3', verse: '40' })!;
+    expect(echo(clampToChapter(s, 3, 36))).toBe('John 3:36');
+  });
+});
+
+describe('sameSelection', () => {
+  it('compares the book and both ends, not whether the range is open', () => {
+    const base = defaultSelection('John');
+    expect(sameSelection(base, defaultSelection('John'))).toBe(true);
+    expect(sameSelection(null, null)).toBe(true);
+    expect(sameSelection(base, null)).toBe(false);
+    expect(sameSelection(base, defaultSelection('Mark'))).toBe(false);
+    expect(sameSelection(base, tapVerse(base, 'John', at(1, 1)))).toBe(true);
+    expect(sameSelection(base, tapVerse(base, 'John', at(1, 2)))).toBe(false);
+    expect(sameSelection(base, selectWholeChapter('John', 1, 51))).toBe(false);
   });
 });

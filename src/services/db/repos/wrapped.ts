@@ -2,7 +2,7 @@
  * Reads what the Year in the Word recap needs (docs/10 §5.2) and hands it
  * to the pure rollup. Everything stays on the device (docs/09 §1).
  */
-import { eq } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 
 import { getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
@@ -10,6 +10,8 @@ import { keptPracticeDays } from '@/services/db/repos/stats';
 import { tokenize } from '@/services/grading';
 import {
   deviceClock,
+  pastRecapYears,
+  RECAP_MIN_DAYS,
   rollupYear,
   type LocalClock,
   type RecapChunk,
@@ -136,4 +138,32 @@ export async function activeDaysIn(year: number, clock: LocalClock = deviceClock
     if (day.startsWith(prefix)) days.add(day);
   }
   return days.size;
+}
+
+/**
+ * Finished years whose recap Stats can still open (docs/10 §5.4): those with
+ * a snapshot, or with enough practice days for one to be taken on opening.
+ */
+export async function loadPastRecapYears(clock: LocalClock = deviceClock): Promise<number[]> {
+  const [rows, kept, snapshots] = await Promise.all([
+    db.select({ createdAt: tables.attempts.createdAt }).from(tables.attempts),
+    keptPracticeDays(),
+    db
+      .select({ key: tables.settings.key })
+      .from(tables.settings)
+      .where(like(tables.settings.key, `${snapshotKey(0).slice(0, -1)}%`)),
+  ]);
+  const days = new Set(kept);
+  for (const r of rows) days.add(clock.dayOf(r.createdAt));
+  const activeDays = new Map<number, number>();
+  for (const day of days) {
+    const year = Number(day.slice(0, 4));
+    activeDays.set(year, (activeDays.get(year) ?? 0) + 1);
+  }
+  return pastRecapYears({
+    today: clock.dayOf(new Date()),
+    activeDays,
+    snapshotYears: snapshots.map((s) => Number(s.key.split(':')[1])),
+    minDays: RECAP_MIN_DAYS,
+  });
 }

@@ -15,7 +15,6 @@ export default {
   /** Sub-line copy like "Chunk 4 of 12 · Blanks 50". */
   chunkProgress: 'Chunk {{index}} of {{total}} · {{tier}}',
   errors: {
-    goalNotFound: 'Goal not found',
     allMemorized: 'Every chunk in this passage is memorized. Well done.',
   },
   /** What tapping Practice does next (src/services/practice/plan.ts). */
@@ -60,9 +59,16 @@ export default {
     header: '{{reference}} · {{tier}}',
     sealingNote: 'Sealing {{reference}} · one clean pass makes it memorized',
   },
+  /** Asked before leaving a round that holds typed or spoken words. */
+  leave: {
+    title: 'Leave this round?',
+    message: 'What you’ve typed or recited in this round won’t be kept.',
+    stay: 'Stay',
+    leave: 'Leave',
+  },
   restingTitle: '{{reference}} is one day from sealed',
   restingBody:
-    'You have already cleared {{tier}} today. Memorized takes a clean pass on two separate days, so this one rests until tomorrow.',
+    'You’ve cleared {{tier}} today. Memorized takes a clean pass on two separate days, so this one rests until tomorrow.',
   feedback: {
     accuracyLabel: 'Accuracy {{value}} percent',
     slipForgiven: 'a slip forgiven',
@@ -79,20 +85,18 @@ export default {
     notQuiteMarked: 'Not quite — the slipped words are marked below',
     notQuiteRetry: 'Not quite — try this round again',
     sealsTomorrowAlmost:
-      'Your clean pass from earlier today is still banked. Memorized takes a clean pass on two separate days — come back tomorrow and this one is sealed.',
+      'Your clean pass from earlier today is still banked. Come back tomorrow to seal it.',
     sealsTomorrowPass:
-      'That is today’s pass banked. Memorized takes a clean pass on two separate days — come back tomorrow and this one is sealed.',
+      'Today’s clean pass is banked. Come back tomorrow to seal it.',
     needsCleanPass:
-      'That was close, but it does not count toward Memorized: sealing {{reference}} takes a clean recitation on two separate days, and today’s is not banked yet. Try it again now, or stop here and come back to it.',
+      'Close, but it doesn’t count toward Memorized: sealing {{reference}} takes a clean recitation. Try again now, or stop for today.',
     almostAtType:
-      'Close enough to move on to {{tier}}. It does not count toward Memorized, though — that takes a clean pass on two separate days.',
+      'Close enough to move on to {{tier}}, but it doesn’t count toward Memorized.',
     restPoint:
       'This is a good place to stop for today. {{first}}, {{second}} and {{third}} will be waiting — or keep going if you have the time.',
     suggestDrop:
-      'Want to rebuild the foundation? Drop back a tier — no penalty, and {{tier}} will be waiting when you come back up.',
-    finish: 'Finish',
+      'Dropping back a tier can help — no penalty, and {{tier}} will be waiting when you come back up.',
     doneForToday: 'Done for today',
-    nextRound: 'Next round',
     keepGoing: 'Keep going',
     keepGoingHint: 'Carries on to {{tier}}',
     stopForToday: 'Stop for today',
@@ -108,7 +112,7 @@ export default {
     memorized: '{{reference}} is memorized',
     sealsTomorrow: 'Next: one clean recitation tomorrow seals it as memorized.',
     needsCleanPass:
-      'Every step is done, but {{reference}} is not sealed yet: the last recitation was close, not clean. Next time you pick up at {{tier}} — only a clean recitation counts toward Memorized.',
+      'Every step is done, but {{reference}} isn’t sealed yet: the last recitation was close, not clean. Next time you pick up at {{tier}}.',
     pickUp: 'Next time you pick up at {{tier}}.',
   },
   /** Word-level feedback under a graded round. */
@@ -119,6 +123,7 @@ export default {
   dissolution: {
     memorizedLabel: '{{reference}} is memorized — the text now lives in you.',
     dissolvingLabel: 'The verse dissolves as it moves into memory.',
+    skipHint: 'Skips the animation.',
     sealNote: 'Hidden in your heart.',
   },
   read: {
@@ -126,7 +131,8 @@ export default {
     done: 'I’ve read it twice',
   },
   firstLetters: {
-    label: 'First letters of the passage',
+    // VoiceOver: the cipher itself, letter by letter.
+    spoken: 'First letters of the passage: {{letters}}',
     hint: 'Recite from the letters — aloud or in your head — then check yourself.',
     reveal: 'Reveal',
     howDidItGo: 'How did it go?',
@@ -142,6 +148,15 @@ export default {
     revealHint: 'Long-press to reveal the word — it will be counted as missed',
     choice: 'Choice: {{choice}}',
     choiceHint: 'Double-tap to fill the current blank',
+    // VoiceOver custom actions on the active blank: each choice, then this.
+    answerWith: 'Answer: {{choice}}',
+    reveal: 'Reveal the word (counts as missed)',
+    // Spoken after each answer (VoiceOver), then where the next blank is.
+    saidCorrect: 'Correct.',
+    saidWrong: 'Wrong. The word was {{word}}.',
+    saidMissed: 'Revealed. The word was {{word}}.',
+    nextBlank: 'Blank {{index}} of {{total}}.',
+    nextBlankAfter: 'Blank {{index}} of {{total}}, after “{{words}}”.',
   },
   arrange: {
     placeholder: 'Tap the phrases in order',
@@ -149,6 +164,11 @@ export default {
     placedHint: 'Double-tap to remove this phrase',
     phrase: 'Phrase: {{phrase}}',
     phraseHint: 'Double-tap to place this phrase next',
+    // A phrase was taken back out: the next one tapped fills its place.
+    phraseHintOpen: 'Double-tap to place this phrase in the open position',
+    openSlot: 'Position {{position}}: empty',
+    removed: 'Removed: {{phrase}}',
+    allPlaced: 'All phrases placed. Check order is at the end.',
     check: 'Check order',
   },
   type: {
@@ -157,7 +177,7 @@ export default {
     check: 'Check',
   },
   speak: {
-    error: 'Speech recognition hit a snag ({{error}}). You can type instead.',
+    error: 'Couldn’t hear that. Try again, or type instead.',
     micBusy: 'Another app is using the microphone. Close it and try again, or type instead.',
     // Android: recognition stays on the phone, so it needs the offline pack.
     packMissing:
@@ -167,7 +187,7 @@ export default {
     unavailableLanguage:
       'This iPhone can’t recognize speech in this translation’s language, so this round is typed.',
     unavailableOffline:
-      'This iPhone can’t recognize this language without the internet, and Meno keeps your voice on the phone — so this round is typed. Turning on Dictation for a keyboard in this language may add it.',
+      'This iPhone can’t recognize this language offline, and Meno keeps your voice on the phone, so this round is typed.',
     offlineUnsupported:
       'This phone can’t recognize speech offline, and Meno keeps your voice on the device. Type your recitation instead.',
     pausedAnnouncement: 'Paused. Your words are kept — edit them or keep going.',
@@ -175,7 +195,8 @@ export default {
     speakInstead: 'Speak instead',
     typeInstead: 'Type instead',
     permissionOff:
-      'Microphone or speech recognition permission is off. Enable it in Settings, or type instead below.',
+      'Meno can’t hear you: the microphone or speech recognition is turned off for Meno. Turn it on in Settings, or type this round instead.',
+    openSettings: 'Open Settings',
     liveTranscript: 'Live transcript',
     editLabel: 'Your recitation — tap to edit',
     editHint: 'Tap the words to fix them, or keep reciting.',
@@ -186,6 +207,7 @@ export default {
     pauseHint: 'Your words are kept when you pause',
     startHint: 'Adds to what you have said so far',
     micListening: 'Listening — tap to pause',
+    micProcessing: 'Finishing…',
     micMore: 'Tap to keep going',
     micStart: 'Tap to recite',
   },

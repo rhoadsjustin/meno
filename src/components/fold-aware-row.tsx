@@ -1,5 +1,12 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent, type ViewInstance } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type ViewInstance,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useReservedRegions } from '@modules/reserved-regions';
 import { spacing } from '@/theme';
@@ -13,10 +20,17 @@ import { spacing } from '@/theme';
  * the panes resize so the gutter is exactly the reserved folding region:
  * nothing interactive sits on the crease, and the layout changes as little
  * as possible (HIG: "move only what's necessary").
+ *
+ * With `scroll`, each pane scrolls on its own, so a short pane stays put
+ * while a long one is read. Pass the screen's two-pane flag: the panes are
+ * scroll views either way, inert while it is false and the page scrolls as
+ * one, so crossing the breakpoint (folding or unfolding) remounts nothing.
+ * The parent must then give the row a height (`Screen`'s `panes`).
  */
 export function FoldAwareRow({
   children,
   fill = false,
+  scroll,
   style,
 }: {
   /** Two panes — or one: a second pane of `null` or `false` leaves the first
@@ -25,9 +39,13 @@ export function FoldAwareRow({
   children: [ReactNode, ReactNode];
   /** Fill the parent's height and stretch the panes (for scrolling panes). */
   fill?: boolean;
+  /** Each pane a scroll view of its own: scrolling when true, inert (the
+   * page scrolls instead) when false. Left out, panes are plain views. */
+  scroll?: boolean;
   style?: object;
 }) {
   const { fold } = useReservedRegions();
+  const insets = useSafeAreaInsets();
   const ref = useRef<ViewInstance>(null);
   const [frame, setFrame] = useState<{ x: number; width: number } | null>(null);
 
@@ -63,11 +81,31 @@ export function FoldAwareRow({
 
   // The first pane is always the row's first child, so React keeps it (and
   // its state) in place when the second pane comes or goes.
+  const pane = (content: ReactNode, weight: number) =>
+    scroll === undefined ? (
+      <View style={[styles.pane, styles.paneContent, { flexGrow: weight }]}>{content}</View>
+    ) : (
+      <ScrollView
+        scrollEnabled={scroll}
+        showsVerticalScrollIndicator={scroll}
+        style={[styles.pane, { flexGrow: weight }]}
+        contentContainerStyle={[
+          styles.paneContent,
+          // The last card clears the home indicator and a floating tab bar.
+          scroll && { paddingBottom: insets.bottom + spacing.xxxl },
+        ]}>
+        {content}
+      </ScrollView>
+    );
+
   return (
-    <View ref={ref} onLayout={onLayout} style={[styles.row, fill && styles.fill, style]}>
-      <View style={[styles.pane, { flexGrow: weights[0] }]}>{left}</View>
+    <View
+      ref={ref}
+      onLayout={onLayout}
+      style={[styles.row, (fill || scroll) && styles.fill, style]}>
+      {pane(left, weights[0])}
       {!single && <View style={{ width: spacer }} />}
-      {!single && <View style={[styles.pane, { flexGrow: weights[1] }]}>{right}</View>}
+      {!single && pane(right, weights[1])}
     </View>
   );
 }
@@ -75,5 +113,6 @@ export function FoldAwareRow({
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   fill: { flex: 1, alignItems: 'stretch' },
-  pane: { flexShrink: 1, flexBasis: 0, gap: spacing.lg },
+  pane: { flexShrink: 1, flexBasis: 0 },
+  paneContent: { gap: spacing.lg },
 });

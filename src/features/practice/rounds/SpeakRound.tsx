@@ -11,6 +11,8 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  AppState,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -26,21 +28,24 @@ import Animated, {
   FadeInDown,
   FadeOut,
   interpolateColor,
-  ReduceMotion,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 
+import { Button } from '@/components/button';
+import { SymbolIcon } from '@/components/symbol';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { getTranslation } from '@/services/bible';
 import { gradeSpoken, type GradeResult } from '@/services/grading';
 import { displayWords } from '@/services/practice';
 import { fallbackLocale, recognizerLocale } from '@/services/speech/locale';
+import { useUnsavedInput } from '@/features/practice/leave-guard';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 export type SpeakOutcome = {
   accuracy: number;
@@ -64,6 +69,15 @@ function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
     new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
   ]);
 }
+
+/**
+ * `denied` can still be asked again (the mic re-prompts); `blocked` cannot —
+ * the system no longer shows its prompt, so only Settings turns it back on.
+ */
+type Permission = 'unknown' | 'granted' | 'denied' | 'blocked';
+
+/** How long a stopped take may spend finalising before the mic is handed back. */
+const PROCESSING_TIMEOUT_MS = 5000;
 
 /** How long to wait on the recognizer's answers before going with a guess. */
 const RECOGNIZER_TIMEOUT_MS = 3000;
@@ -131,7 +145,7 @@ export function SpeakRound({
   const colors = useThemeColors();
   const { t } = useTranslation('practice');
   const { height } = useWindowDimensions();
-  const reducedMotion = useReducedMotion();
+  const { reduce: reducedMotion } = useMotion();
 
   const [typeMode, setTypeMode] = useState(false);
   const [micState, setMicState] = useState<MicState>('idle');
@@ -144,7 +158,7 @@ export function SpeakRound({
     interimRef.current = value;
     setInterimState(value);
   }, []);
-  const [permission, setPermission] = useState<'unknown' | 'granted' | 'denied'>('unknown');
+  const [permission, setPermission] = useState<Permission>('unknown');
   const [speechError, setSpeechError] = useState<string | null>(null);
   // Android only: the offline speech pack for the verse's language is missing.
   const [pack, setPack] = useState<'ok' | 'missing' | 'downloading'>('ok');
@@ -166,6 +180,54 @@ export function SpeakRound({
   const contextualStrings = useMemo(() => [...new Set(displayWords(text))], [text]);
 
   const listening = micState === 'listening';
+  const processing = micState === 'processing';
+
+  // Leaving now would lose the recitation so far: the host asks first.
+  useUnsavedInput(committed.trim().length > 0 || interim.length > 0);
+
+  // Reads the permission without prompting: on iOS a refusal is known before
+  // the mic is ever tapped, and on both platforms it is cleared when the user
+  // comes back from Settings. Android answers "can't ask again" for a
+  // permission it has never asked for, so there only a request can say so.
+  const readPermission = useCallback(async () => {
+    try {
+      const status = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+      if (status.granted) setPermission((p) => (p === 'unknown' ? p : 'granted'));
+      else if (!status.canAskAgain && Platform.OS === 'ios') setPermission('blocked');
+    } catch {
+      // No answer: the mic asks when it is tapped, as before.
+    }
+  }, []);
+  useEffect(() => {
+    void (async () => {
+      await readPermission();
+    })();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void readPermission();
+    });
+    return () => sub.remove();
+  }, [readPermission]);
+
+  // False once a take has been closed, so a result that turns up after the
+  // processing timeout is not added to words already kept from it.
+  const takeOpen = useRef(false);
+  /** A take is over: back to idle, keeping whatever was heard. */
+  const endTake = useCallback(() => {
+    takeOpen.current = false;
+    setMicState('idle');
+    // A take that ends without a final result still keeps its words.
+    const tail = interimRef.current;
+    if (tail) setCommitted((prev) => joinTranscript(prev, tail));
+    setInterim('');
+  }, [setInterim]);
+
+  // The mic is off while a stopped take finalises. If the recognizer never
+  // reports the end, hand the mic back rather than leave it disabled.
+  useEffect(() => {
+    if (!processing) return;
+    const timer = setTimeout(endTake, PROCESSING_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [processing, endTake]);
 
   // ── Motion state (UI thread) ───────────────────────────────────────────
   const pressed = useSharedValue(0);
@@ -187,7 +249,9 @@ export function SpeakRound({
   }, [listening, reducedMotion, listeningSv, pulse]);
 
   const micStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - pressed.get() * 0.03 }],
+    // Pressed: a 3% squeeze, or a dim in its place under Reduce Motion.
+    transform: [{ scale: reducedMotion ? 1 : 1 - pressed.get() * 0.03 }],
+    opacity: reducedMotion ? 1 - pressed.get() * 0.25 : 1,
     backgroundColor: interpolateColor(listeningSv.get(), [0, 1], [colors.lapis, colors.error]),
   }));
 
@@ -202,6 +266,7 @@ export function SpeakRound({
 
   // ── Speech events ──────────────────────────────────────────────────────
   useSpeechRecognitionEvent('result', (event) => {
+    if (!takeOpen.current) return;
     const transcript = event.results?.[0]?.transcript ?? '';
     if (event.isFinal) {
       setCommitted((prev) => joinTranscript(prev, transcript));
@@ -211,13 +276,7 @@ export function SpeakRound({
     }
   });
 
-  useSpeechRecognitionEvent('end', () => {
-    setMicState('idle');
-    // A take that ends without a final result still keeps its words.
-    const tail = interimRef.current;
-    if (tail) setCommitted((prev) => joinTranscript(prev, tail));
-    setInterim('');
-  });
+  useSpeechRecognitionEvent('end', endTake);
 
   useSpeechRecognitionEvent('error', (event) => {
     setMicState('idle');
@@ -228,21 +287,28 @@ export function SpeakRound({
       case 'not-allowed':
       case 'service-not-allowed':
         setPermission('denied');
+        void readPermission();
+        AccessibilityInfo.announceForAccessibility(t('speak.permissionOff'));
         return;
       case 'audio-capture':
       case 'busy':
         setSpeechError(t('speak.micBusy'));
+        AccessibilityInfo.announceForAccessibility(t('speak.micBusy'));
         return;
       case 'language-not-supported':
         if (Platform.OS === 'android') {
           setPack('missing');
+          AccessibilityInfo.announceForAccessibility(t('speak.packMissing'));
           return;
         }
         // The patched iOS recognizer refuses rather than going online.
         setUnavailable('offline');
         return;
     }
-    setSpeechError(t('speak.error', { error: event.error }));
+    // The recognizer's code is for the log; the screen says what to do.
+    if (__DEV__) console.warn('Speech recognition error', event.error);
+    setSpeechError(t('speak.error'));
+    AccessibilityInfo.announceForAccessibility(t('speak.error'));
   });
 
   const downloadPack = useCallback(async () => {
@@ -258,6 +324,8 @@ export function SpeakRound({
   }, [recognizer, t]);
 
   const toggleListening = useCallback(async () => {
+    // A stopped take is still finalising: a new one now would race it.
+    if (processing) return;
     if (listening) {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       AccessibilityInfo.announceForAccessibility(t('speak.pausedAnnouncement'));
@@ -274,7 +342,8 @@ export function SpeakRound({
     const lang = resolved.locale;
     const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!result.granted) {
-      setPermission('denied');
+      setPermission(result.canAskAgain ? 'denied' : 'blocked');
+      AccessibilityInfo.announceForAccessibility(t('speak.permissionOff'));
       return;
     }
     setPermission('granted');
@@ -284,6 +353,7 @@ export function SpeakRound({
     if (Platform.OS === 'android') {
       if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
         setSpeechError(t('speak.offlineUnsupported'));
+        AccessibilityInfo.announceForAccessibility(t('speak.offlineUnsupported'));
         return;
       }
       const installed = await ExpoSpeechRecognitionModule.getSupportedLocales({})
@@ -293,6 +363,7 @@ export function SpeakRound({
       const base = lang.split('-')[0].toLowerCase();
       if (installed.length > 0 && !installed.some((l) => l.toLowerCase().startsWith(base))) {
         setPack('missing');
+        AccessibilityInfo.announceForAccessibility(t('speak.packMissing'));
         return;
       }
       setPack('ok');
@@ -300,6 +371,7 @@ export function SpeakRound({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     AccessibilityInfo.announceForAccessibility(t('speak.listeningAnnouncement'));
     setInterim('');
+    takeOpen.current = true;
     ExpoSpeechRecognitionModule.start({
       lang,
       interimResults: true,
@@ -310,7 +382,7 @@ export function SpeakRound({
       contextualStrings,
     });
     setMicState('listening');
-  }, [listening, recognizer, contextualStrings, setInterim, t]);
+  }, [listening, processing, recognizer, contextualStrings, setInterim, t]);
 
   const submitTranscript = useCallback(() => {
     const result = gradeSpoken(text, committed, {
@@ -329,7 +401,7 @@ export function SpeakRound({
       <>
         {unavailable && (
           <Animated.Text
-            entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
+            entering={FadeIn.duration(150)}
             style={[styles.notice, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t(
               unavailable === 'language' ? 'speak.unavailableLanguage' : 'speak.unavailableOffline',
@@ -343,20 +415,22 @@ export function SpeakRound({
           onDone={(o) => onDone({ ...o, typed: true })}
         />
         {!unavailable && (
-          <Pressable accessibilityRole="button" onPress={() => setTypeMode(false)}>
-            <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('speak.speakInstead')}
-            </Text>
-          </Pressable>
+          <TextLink
+            weight="semibold"
+            label={t('speak.speakInstead')}
+            onPress={() => setTypeMode(false)}
+            style={styles.toggle}
+          />
         )}
       </>
     );
   }
 
+  const blocked = permission === 'blocked';
   const hasWords = committed.trim().length > 0 || interim.length > 0;
   const canCheck = committed.trim().length > 0 && micState === 'idle';
   const entering = (delay = 0) =>
-    FadeInDown.duration(200).delay(delay).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
+    FadeInDown.duration(200).delay(delay).easing(EASE_OUT);
 
   return (
     // The surface claims most of the window so the mic sits low; on a short
@@ -374,27 +448,35 @@ export function SpeakRound({
         {reference}
       </Text>
 
-      {permission === 'denied' && (
-        <Text style={[styles.error, { color: colors.error, fontFamily: fonts?.ui }]}>
+      {/* Ink, not error red: red is for wrong words (07 §3), and this is a
+          setting, not a mistake. */}
+      {(permission === 'denied' || blocked) && (
+        <Text
+          accessibilityRole="alert"
+          style={[styles.error, { color: colors.ink, fontFamily: fonts?.ui }]}>
           {t('speak.permissionOff')}
         </Text>
       )}
       {pack !== 'ok' && (
         <View style={styles.packArea}>
-          <Text style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          <Text
+            accessibilityRole="alert"
+            style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t(pack === 'missing' ? 'speak.packMissing' : 'speak.packDownloading')}
           </Text>
           {pack === 'missing' && (
-            <Pressable accessibilityRole="button" onPress={() => void downloadPack()}>
-              <Text style={[styles.packButton, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                {t('speak.packDownload')}
-              </Text>
-            </Pressable>
+            <TextLink
+              weight="semibold"
+              label={t('speak.packDownload')}
+              onPress={() => void downloadPack()}
+              style={styles.packButton}
+            />
           )}
         </View>
       )}
       {speechError && (
         <Animated.Text
+          accessibilityRole="alert"
           entering={FadeIn.duration(150)}
           style={[styles.error, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
           {speechError}
@@ -404,10 +486,10 @@ export function SpeakRound({
       {/* Transcript: live ghost while listening, editable between takes. */}
       <View style={styles.transcriptArea}>
         {hasWords ? (
-          listening || micState === 'processing' ? (
+          listening || processing ? (
             <Animated.Text
               key="ghost"
-              entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
+              entering={FadeIn.duration(150)}
               accessibilityLabel={t('speak.liveTranscript')}
               style={[styles.transcript, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {committed}
@@ -417,7 +499,7 @@ export function SpeakRound({
           ) : (
             <Animated.View
               key="editor"
-              entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}>
+              entering={FadeIn.duration(150)}>
               <TextInput
                 multiline
                 scrollEnabled={false}
@@ -438,23 +520,37 @@ export function SpeakRound({
               </Text>
             </Animated.View>
           )
-        ) : (
+        ) : blocked ? null : (
           <Text style={[styles.placeholder, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('speak.placeholder')}
           </Text>
         )}
       </View>
 
+      {/* The system will not ask again, so the mic could only do nothing:
+          typing is the way on, and Settings the way back to speaking. Words
+          already recited can still be checked. */}
+      {blocked && (
+        <View style={styles.blockedActions}>
+          {canCheck && <Button label={t('speak.check')} onPress={submitTranscript} />}
+          <Button
+            variant={canCheck ? 'secondary' : 'primary'}
+            label={t('speak.typeInstead')}
+            onPress={() => setTypeMode(true)}
+          />
+          <Button
+            variant={canCheck ? 'plain' : 'secondary'}
+            label={t('speak.openSettings')}
+            onPress={() => void Linking.openSettings()}
+          />
+        </View>
+      )}
+
       {/* Bottom cluster: check → mic (bottom-center) → type fallback. */}
-      <View style={styles.bottom}>
+      <View style={[styles.bottom, blocked && styles.hidden]}>
         {canCheck && (
           <Animated.View entering={entering()} style={styles.checkWrap}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={submitTranscript}
-              style={[styles.button, { backgroundColor: colors.lapis }]}>
-              <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('speak.check')}</Text>
-            </Pressable>
+            <Button label={t('speak.check')} onPress={submitTranscript} />
           </Animated.View>
         )}
 
@@ -463,33 +559,48 @@ export function SpeakRound({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={listening ? t('speak.pause') : t('speak.start')}
-            accessibilityHint={listening ? t('speak.pauseHint') : t('speak.startHint')}
+            accessibilityHint={
+              processing ? undefined : listening ? t('speak.pauseHint') : t('speak.startHint')
+            }
+            accessibilityState={{ disabled: processing, busy: processing }}
+            disabled={processing}
+            style={processing && styles.micBusy}
             onPressIn={() => pressed.set(withTiming(1, { duration: 100, easing: EASE_OUT }))}
             onPressOut={() => pressed.set(withTiming(0, { duration: 150, easing: EASE_OUT }))}
             onPress={() => void toggleListening()}
             hitSlop={8}>
             <Animated.View style={[styles.micButton, micStyle]}>
-              <Text style={styles.micGlyph}>{listening ? '⏸' : '🎙️'}</Text>
+              <SymbolIcon
+                ios={listening ? 'pause.fill' : 'mic.fill'}
+                android={listening ? 'pause' : 'mic'}
+                size={36}
+                color={colors.onLapis}
+                // The button is a fixed 96pt circle.
+                maxFontSizeMultiplier={1.4}
+              />
             </Animated.View>
           </Pressable>
           <Animated.Text
-            key={listening ? 'l' : hasWords ? 'more' : 'start'}
-            entering={FadeIn.duration(150).reduceMotion(ReduceMotion.System)}
-            exiting={FadeOut.duration(100).reduceMotion(ReduceMotion.System)}
+            key={listening ? 'l' : processing ? 'busy' : hasWords ? 'more' : 'start'}
+            entering={FadeIn.duration(150)}
+            exiting={FadeOut.duration(100)}
             style={[styles.micLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {listening
               ? t('speak.micListening')
-              : hasWords
+              : processing
+                ? t('speak.micProcessing')
+                : hasWords
                 ? t('speak.micMore')
                 : t('speak.micStart')}
           </Animated.Text>
         </View>
 
-        <Pressable accessibilityRole="button" onPress={() => setTypeMode(true)}>
-          <Text style={[styles.toggle, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('speak.typeInstead')}
-          </Text>
-        </Pressable>
+        <TextLink
+          weight="semibold"
+          label={t('speak.typeInstead')}
+          onPress={() => setTypeMode(true)}
+          style={styles.typeInstead}
+        />
       </View>
     </View>
   );
@@ -498,12 +609,12 @@ export function SpeakRound({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   prompt: { fontSize: 28, marginTop: spacing.md, textAlign: 'center' },
-  error: { fontSize: 14, lineHeight: 19, marginTop: spacing.md, textAlign: 'center' },
-  notice: { fontSize: 14, lineHeight: 19, marginBottom: spacing.lg, textAlign: 'center' },
+  error: { ...textStyle.subheadline, marginTop: spacing.md, textAlign: 'center' },
+  notice: { ...textStyle.subheadline, marginBottom: spacing.lg, textAlign: 'center' },
   packArea: { alignItems: 'center' },
-  packButton: { fontSize: 15, fontWeight: '600', marginTop: spacing.sm, padding: spacing.sm },
+  packButton: { paddingHorizontal: spacing.sm },
   transcriptArea: { flexGrow: 1, marginTop: spacing.xl },
-  transcript: { fontSize: 19, lineHeight: 30 },
+  transcript: { fontSize: 20, lineHeight: 30 },
   transcriptInput: { padding: 0, textAlignVertical: 'top' },
   editHint: { fontSize: 12, marginTop: spacing.sm },
   placeholder: { fontSize: 15, textAlign: 'center', marginTop: spacing.xxl },
@@ -525,14 +636,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  micGlyph: { fontSize: 36, color: '#FFFFFF' },
-  micLabel: { fontSize: 14 },
-  button: {
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  toggle: { fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  micLabel: textStyle.footnote,
+  micBusy: { opacity: 0.5 },
+  blockedActions: { marginTop: 'auto', gap: spacing.sm, paddingTop: spacing.xl },
+  hidden: { display: 'none' },
+  toggle: { alignSelf: 'center', paddingHorizontal: spacing.md },
+  // The 44pt target reaches up into the gap under the mic caption, so the
+  // link adds only half its extra height to a short window.
+  typeInstead: { marginTop: -spacing.md, paddingHorizontal: spacing.md },
 });

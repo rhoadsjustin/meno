@@ -3,15 +3,30 @@
  * `meno://challenge?...` link: shows the passage being challenged, then
  * creates the same goal locally with the shared `challengeId` attached.
  */
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
 import { contentColumn } from '@/components/content-layout';
 import { ModalSafeArea } from '@/components/modal-safe-area';
+import { ScreenHeader } from '@/components/screen-header';
+import { SectionHeader } from '@/components/section-header';
+import { announce } from '@/components/screen-reader';
 import { t as translate } from '@/i18n';
+import { Button } from '@/components/button';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import {
   availableTranslations,
@@ -25,7 +40,9 @@ import {
   friendlyDate,
   isPassageTitle,
   parseChallengeParams,
+  targetDateStanding,
   type Challenge,
+  type ChallengeLinkReason,
 } from '@/services/challenges';
 import {
   createGoal,
@@ -34,11 +51,18 @@ import {
   type Goal,
   type GoalPreview,
 } from '@/services/db/repos/goals';
+import { localToday } from '@/services/db/repos/streaks';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
+
+/** Meno's App Store listing (the one site/challenge links to). */
+const APP_STORE_URL = 'https://apps.apple.com/us/app/meno-scripture-memory/id6806028621';
 
 type JoinState =
   | { kind: 'loading' }
-  | { kind: 'invalid'; message: string }
+  /** The link itself is wrong (parse errors only). */
+  | { kind: 'invalid'; message: string; reason: ChallengeLinkReason }
+  /** The link is fine; reading its passage failed and can be tried again. */
+  | { kind: 'failed' }
   | { kind: 'joined'; goal: Goal }
   | { kind: 'ready'; preview: GoalPreview };
 
@@ -52,18 +76,20 @@ export default function ChallengeRoute() {
 
 function ChallengeScreen() {
   const colors = useThemeColors();
-  const { t: tr } = useTranslation(['challenge', 'goals', 'common']);
+  const { t: tr } = useTranslation(['challenge', 'common']);
+  const closeIcon = useBarIcon('xmark', 'close');
   // Key the parse on the raw values: a second challenge link opened while
   // this modal is already up must replace its content, not show the first.
   const { v, c, t, s, e, n, d } = useLocalSearchParams<Record<string, string>>();
-  const parsed = useMemo<{ challenge: Challenge } | { error: string }>(() => {
+  const parsed = useMemo<
+    { challenge: Challenge } | { error: string; reason: ChallengeLinkReason }
+  >(() => {
     try {
       return { challenge: parseChallengeParams({ v, c, t, s, e, n, d }) };
     } catch (err) {
-      return {
-        error:
-          err instanceof ChallengeLinkError ? err.message : translate('challenge:errors.malformed'),
-      };
+      return err instanceof ChallengeLinkError
+        ? { error: err.message, reason: err.reason }
+        : { error: translate('challenge:errors.malformed'), reason: 'malformed' };
     }
   }, [v, c, t, s, e, n, d]);
   const challenge = 'challenge' in parsed ? parsed.challenge : null;
@@ -81,6 +107,10 @@ function ChallengeScreen() {
   // synchronous reset in the effect.
   const [state, setState] = useState<{ code: string; result: JoinState } | null>(null);
   const [busy, setBusy] = useState(false);
+  // The code whose join just failed: Join stays up with a line under it.
+  const [joinFailedFor, setJoinFailedFor] = useState<string | null>(null);
+  // Bumped by Try again to read the passage once more.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!challenge) return;
@@ -98,76 +128,157 @@ function ChallengeScreen() {
       const preview = await previewGoal(translationId, challenge.range);
       put({ kind: 'ready', preview });
     })().catch(() => {
-      put({ kind: 'invalid', message: translate('challenge:errors.passageNotFound') });
+      // The link parsed, so this is not a bad link: the passage or the
+      // database could not be read just now.
+      put({ kind: 'failed' });
     });
     return () => {
       cancelled = true;
     };
-  }, [challenge, translationId]);
+  }, [challenge, translationId, attempt]);
+
+  const retry = () => {
+    setState(null);
+    setAttempt((n) => n + 1);
+  };
 
   // A parse error always wins over whatever the async check last produced.
   const view: JoinState =
     'error' in parsed
-      ? { kind: 'invalid', message: parsed.error }
+      ? { kind: 'invalid', message: parsed.error, reason: parsed.reason }
       : state && state.code === parsed.challenge.code
         ? state.result
         : { kind: 'loading' };
 
+  // An old link's date may be behind us, and a plan joined late may not fit
+  // before its date: the preview says which, and a past date is not saved.
+  const due = targetDateStanding(
+    challenge?.targetDate,
+    localToday(),
+    view.kind === 'ready' ? view.preview.projectedDays : 0,
+  );
+
   const accept = async () => {
     if (!challenge || busy) return;
     setBusy(true);
+    setJoinFailedFor(null);
     try {
       const goal = await createGoal({
         translationId,
         range: challenge.range,
         title: challenge.title,
-        targetDate: challengeTargetDate(challenge),
+        targetDate: due === 'past' ? undefined : challengeTargetDate(challenge),
         challengeId: challenge.code,
       });
       router.replace(`/practice/${goal.id}`);
     } catch {
+      // Stay on the preview so Join can be tapped again.
       setBusy(false);
-      setState({
-        code: challenge.code,
-        result: { kind: 'invalid', message: translate('challenge:joinFailed') },
-      });
+      setJoinFailedFor(challenge.code);
     }
   };
 
-  // A link that cold-starts the app makes this the stack's root, which iOS
-  // shows full-screen rather than as a sheet. The insets are this modal's own
-  // (ModalSafeArea), so it pads under the status bar there and adds nothing
-  // in a sheet — and on iPhone Duo's cover panel, where the sheet is
-  // full-width, the sides keep Join clear of the status strip.
+  // The spinner gives way to the invitation in place: say what arrived. The
+  // failed and bad-link states speak for themselves (Unavailable).
+  const arrived =
+    view.kind === 'ready' && challenge
+      ? `${tr('invitation')}: ${
+          isPassageTitle(challenge.title, challenge.range)
+            ? formatRange(challenge.range)
+            : `${challenge.title}, ${formatRange(challenge.range)}`
+        }`
+      : view.kind === 'joined'
+        ? tr('joinedHeading')
+        : null;
+  useEffect(() => {
+    if (arrived) announce(arrived);
+  }, [arrived]);
+
+  // A link that can't be used still leads somewhere: the store when it needs
+  // a newer Meno (iOS, where the listing is known), otherwise choosing a
+  // passage here instead.
+  const nextStep =
+    view.kind === 'invalid' && view.reason === 'newerVersion' && Platform.OS === 'ios'
+      ? {
+          label: tr('update'),
+          // Nothing to add if the store can't open: the message already says to update.
+          onPress: () => void Linking.openURL(APP_STORE_URL).catch(() => {}),
+        }
+      : { label: tr('choosePassage'), onPress: () => router.replace('/goal-wizard') };
+
+  // "Not now" while there is an invitation to decline, "Close" otherwise.
+  const dismissLabel = view.kind === 'ready' ? tr('common:notNow') : tr('common:close');
+  const primary =
+    view.kind === 'ready' ? (
+      <Button label={tr('join')} busy={busy} onPress={() => void accept()} />
+    ) : // Only a passage still in progress has anything to practice.
+    view.kind === 'joined' && view.goal.status === 'active' ? (
+      <Button
+        label={tr('practice')}
+        onPress={() => router.replace(`/practice/${view.goal.id}`)}
+      />
+    ) : null;
+
+  // The dismiss control is in the native bar, which clears the status bar
+  // whether this is a sheet or (after a cold-start link) full screen, and on
+  // iPhone Duo moves to the side with the status strip. The remaining insets
+  // are this modal's own (ModalSafeArea): on the Duo's cover panel, where the
+  // sheet is full-width, the sides keep Join clear of the status strip.
   return (
     <SafeAreaView
-      edges={['top', 'bottom', 'left', 'right']}
+      edges={['bottom', 'left', 'right']}
       style={[styles.root, { backgroundColor: colors.surfaceRaised }]}>
+      <ScreenHeader backHidden title="" backgroundColor={colors.surfaceRaised}>
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button
+            icon={closeIcon}
+            accessibilityLabel={dismissLabel}
+            onPress={closeModal}>
+            {dismissLabel}
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
       <ScrollView contentContainerStyle={[styles.content, contentColumn]}>
-        <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-          {tr('invitation')}
-        </Text>
+        <SectionHeader kind="kicker" title={tr('invitation')} />
 
-        {view.kind === 'loading' && <ActivityIndicator style={styles.spinner} />}
+        {view.kind === 'loading' && (
+          <ActivityIndicator accessibilityLabel={tr('common:loading')} style={styles.spinner} />
+        )}
 
         {view.kind === 'invalid' && (
-          <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {tr('invalidHeading')}
-            </Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {view.message}
-            </Text>
-          </>
+          <Unavailable
+            kind="failed"
+            title={tr('invalidHeading')}
+            message={view.message}
+            action={nextStep}
+          />
+        )}
+
+        {view.kind === 'failed' && (
+          <Unavailable
+            kind="failed"
+            title={tr('failedHeading')}
+            message={tr('failedBody')}
+            action={{ label: tr('common:retry'), onPress: retry }}
+          />
         )}
 
         {view.kind === 'joined' && (
           <>
-            <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
               {tr('joinedHeading')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {tr('joinedBody', { title: view.goal.title })}
+              {tr(
+                view.goal.status === 'active'
+                  ? 'joinedBody'
+                  : view.goal.status === 'completed'
+                    ? 'joinedBodyMemorized'
+                    : 'joinedBodyInactive',
+                { title: view.goal.title },
+              )}
             </Text>
           </>
         )}
@@ -175,26 +286,32 @@ function ChallengeScreen() {
         {view.kind === 'ready' && challenge && (
           <>
             {!isPassageTitle(challenge.title, challenge.range) && (
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              <Text
+              accessibilityRole="header"
+              style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
                 {challenge.title}
               </Text>
             )}
-            <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
               {formatRange(challenge.range)}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {challenge.targetDate
-                ? tr('translationDue', {
+              {challenge.targetDate && (due === 'reachable' || due === 'tight')
+                ? tr(due === 'tight' ? 'translationAiming' : 'translationDue', {
                     abbrev: getTranslation(translationId).abbrev,
                     date: friendlyDate(challenge.targetDate),
                   })
                 : getTranslation(translationId).abbrev}
             </Text>
-            <View style={styles.statsRow}>
-              <Stat label={tr('goals:stats.verses')} value={String(view.preview.verseCount)} />
-              <Stat label={tr('goals:stats.chunks')} value={String(view.preview.chunks.length)} />
-              <Stat label={tr('goals:stats.estDays')} value={`~${view.preview.projectedDays}`} />
-            </View>
+            {/* What joining takes on, in words a newcomer knows. */}
+            <Text style={[styles.summary, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              {tr('summary', {
+                verses: tr('common:verseCount', { count: view.preview.verseCount }),
+                days: tr('aboutDays', { count: view.preview.projectedDays }),
+              })}
+            </Text>
             {translationSwapped && (
               <Text style={[styles.note, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                 {tr('swapped', {
@@ -206,63 +323,39 @@ function ChallengeScreen() {
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {tr('joinNote')}
             </Text>
+            {joinFailedFor === challenge.code && <JoinFailedNote message={tr('joinFailed')} />}
           </>
         )}
       </ScrollView>
 
-      <View style={[styles.footer, { borderTopColor: colors.separator }]}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={closeModal}
-          style={styles.footerSecondary}>
-          <Text style={[styles.footerSecondaryText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {view.kind === 'ready' ? tr('common:notNow') : tr('common:close')}
-          </Text>
-        </Pressable>
-        {view.kind === 'ready' && (
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
-            onPress={() => void accept()}
-            style={[styles.footerPrimary, { backgroundColor: colors.lapis, opacity: busy ? 0.6 : 1 }]}>
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>{tr('join')}</Text>
-            )}
-          </Pressable>
-        )}
-        {view.kind === 'joined' && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace(`/practice/${view.goal.id}`)}
-            style={[styles.footerPrimary, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.footerPrimaryText, { fontFamily: fonts?.ui }]}>{tr('practice')}</Text>
-          </Pressable>
-        )}
-      </View>
+      {primary && (
+        <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+          <View style={contentColumn}>{primary}</View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/** Under the preview after a failed join; spoken when it appears. */
+function JoinFailedNote({ message }: { message: string }) {
   const colors = useThemeColors();
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
   return (
-    <View>
-      <Text style={[styles.statValue, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-        {value}
-      </Text>
-      <Text style={[styles.statLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {label}
-      </Text>
-    </View>
+    <Text
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
+      style={[styles.body, { color: colors.error, fontFamily: fonts?.ui }]}>
+      {message}
+    </Text>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { padding: spacing.xl, paddingBottom: spacing.xxxl, gap: spacing.sm },
-  kicker: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing.sm },
   spinner: { marginTop: spacing.xxl },
   heading: { fontSize: 22, fontWeight: '700' },
   passage: { fontSize: 28, marginTop: spacing.xs },
@@ -274,27 +367,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderCurve: 'continuous',
   },
-  statsRow: { flexDirection: 'row', gap: spacing.xl, marginVertical: spacing.md },
-  statValue: { fontSize: 28 },
-  statLabel: { fontSize: 13 },
+  summary: { fontSize: 17, lineHeight: 22, fontWeight: '600', marginTop: spacing.md },
+  // The one confirming action; dismissing is the bar's job.
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     // The bottom safe-area edge already clears the home indicator.
     paddingBottom: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerSecondary: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-  footerSecondaryText: { fontSize: 17 },
-  footerPrimary: {
-    borderRadius: 999,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    minWidth: 160,
-    alignItems: 'center',
-  },
-  footerPrimaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
 });

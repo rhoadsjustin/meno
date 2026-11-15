@@ -15,11 +15,19 @@ import { Platform } from 'react-native';
 import { t } from '@/i18n';
 import { firstLetters } from '@/services/practice/text';
 
+import { switchLockMode, type LockMode } from './setup-flow';
+
 export const LOCK_SELECTION_ID = 'meno_lock_selection';
 export const LOCK_SHIELD_ID = 'meno_shield';
 export const ACTIVITY_DAILY = 'meno_lock_daily_meno_lock_selection';
 export const ACTIVITY_RELOCK = 'meno_relock_meno_lock_selection';
 export const ACTIVITY_SCHEDULE = 'meno_lock_schedule_meno_lock_selection';
+/** Every schedule the lock starts. No name is a prefix of another. */
+const LOCK_ACTIVITIES = [ACTIVITY_DAILY, ACTIVITY_RELOCK, ACTIVITY_SCHEDULE];
+
+/** `palette.dark.lapis` and its `onLapis` (5.0:1), as the shield takes colours. */
+const SHIELD_LAPIS = { red: 91, green: 127, blue: 232 };
+const SHIELD_ON_LAPIS = { red: 16, green: 19, blue: 26 };
 
 type DeviceActivityModule = typeof import('react-native-device-activity');
 
@@ -112,7 +120,11 @@ export function configureShield(reference: string, verseText: string | null): vo
       iconSystemName: 'book.closed.fill',
       // Untinted, the symbol renders black and vanishes on the dark shield. Dark-mode
       // lapis (palette.dark.lapis) reads on both the light and dark shield.
-      iconTint: { red: 91, green: 127, blue: 232 },
+      iconTint: SHIELD_LAPIS,
+      // The app's button rather than system blue, on the system background.
+      // The label is set with it: the default white is 3.7:1 on this lapis.
+      primaryButtonBackgroundColor: SHIELD_LAPIS,
+      primaryButtonLabelColor: SHIELD_ON_LAPIS,
     },
     {
       primary: {
@@ -277,12 +289,57 @@ export async function startScheduleMode(startHour: number, endHour: number): Pro
 }
 
 /**
+ * Forgets what the lock's schedules were told to do. Stopping a schedule
+ * part-way through its interval can still deliver that interval's end to the
+ * monitor extension; with the actions gone, a late callback (the re-lock
+ * above all) has nothing to shield. Each start function sets its own again.
+ */
+function forgetScheduleActions(mod: DeviceActivityModule): void {
+  for (const activity of LOCK_ACTIVITIES) {
+    try {
+      mod.cleanUpAfterActivity(activity);
+    } catch {}
+  }
+}
+
+/**
+ * Stops every schedule the lock owns (daily re-arm, pending re-lock, the
+ * evening window) and leaves the shields as they are. Used when the mode
+ * changes, so the previous mode cannot shield apps outside the new one.
+ */
+export function stopLockSchedules(): void {
+  const mod = getLockModule();
+  if (!mod) return;
+  forgetScheduleActions(mod);
+  try {
+    mod.stopMonitoring(LOCK_ACTIVITIES);
+  } catch {}
+}
+
+/** Turns `mode` on in place of whichever mode was running (setup-flow.ts). */
+export async function applyLockMode(mode: LockMode): Promise<void> {
+  if (!getLockModule()) return;
+  await switchLockMode(
+    {
+      stopSchedules: stopLockSchedules,
+      armShields,
+      clearShields,
+      startFirstPickup: startFirstPickupMode,
+      startSchedule: startScheduleMode,
+    },
+    mode,
+  );
+}
+
+/**
  * Kill switch (04 §6): disables all shields and schedules immediately.
  * Must work even if speech/permissions are broken.
  */
 export function killSwitch(): void {
   const mod = getLockModule();
   if (!mod) return;
+  // First, so a schedule stopped mid-interval cannot shield anything again.
+  forgetScheduleActions(mod);
   try {
     mod.stopMonitoring();
   } catch {}

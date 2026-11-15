@@ -9,8 +9,8 @@
  * let apps see which widgets are placed, so the widget sections are numbered
  * steps beside a real capture. Common questions close the guide.
  *
- * Rendered whole by the Help modal, and in part by Settings' detail pane on
- * wide windows (iPhone Duo opened), where each row shows its own section.
+ * Rendered whole by the Help modal and by Settings' detail pane on wide
+ * windows (iPhone Duo opened), where the reminders row shows its own section.
  */
 import { router } from 'expo-router';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
@@ -28,18 +28,19 @@ import {
 
 import { Card } from '@/components/card';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
+import { Button } from '@/components/button';
+import { SymbolIcon } from '@/components/symbol';
 import { useTranslation } from '@/i18n/react';
 import { formatRef } from '@/services/bible';
 import { loadLockConfig } from '@/services/db/repos/lock';
 import { getAuthorizationStatus, isLockAvailable } from '@/services/lock';
-import { ReminderStatusList } from '@/features/reminders/ReminderStatusList';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import {
   reminderSummary,
   setNotificationsEnabled,
   type ReminderStatus,
 } from '@/services/notifications';
-import { useThemeColors, fonts, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 export type SectionKey = 'quizzes' | 'homeWidget' | 'lockWidget' | 'speak' | 'lock';
 
@@ -131,7 +132,8 @@ const onPlatform = (key: SectionKey | (typeof FAQ)[number]) =>
 export type HelpGuideProps = {
   /** Which sections to show; all by default. */
   sections?: SectionKey[];
-  /** The status checklist that jumps to each section (needs `scrollTo`). */
+  /** The status checklist. With `scrollTo` its rows are buttons that jump to
+   * each section; without it they are plain status rows. */
   overview?: boolean;
   /** The common-questions card. */
   faq?: boolean;
@@ -139,8 +141,13 @@ export type HelpGuideProps = {
   scrollTo?: (y: number) => void;
   /** Runs before the guide pushes another route (the Help modal closes itself first). */
   onBeforeNavigate?: () => void;
-  /** The per-reminder lines; Settings' detail pane leaves them to the row beside it. */
-  reminderLines?: boolean;
+  /**
+   * Settings' detail pane sits beside the reminders row, which already has
+   * the switch, each reminder's status and the way to allow notifications.
+   * The reminders section then only explains: no status under its title and
+   * no button repeating the row's switch.
+   */
+  remindersBeside?: boolean;
 };
 
 export function HelpGuide({
@@ -149,7 +156,7 @@ export function HelpGuide({
   faq = true,
   scrollTo,
   onBeforeNavigate,
-  reminderLines = true,
+  remindersBeside = false,
 }: HelpGuideProps) {
   const colors = useThemeColors();
   const { t } = useTranslation('help');
@@ -233,27 +240,42 @@ export function HelpGuide({
     <View style={styles.guide} onLayout={(e) => (rootY.current = e.nativeEvent.layout.y)}>
       {overview && (
         <Card>
-          {SECTIONS.filter((key) => shown.has(key)).map((key, i) => (
-            <Pressable
-              key={key}
-              accessibilityRole="button"
-              accessibilityLabel={t('overviewLabel', {
-                title: t(`sections.${key}`),
-                status: statusLabel(key),
-              })}
-              accessibilityHint={t('overviewHint')}
-              onPress={() => jumpTo(key)}
-              style={[
-                styles.overviewRow,
-                i > 0 && {
-                  borderTopColor: colors.separator,
-                  borderTopWidth: StyleSheet.hairlineWidth,
-                },
-              ]}>
-              <Text style={[styles.overviewTitle, text]}>{t(`sections.${key}`)}</Text>
-              <StatusText status={statuses[key]} label={statusLabel(key)} />
-            </Pressable>
-          ))}
+          {SECTIONS.filter((key) => shown.has(key)).map((key, i) => {
+            const label = t('overviewLabel', {
+              title: t(`sections.${key}`),
+              status: statusLabel(key),
+            });
+            const rowStyle = [
+              styles.overviewRow,
+              i > 0 && {
+                borderTopColor: colors.separator,
+                borderTopWidth: StyleSheet.hairlineWidth,
+              },
+            ];
+            const row = (
+              <>
+                <Text style={[styles.overviewTitle, text]}>{t(`sections.${key}`)}</Text>
+                <StatusText status={statuses[key]} label={statusLabel(key)} />
+              </>
+            );
+            // Only a host that can scroll makes these buttons: a row that
+            // says "Shows the steps" and does nothing is worse than a status.
+            return scrollTo ? (
+              <Pressable
+                key={key}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityHint={t('overviewHint')}
+                onPress={() => jumpTo(key)}
+                style={rowStyle}>
+                {row}
+              </Pressable>
+            ) : (
+              <View key={key} accessible accessibilityLabel={label} style={rowStyle}>
+                {row}
+              </View>
+            );
+          })}
         </Card>
       )}
 
@@ -263,6 +285,7 @@ export function HelpGuide({
           title={t('sections.quizzes')}
           status={statuses.quizzes}
           statusLabel={statusLabel('quizzes')}
+          showStatus={!remindersBeside}
           onSectionLayout={recordOffset}>
           <Text style={[styles.body, text]}>{t('quizzes.body')}</Text>
           {reminders?.overall === 'blocked' && (
@@ -280,24 +303,28 @@ export function HelpGuide({
                   t('steps.comeBack'),
                 ]}
               />
-              <Action label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
+              {/* Kept beside Settings' row too: the first step points at it. */}
+              <Button label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.quizzes === 'ready' ? (
-            <>
-              {reminderLines && reminders && <ReminderStatusList status={reminders} />}
-              <Text style={[styles.tip, faint]}>{t('quizzes.readyTip')}</Text>
-            </>
+            // One line of status under the title; each reminder's own line
+            // lives in Settings → Reminders, where the tip sends people.
+            <Text style={[styles.tip, faint]}>{t('quizzes.readyTip')}</Text>
           ) : (
             <>
               <Text style={[styles.tip, faint]}>
                 {reminders?.overall === 'off' ? t('quizzes.offTip') : t('quizzes.askTip')}
               </Text>
-              <Action
-                label={
-                  reminders?.canAsk ? t('actions.allowNotifications') : t('actions.turnOnReminders')
-                }
-                onPress={() => void turnOnQuizzes()}
-              />
+              {!remindersBeside && (
+                <Button
+                  label={
+                    reminders?.canAsk
+                      ? t('actions.allowNotifications')
+                      : t('actions.turnOnReminders')
+                  }
+                  onPress={() => void turnOnQuizzes()}
+                />
+              )}
             </>
           )}
         </Section>
@@ -361,14 +388,14 @@ export function HelpGuide({
           {statuses.speak === 'openSettings' ? (
             <>
               <Steps items={[t('steps.tapOpenSettings'), t('speak.turnOn'), t('steps.comeBack')]} />
-              <Action label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
+              <Button label={t('actions.openIphoneSettings')} onPress={openIphoneSettings} />
             </>
           ) : statuses.speak === 'ready' ? (
             <Text style={[styles.tip, faint]}>{t('speak.readyTip')}</Text>
           ) : (
             <>
               <Text style={[styles.tip, faint]}>{t('speak.askTip')}</Text>
-              <Action label={t('actions.allowMicrophone')} onPress={() => void allowMicrophone()} />
+              <Button label={t('actions.allowMicrophone')} onPress={() => void allowMicrophone()} />
             </>
           )}
         </Section>
@@ -384,7 +411,16 @@ export function HelpGuide({
           {statuses.lock === 'unavailable' ? (
             <Text style={[styles.tip, faint]}>{t('lock.unavailable')}</Text>
           ) : statuses.lock === 'ready' ? (
-            <Text style={[styles.tip, faint]}>{t('lock.readyTip')}</Text>
+            // The guide leads back into setup once the lock is on, as
+            // Settings' own row does.
+            <>
+              <Text style={[styles.tip, faint]}>{t('lock.readyTip')}</Text>
+              <Button
+                variant="secondary"
+                label={t('actions.changeLock')}
+                onPress={openLockSetup}
+              />
+            </>
           ) : (
             <>
               <Steps
@@ -395,7 +431,7 @@ export function HelpGuide({
                   t('lock.steps.chooseWhen'),
                 ]}
               />
-              <Action label={t('actions.setUpLock')} onPress={openLockSetup} />
+              <Button label={t('actions.setUpLock')} onPress={openLockSetup} />
             </>
           )}
         </Section>
@@ -424,12 +460,13 @@ export function HelpGuide({
                     onPress={() => setOpenFaq(open ? null : i)}
                     style={styles.faqRow}>
                     <Text style={[styles.faqQuestion, text]}>{t(`faq.${id}.q`)}</Text>
-                    <Text
-                      importantForAccessibility="no"
-                      accessibilityElementsHidden
-                      style={[styles.faqToggle, { color: colors.lapis }]}>
-                      {open ? '−' : '+'}
-                    </Text>
+                    <SymbolIcon
+                      ios={open ? 'chevron.up' : 'chevron.down'}
+                      android={open ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                      size={15}
+                      weight="semibold"
+                      color={colors.lapis}
+                    />
                   </Pressable>
                   {open && <Text style={[styles.faqAnswer, faint]}>{t(`faq.${id}.a`)}</Text>}
                 </View>
@@ -447,6 +484,7 @@ function Section({
   title,
   status,
   statusLabel,
+  showStatus = true,
   onSectionLayout,
   children,
 }: PropsWithChildren<{
@@ -455,6 +493,8 @@ function Section({
   status: Status;
   /** Overrides the stock wording for `status`. */
   statusLabel?: string;
+  /** The status line under the title. */
+  showStatus?: boolean;
   /** Reports the section's scroll offset so the overview can jump to it. */
   onSectionLayout: (key: SectionKey, e: LayoutChangeEvent) => void;
 }>) {
@@ -468,7 +508,7 @@ function Section({
             style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {title}
           </Text>
-          <StatusText status={status} label={statusLabel} />
+          {showStatus && <StatusText status={status} label={statusLabel} />}
         </View>
         {children}
       </Card>
@@ -476,22 +516,32 @@ function Section({
   );
 }
 
-/** Status is always spelled out, never color alone. */
+/** Status is always spelled out, never color alone. Ready is lapis: 07 §3
+ * keeps `success` for grading. */
 function StatusText({ status, label }: { status: Status; label?: string }) {
   const colors = useThemeColors();
   const { t } = useTranslation('help');
   const color =
     status === 'ready'
-      ? colors.success
+      ? colors.lapis
       : status === 'openSettings'
         ? colors.error
         : colors.inkFaint;
-  const mark = status === 'ready' ? '✓ ' : status === 'openSettings' ? '! ' : '';
-  return (
+  const words = (
     <Text style={[styles.status, { color, fontFamily: fonts?.ui }]}>
-      {mark}
       {label ?? t(`status.${status}`)}
     </Text>
+  );
+  if (status !== 'ready' && status !== 'openSettings') return words;
+  return (
+    <View style={styles.statusRow}>
+      {status === 'ready' ? (
+        <SymbolIcon ios="checkmark.circle.fill" android="check_circle" size={15} color={color} />
+      ) : (
+        <SymbolIcon ios="exclamationmark.circle.fill" android="error" size={15} color={color} />
+      )}
+      {words}
+    </View>
   );
 }
 
@@ -518,17 +568,6 @@ function Steps({ items }: { items: string[] }) {
   );
 }
 
-function Action({ label, onPress }: { label: string; onPress: () => void }) {
-  const colors = useThemeColors();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[styles.action, { backgroundColor: colors.lapis }]}>
-      <Text style={[styles.actionText, { fontFamily: fonts?.ui }]}>{label}</Text>
-    </Pressable>
-  );
-}
 
 const styles = StyleSheet.create({
   guide: { gap: spacing.lg },
@@ -536,21 +575,15 @@ const styles = StyleSheet.create({
   tip: { fontSize: 15, lineHeight: 21 },
   overviewRow: { paddingVertical: spacing.sm, gap: 2 },
   overviewTitle: { fontSize: 17, fontWeight: '600' },
-  status: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  status: { ...textStyle.subheadline, fontWeight: '600', flexShrink: 1 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   section: { gap: spacing.md },
   sectionHeader: { gap: spacing.xs },
-  sectionTitle: { fontSize: 20, lineHeight: 25, fontWeight: '600' },
+  sectionTitle: { ...textStyle.title3, fontWeight: '600' },
   steps: { gap: spacing.sm },
   stepRow: { flexDirection: 'row', gap: spacing.sm },
   stepNumber: { fontSize: 16, lineHeight: 23, fontWeight: '700', minWidth: 22 },
   stepText: { flex: 1, fontSize: 16, lineHeight: 23 },
-  action: {
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  actionText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
   faqHeading: { marginTop: spacing.sm },
   faqRow: {
     flexDirection: 'row',
@@ -559,6 +592,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   faqQuestion: { flex: 1, fontSize: 16, lineHeight: 22, fontWeight: '600' },
-  faqToggle: { fontSize: 22, lineHeight: 22, fontWeight: '500' },
   faqAnswer: { fontSize: 15, lineHeight: 22, paddingBottom: spacing.md },
 });

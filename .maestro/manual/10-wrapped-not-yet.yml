@@ -23,6 +23,11 @@ appId: com.rhoadsdev.meno
     timeout: 10000
 - assertVisible: ".*opens once you.ve practiced on 3 days\\."
 - tapOn: "Close"
-- extendedWaitUntil:
-    visible: ".*Year in the Word opens once you.ve practiced on 3 days\\."
-    timeout: 10000
+# The note sits under the starter verses now, so it may be below the fold.
+- scrollUntilVisible:
+    element: ".*Year in the Word opens once you.ve practiced on 3 days\\."
+    direction: DOWN
+    timeout: 20000
+# Quiet and dismissible (docs/10 §5.5).
+- tapOn: "Hide this card"
+- assertNotVisible: ".*Year in the Word opens once you.ve practiced on 3 days\\."

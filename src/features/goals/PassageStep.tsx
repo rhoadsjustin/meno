@@ -30,10 +30,12 @@ import {
 } from 'react-native';
 
 import { contentColumn } from '@/components/content-layout';
+import { BookMenu } from '@/features/goals/BookMenu';
 import { ExtendMenu } from '@/features/goals/ExtendMenu';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
 import { useAvailableChapters } from '@/features/reader/use-available-chapters';
-import { t as translate } from '@/i18n';
+import { TextLink } from '@/components/text-link';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import {
   BOOKS,
@@ -42,6 +44,7 @@ import {
   formatRange,
   getChapter,
   getTranslation,
+  loadFailureMessage,
   translationHasBook,
   type Verse,
 } from '@/services/bible';
@@ -57,7 +60,7 @@ import {
   tapVerse,
   type PassageSelection,
 } from '@/services/bible/selection';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 /** The pinned bar is chrome: it grows with Dynamic Type, but not so far that
  * it crowds the verses out of a short sheet. */
@@ -77,19 +80,14 @@ type Props = {
   onChapterChange: (chapter: number) => void;
   selection: PassageSelection | null;
   setSelection: Dispatch<SetStateAction<PassageSelection | null>>;
+  /** A verse of the opening chapter to bring into view once it has loaded
+   * (the wizard opened on a verse from the reader). */
+  initialVerse?: number;
   /** A failure from the wizard's Continue, shown in the pinned bar. */
   error: string | null;
   /** Reports whether the chapter on screen has its verses; the wizard holds Continue until it does. */
   onReadyChange?: (ready: boolean) => void;
 };
-
-/** Plain words for a passage that would not load; bundled text never needs the network. */
-export function loadFailureMessage(translationId: string, what: string): string {
-  const translation = getTranslation(translationId);
-  return translation.source === 'bundled'
-    ? translate('goals:passage.loadFailed', { what })
-    : translate('goals:passage.loadFailedRemote', { what, abbrev: translation.abbrev });
-}
 
 export function PassageStep({
   heading,
@@ -101,6 +99,7 @@ export function PassageStep({
   onChapterChange,
   selection,
   setSelection,
+  initialVerse,
   error,
   onReadyChange,
 }: Props) {
@@ -182,6 +181,18 @@ export function PassageStep({
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [bookId, chapter]);
 
+  // Opened on a verse further down: bring it into view, once. Rows vary in
+  // height, so a row not yet measured goes through `onScrollToIndexFailed`.
+  const pendingVerse = useRef(initialVerse !== undefined && initialVerse > 1 ? initialVerse : null);
+  const scrollRetries = useRef(0);
+  useEffect(() => {
+    const target = pendingVerse.current;
+    if (!verses || target === null) return;
+    pendingVerse.current = null;
+    const index = verses.findIndex((v) => v.verse >= target);
+    if (index > 0) listRef.current?.scrollToIndex({ index, animated: false });
+  }, [verses]);
+
   const commit = useCallback(
     (next: PassageSelection | null) => {
       setExtendError(null);
@@ -247,8 +258,10 @@ export function PassageStep({
           {t('passage.translation')}
         </Text>
         {translation && (
-          <Pressable
-            accessibilityRole="button"
+          <TextLink
+            size="large"
+            label={`${translation.abbrev} · ${translation.name}`}
+            disclosure
             accessibilityLabel={t('passage.translationLabel', {
               name: translation.name,
               abbrev: translation.abbrev,
@@ -257,21 +270,11 @@ export function PassageStep({
             onPress={() =>
               router.push({ pathname: '/translation-picker', params: { selected: translation.id } })
             }
-            style={styles.textButton}>
-            <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {translation.abbrev} · {translation.name} ›
-            </Text>
-          </Pressable>
+          />
         )}
       </View>
       <View style={styles.controlRow}>
-        <Host matchContents seedColor={colors.lapis}>
-          <Picker selectedValue={bookId} onValueChange={(v) => onBookChange(String(v))}>
-            {books.map((b) => (
-              <Picker.Item key={b.id} label={bookName(b.id)} value={b.id} />
-            ))}
-          </Picker>
-        </Host>
+        <BookMenu books={books} bookId={bookId} onBookChange={onBookChange} tint={colors.lapis} />
         {chapters.length > 1 && (
           <Host matchContents seedColor={colors.lapis}>
             <Picker selectedValue={chapter} onValueChange={(v) => onChapterChange(Number(v))}>
@@ -283,19 +286,15 @@ export function PassageStep({
         )}
       </View>
       <View style={styles.controlRow}>
-        <Pressable
-          accessibilityRole="button"
+        <TextLink
+          size="large"
+          label={t('passage.wholeChapter')}
           accessibilityLabel={t('passage.selectWholeChapter', { chapter: bookChapter(chapter) })}
-          accessibilityState={{ disabled: lastVerse === null }}
           disabled={lastVerse === null}
           onPress={() => {
             if (lastVerse !== null) commit(selectWholeChapter(bookId, chapter, lastVerse));
           }}
-          style={[styles.textButton, { opacity: lastVerse === null ? 0.4 : 1 }]}>
-          <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('passage.wholeChapter')}
-          </Text>
-        </Pressable>
+        />
         {extendable.length > 0 && (
           <ExtendMenu chapters={extendable} onExtend={(c) => void extend(c)} tint={colors.lapis} />
         )}
@@ -311,33 +310,24 @@ export function PassageStep({
   );
 
   const empty = failed ? (
-    <View style={styles.empty}>
-      <Text
-        accessibilityRole="alert"
-        style={[styles.emptyText, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        {translationId && loadFailureMessage(translationId, bookChapter(chapter))}
-      </Text>
-      <View style={styles.controlRow}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setAttempt((n) => n + 1)}
-          style={styles.textButton}>
-          <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('common:retry')}
-          </Text>
-        </Pressable>
-        {translationId !== DEFAULT_TRANSLATION_ID && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onTranslationChange(DEFAULT_TRANSLATION_ID)}
-            style={styles.textButton}>
-            <Text style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('passage.useInstead', { abbrev: getTranslation(DEFAULT_TRANSLATION_ID).abbrev })}
-            </Text>
-          </Pressable>
-        )}
-      </View>
-    </View>
+    // 07 §6: a message in place of the verses, with Try again and Use the
+    // WEB instead. The shared state announces the failure to VoiceOver.
+    <Unavailable
+      kind="failed"
+      title={t('passage.chapterFailedTitle')}
+      message={translationId ? loadFailureMessage(translationId, bookChapter(chapter)) : undefined}
+      action={{ label: t('common:retry'), onPress: () => setAttempt((n) => n + 1) }}
+      secondaryAction={
+        translationId !== DEFAULT_TRANSLATION_ID
+          ? {
+              label: t('passage.useInstead', {
+                abbrev: getTranslation(DEFAULT_TRANSLATION_ID).abbrev,
+              }),
+              onPress: () => onTranslationChange(DEFAULT_TRANSLATION_ID),
+            }
+          : undefined
+      }
+    />
   ) : (
     <View
       style={styles.empty}
@@ -376,6 +366,15 @@ export function PassageStep({
         }
         initialNumToRender={12}
         windowSize={7}
+        onScrollToIndexFailed={({ index, averageItemLength }) => {
+          // Get near on the average row height, then ask again now that the
+          // rows around it exist. A few tries is plenty; after that the
+          // verse is simply further down, selected as it should be.
+          listRef.current?.scrollToOffset({ offset: averageItemLength * index, animated: false });
+          if (scrollRetries.current >= 3) return;
+          scrollRetries.current += 1;
+          setTimeout(() => listRef.current?.scrollToIndex({ index, animated: false }), 100);
+        }}
       />
 
       <View style={[styles.bar, { borderTopColor: colors.separator }]}>
@@ -388,6 +387,7 @@ export function PassageStep({
             </Text>
             <Text
               maxFontSizeMultiplier={BAR_MAX_SCALE}
+              accessibilityRole={error ? 'alert' : undefined}
               style={[
                 styles.barHint,
                 { color: error ? colors.error : colors.inkFaint, fontFamily: fonts?.ui },
@@ -406,17 +406,13 @@ export function PassageStep({
             </Text>
           </View>
           {selection && (
-            <Pressable
-              accessibilityRole="button"
+            <TextLink
+              size="large"
+              label={t('passage.clear')}
               accessibilityLabel={t('passage.clearSelection')}
+              maxFontSizeMultiplier={BAR_MAX_SCALE}
               onPress={() => commit(null)}
-              style={styles.textButton}>
-              <Text
-                maxFontSizeMultiplier={BAR_MAX_SCALE}
-                style={[styles.textButtonLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                {t('passage.clear')}
-              </Text>
-            </Pressable>
+            />
           )}
         </View>
       </View>
@@ -489,11 +485,8 @@ const styles = StyleSheet.create({
     rowGap: spacing.xs,
   },
   controlLabel: { fontSize: 15 },
-  textButton: { minHeight: 44, justifyContent: 'center' },
-  textButtonLabel: { fontSize: 17 },
   notice: { fontSize: 15 },
-  empty: { padding: spacing.xl, gap: spacing.md, alignItems: 'flex-start' },
-  emptyText: { fontSize: 17, lineHeight: 24 },
+  empty: { padding: spacing.xl, alignItems: 'center' },
   verseRow: {
     flexDirection: 'row',
     minHeight: 44,
@@ -503,7 +496,7 @@ const styles = StyleSheet.create({
   verseText: { flex: 1, fontSize: 19, lineHeight: 28, paddingVertical: spacing.sm },
   verseNum: { fontSize: 13 },
   verseNumSelected: { fontWeight: '700' },
-  attribution: { fontSize: 13, lineHeight: 18, padding: spacing.xl },
+  attribution: { ...textStyle.footnote, padding: spacing.xl },
   bar: { borderTopWidth: StyleSheet.hairlineWidth },
   barInner: {
     flexDirection: 'row',
@@ -514,5 +507,5 @@ const styles = StyleSheet.create({
   },
   barText: { flex: 1, gap: 2 },
   barRef: { fontSize: 17, fontWeight: '600' },
-  barHint: { fontSize: 13, lineHeight: 18 },
+  barHint: textStyle.footnote,
 });

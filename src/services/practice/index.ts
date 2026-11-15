@@ -8,4 +8,5 @@ export { selectBlanks } from '@/services/practice/blanks';
 export * from '@/services/practice/arrange';
 export * from '@/services/practice/session';
 export * from '@/services/practice/plan';
+export * from '@/services/practice/feedback';
 export { hashSeed, mulberry32, shuffle } from '@/services/practice/prng';

@@ -6,16 +6,30 @@
  * Material lists carry no chevron, so Android leaves it off.
  */
 import { SymbolView } from 'expo-symbols';
-import type { ReactNode } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, type ReactNode } from 'react';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { t as translate } from '@/i18n';
+import { TextLink } from '@/components/text-link';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import type { CatalogRefreshState } from '@/features/goals/translation-catalog';
 import { translationCoverage, type LanguageSummary, type Translation } from '@/services/bible';
-import { useThemeColors, fonts, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, radius, spacing, textStyle } from '@/theme';
 
-/** Plain words for where a translation's text lives. */
+/**
+ * Plain words for where a translation's text lives. Rows show it only for
+ * the few kept on the device (`storedLabel`); VoiceOver hears it on every
+ * row, since the footnote that covers the rest is a long way down the list.
+ */
 export function availabilityLabel(tr: Translation): string {
   switch (tr.source) {
     case 'bundled':
@@ -25,6 +39,15 @@ export function availabilityLabel(tr: Translation): string {
     default:
       return translate('goals:picker.needsConnection');
   }
+}
+
+/**
+ * The availability worth a place on the row: text on this device, or saved
+ * with the person's passages. Everything else needs a connection, which the
+ * list's footnote says once instead of every row saying it.
+ */
+export function storedLabel(tr: Translation): string | null {
+  return tr.source === 'bundled' || tr.source === 'esv_api' ? availabilityLabel(tr) : null;
 }
 
 /** "New Testament", "4 books", or nothing for a whole Bible. */
@@ -97,14 +120,14 @@ export function TranslationRow({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const detail = [languageTitle, tr.abbrev, coverageLabel(tr), availabilityLabel(tr)]
-    .filter(Boolean)
-    .join(' · ');
+  const facts = [languageTitle, tr.abbrev, coverageLabel(tr)];
+  const detail = [...facts, storedLabel(tr)].filter(Boolean).join(' · ');
+  const spoken = [...facts, availabilityLabel(tr)].filter(Boolean).join(' · ');
   return (
     <GroupRow
       position={position}
       onPress={onPress}
-      accessibilityLabel={`${tr.name}. ${detail}`}
+      accessibilityLabel={`${tr.name}. ${spoken}`}
       accessibilityState={{ selected }}>
       <View style={styles.rowText}>
         <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
@@ -171,7 +194,7 @@ export function GroupHeader({ title }: { title: string }) {
     <Text
       accessibilityRole="header"
       style={[styles.groupHeader, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-      {Platform.OS === 'ios' ? title.toLocaleUpperCase() : title}
+      {title}
     </Text>
   );
 }
@@ -186,6 +209,18 @@ export function GroupFooter({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Speaks a status when it appears. On iOS React Native's live regions do
+ * nothing and the `alert` role adds no announcement, so VoiceOver would
+ * otherwise say nothing when a row changes; Android's live regions already
+ * speak, and announcing there as well would say it twice.
+ */
+function useAnnouncement(message: string | null) {
+  useEffect(() => {
+    if (message && Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
+}
+
 /** Loading or failed, under the featured languages; a retry when failed. */
 export function CatalogStatusRow({
   status,
@@ -196,6 +231,7 @@ export function CatalogStatusRow({
 }) {
   const colors = useThemeColors();
   const { t } = useTranslation(['goals', 'common']);
+  useAnnouncement(status === 'error' ? t('picker.catalogFailed') : null);
   if (status === 'loading') {
     return (
       <View style={styles.status} accessible accessibilityLabel={t('picker.loading')}>
@@ -210,26 +246,34 @@ export function CatalogStatusRow({
     <View style={styles.status}>
       <Text
         accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
         style={[styles.statusText, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {t('picker.catalogFailed')}
       </Text>
-      <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
-        <Text style={[styles.statusText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-          {t('common:retry')}
-        </Text>
-      </Pressable>
+      <TextLink label={t('common:retry')} onPress={onRetry} />
     </View>
   );
 }
 
 /**
- * The version-list refresh, at the top of the picker: a spinner while the
- * Platform is asked, then how many translations arrived, or the failure in
- * the error colour with the reason. The bar's refresh button retries.
+ * A check started with the bar's refresh button, at the top of the picker: a
+ * spinner while the Platform is asked, then how many translations arrived,
+ * or the failure in the error colour with what to try. The check the picker
+ * runs on opening never shows here.
  */
 export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) {
   const colors = useThemeColors();
   const { t } = useTranslation('goals');
+  // The result of a check, spoken once when it arrives.
+  useAnnouncement(
+    refresh.state === 'done'
+      ? refresh.added > 0
+        ? t('picker.refreshAdded', { count: refresh.added })
+        : t('picker.refreshUpToDate')
+      : refresh.state === 'failed'
+        ? `${t('picker.refreshFailed')} ${t('picker.refreshHint')}`
+        : null,
+  );
   if (refresh.state === 'idle') return null;
   const text = [styles.statusText, { fontFamily: fonts?.ui }];
   if (refresh.state === 'checking') {
@@ -266,7 +310,7 @@ export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) 
       </View>
     );
   }
-  const detail = refresh.reason ?? t('picker.refreshHint');
+  const detail = t('picker.refreshHint');
   return (
     <View
       style={styles.refresh}
@@ -288,22 +332,15 @@ export function RefreshStatusRow({ refresh }: { refresh: CatalogRefreshState }) 
 
 /** The empty search state (HIG: say what was searched and what to try). */
 export function NoResults({ query }: { query: string }) {
-  const colors = useThemeColors();
   const { t } = useTranslation('goals');
   return (
-    <View style={styles.noResults} accessible accessibilityRole="text">
-      <SymbolView
-        name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
-        tintColor={colors.inkFaint}
-        size={40}
-      />
-      <Text style={[styles.noResultsTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-        {t('picker.noResults', { query: query.trim() })}
-      </Text>
-      <Text style={[styles.noResultsHint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {t('picker.noResultsHint')}
-      </Text>
-    </View>
+    <Unavailable
+      kind="empty"
+      symbol={{ ios: 'magnifyingglass', android: 'search' }}
+      title={t('picker.noResults', { query: query.trim() })}
+      message={t('picker.noResultsHint')}
+      style={styles.noResults}
+    />
   );
 }
 
@@ -321,7 +358,7 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 17 },
-  rowDetail: { fontSize: 13, lineHeight: 18 },
+  rowDetail: textStyle.footnote,
   rowValue: { fontSize: 17 },
   groupHeader: {
     fontSize: 13,
@@ -344,7 +381,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginHorizontal: spacing.lg,
   },
-  statusText: { fontSize: 15, lineHeight: 20 },
+  statusText: textStyle.subheadline,
   refresh: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,7 +391,5 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
   },
   refreshText: { flex: 1 },
-  noResults: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxxl },
-  noResultsTitle: { fontSize: 20, fontWeight: '600', textAlign: 'center' },
-  noResultsHint: { fontSize: 15, lineHeight: 20, textAlign: 'center' },
+  noResults: { paddingVertical: spacing.xxxl },
 });

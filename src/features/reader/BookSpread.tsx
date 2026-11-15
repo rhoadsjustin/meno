@@ -13,6 +13,7 @@ import {
   View,
   type AccessibilityActionInfo,
   type TextLayoutEvent,
+  type TextStyle,
   type ViewInstance,
 } from 'react-native';
 import {
@@ -21,12 +22,12 @@ import {
   usePanGesture,
   useTapGesture,
 } from 'react-native-gesture-handler';
-import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaListener } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { PageCurlView } from '@modules/page-curl';
 import { useContentLayout } from '@/components/content-layout';
+import { announce } from '@/components/screen-reader';
 import { useTranslation } from '@/i18n/react';
 import {
   buildFlow,
@@ -38,8 +39,11 @@ import {
   type Page,
   type Run,
 } from '@/features/reader/paginate';
-import { getChapter, getTranslation, type Verse } from '@/services/bible';
+import { neighbourChapter } from '@/features/reader/chapters';
+import { readerType } from '@/features/reader/text-size';
+import { bookName, getChapter, getTranslation, type Verse } from '@/services/bible';
 import { fonts, layout, scriptureType, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 type Side = 'left' | 'right';
 type Direction = 1 | -1; // 1 is forward, -1 back
@@ -82,19 +86,24 @@ export function BookSpread({
   translationId,
   bookId,
   chapter,
-  chapterCount,
+  chapters,
+  textSize,
   onChapterChange,
 }: {
   translationId: string;
   bookId: string;
   chapter: number;
-  chapterCount: number;
+  /** The chapters this translation has of the book; a portion may skip some. */
+  chapters: readonly number[];
+  /** Scripture size in points, before Dynamic Type. */
+  textSize: number;
   onChapterChange: (chapter: number) => void;
 }) {
   const colors = useThemeColors();
+  const { t } = useTranslation('reader');
   const { fold, insets } = useContentLayout();
   const { fontScale } = useWindowDimensions();
-  const reduceMotion = useReducedMotion();
+  const { reduce: reduceMotion } = useMotion();
   // The pages run under the (clear) navigation bar; the text starts below it.
   // Where the bar ends is read from UIKit's safe area of the spread itself:
   // under a translucent bar a view's top inset reaches the bar's bottom edge,
@@ -140,15 +149,18 @@ export function BookSpread({
   }, [frame, fold, insets.bottom, fontScale, barBottom]);
 
   // Verses and pages for this chapter and its neighbours, so a turn across a
-  // chapter boundary has its pages ready.
+  // chapter boundary has its pages ready. The neighbours are the ones the
+  // translation has, so a turn steps over a gap as the bar's buttons do.
+  const before = neighbourChapter(chapters, pos.chapter, -1);
+  const after = neighbourChapter(chapters, pos.chapter, 1);
   const wanted = useMemo(
-    () =>
-      [pos.chapter - 1, pos.chapter, pos.chapter + 1].filter((c) => c >= 1 && c <= chapterCount),
-    [pos.chapter, chapterCount],
+    () => [before, pos.chapter, after].filter((c): c is number => c !== undefined),
+    [before, pos.chapter, after],
   );
   const verses = useChapterVerses(translationId, bookId, wanted);
+  const type = useMemo(() => readerType(textSize, scriptureType), [textSize]);
   const layoutKey = geo
-    ? `${translationId}:${bookId}:${geo.textWidth}:${geo.pageHeight}:${fontScale}`
+    ? `${translationId}:${bookId}:${geo.textWidth}:${geo.pageHeight}:${fontScale}:${textSize}`
     : '';
   const [pagedCache, setPagedCache] = useState<{ key: string; chapters: Record<number, Paged> }>({
     key: layoutKey,
@@ -181,10 +193,11 @@ export function BookSpread({
     if (within >= 0 && within < spreadCount(current.pages)) {
       return { chapter: pos.chapter, spread: within, anchor: current.pages[within * 2].start };
     }
-    const other = paged[pos.chapter + dir];
-    if (!other || other.pages.length === 0) return null;
+    const neighbour = dir === 1 ? after : before;
+    const other = neighbour === undefined ? undefined : paged[neighbour];
+    if (neighbour === undefined || !other || other.pages.length === 0) return null;
     const s = dir === 1 ? 0 : spreadCount(other.pages) - 1;
-    return { chapter: pos.chapter + dir, spread: s, anchor: other.pages[s * 2].start };
+    return { chapter: neighbour, spread: s, anchor: other.pages[s * 2].start };
   };
   const forward = target(1);
   const backward = target(-1);
@@ -194,6 +207,12 @@ export function BookSpread({
   const jump = (to: Target) => {
     dispatch({ type: 'jump', to });
     if (to.chapter !== pos.chapter) onChapterChange(to.chapter);
+    // The pages change in place: tell VoiceOver where the turn landed.
+    announce(
+      `${t('title', { book: bookName(bookId), chapter: to.chapter })}, ${t('page', {
+        page: to.spread * 2 + 1,
+      })}`,
+    );
   };
 
   // The turn itself belongs to UIKit's page curl: the sheet bends from where
@@ -254,6 +273,7 @@ export function BookSpread({
               <PageView
                 key={key}
                 geo={geo}
+                type={type}
                 colors={colors}
                 attribution={attribution}
                 side={side}
@@ -273,6 +293,7 @@ export function BookSpread({
                   <PageView
                     key={key}
                     geo={geo}
+                    type={type}
                     colors={colors}
                     attribution={attribution}
                     side={side}
@@ -291,6 +312,7 @@ export function BookSpread({
                 key={`${layoutKey}:${c}`}
                 verses={verses[c]}
                 geo={geo}
+                type={type}
                 onPaged={(result) => storePaged(c, result)}
               />
             ) : null,
@@ -337,10 +359,12 @@ function useChapterVerses(translationId: string, bookId: string, wanted: number[
 function Measurer({
   verses,
   geo,
+  type,
   onPaged,
 }: {
   verses: Verse[];
   geo: Geometry;
+  type: TextStyle;
   onPaged: (result: Paged) => void;
 }) {
   const flow = useMemo(() => buildFlow(verses), [verses]);
@@ -352,11 +376,9 @@ function Measurer({
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      <Text style={[styles.passage, { fontFamily: fonts?.scripture }]} onTextLayout={onTextLayout}>
+      <Text style={[type, { fontFamily: fonts?.scripture }]} onTextLayout={onTextLayout}>
         {flow.segments.map((s) => (
-          <Text key={`${s.verse}:${s.kind}`} style={s.kind === 'num' && styles.verseNum}>
-            {flow.text.slice(s.start, s.end)}
-          </Text>
+          <Text key={`${s.verse}:${s.kind}`}>{flow.text.slice(s.start, s.end)}</Text>
         ))}
       </Text>
     </View>
@@ -365,6 +387,8 @@ function Measurer({
 
 type PageProps = {
   geo: Geometry;
+  /** Scripture font size and line height: the same the Measurer cut the pages at. */
+  type: TextStyle;
   colors: ThemeColors;
   attribution: string;
   side: Side;
@@ -374,6 +398,7 @@ type PageProps = {
 /** One page's text and footer, placed against the crease. */
 function PageContent({
   geo,
+  type,
   colors,
   attribution,
   side,
@@ -387,12 +412,10 @@ function PageContent({
     <Text
       accessible
       accessibilityRole={onTurn ? 'button' : 'text'}
-      accessibilityLabel={
-        onTurn
-          ? side === 'left'
-            ? t('previousPage')
-            : t('nextPage')
-          : t('page', { page: face.number })
+      // The number is the label; what a double-tap does is the hint.
+      accessibilityLabel={t('page', { page: face.number })}
+      accessibilityHint={
+        onTurn ? (side === 'left' ? t('previousPage') : t('nextPage')) : undefined
       }
       // VoiceOver's double-tap: the standard "activate" action replaces the
       // onAccessibilityTap prop React Native 0.88 removed.
@@ -406,11 +429,20 @@ function PageContent({
   return (
     <>
       <View style={[styles.text, box, { top: geo.top, height: geo.pageHeight }]}>
-        <Text style={[styles.passage, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+        <Text
+          // Spoken as "Page 3. Verse 2. The same was…": the page, then each
+          // number named as a verse instead of a bare digit mid-sentence.
+          accessibilityLabel={[
+            t('pageSpoken', { page: face.number }),
+            ...face.runs.map((r) =>
+              r.kind === 'num' ? t('verseSpoken', { verse: r.verse }) : r.text.trim(),
+            ),
+          ].join(' ')}
+          style={[type, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+          {/* Verse numbers are superscript digits in the flow itself, so
+              they take the text's size and only change colour. */}
           {face.runs.map((r) => (
-            <Text
-              key={r.key}
-              style={r.kind === 'num' && [styles.verseNum, { color: colors.inkFaint }]}>
+            <Text key={r.key} style={r.kind === 'num' && { color: colors.inkFaint }}>
               {r.text}
             </Text>
           ))}
@@ -466,9 +498,4 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 13 },
   attribution: { flexShrink: 1 },
   measurer: { position: 'absolute', top: 0, left: 0, height: 0, opacity: 0, overflow: 'hidden' },
-  passage: {
-    fontSize: scriptureType.defaultSize,
-    lineHeight: scriptureType.defaultLineHeight,
-  },
-  verseNum: { fontSize: 13 },
 });

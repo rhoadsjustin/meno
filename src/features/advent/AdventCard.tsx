@@ -8,11 +8,14 @@
  */
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { Button } from '@/components/button';
+import { NavRow } from '@/components/nav-row';
+import { SectionHeader } from '@/components/section-header';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { adventFor, adventPlan, adventWeek, type AdventPlan, type AdventTrack } from '@/services/advent';
 import { formatRange, refToOsis } from '@/services/bible';
@@ -21,7 +24,7 @@ import { CHALLENGE_VERSION } from '@/services/challenges';
 import { adventDismissed, adventPreview, setAdventDismissed } from '@/services/db/repos/appFlags';
 import { activeGoal, goalByChallengeId, type Goal } from '@/services/db/repos/goals';
 import { localToday } from '@/services/db/repos/streaks';
-import { fonts, radius, spacing, useThemeColors } from '@/theme';
+import { fonts, spacing, useThemeColors, textStyle } from '@/theme';
 
 export type AdventOffer = {
   plan: AdventPlan;
@@ -31,6 +34,11 @@ export type AdventOffer = {
   /** The Advent goal on this device and which track it is, once started. */
   joined: { goal: Goal; track: 'main' | 'short' } | null;
   dismissed: boolean;
+  /**
+   * Set only between "Not this year" and Today losing focus: puts the offer
+   * back. After that the way back is the plan's link (`/advent`).
+   */
+  undoDismiss?: () => void;
   /** The translation a new Advent goal is made in. */
   translationId: string;
 };
@@ -68,15 +76,25 @@ export function useAdventOffer(): { offer: AdventOffer | null; dismiss: () => vo
         .catch(() => live && setOffer(null));
       return () => {
         live = false;
+        // The Undo row lasts only while Today stays in front.
+        setOffer((current) =>
+          current?.undoDismiss ? { ...current, undoDismiss: undefined } : current,
+        );
       };
     }, []),
   );
+  const undoDismiss = useCallback(() => {
+    setOffer((current) => {
+      if (current) void setAdventDismissed(current.plan.year, false).catch(() => {});
+      return current && { ...current, dismissed: false, undoDismiss: undefined };
+    });
+  }, []);
   const dismiss = useCallback(() => {
     setOffer((current) => {
       if (current) void setAdventDismissed(current.plan.year, true).catch(() => {});
-      return current && { ...current, dismissed: true };
+      return current && { ...current, dismissed: true, undoDismiss };
     });
-  }, []);
+  }, [undoDismiss]);
   return { offer, dismiss };
 }
 
@@ -100,44 +118,60 @@ function join(offer: AdventOffer, track: AdventTrack, title: string) {
 export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | null; onDismiss: () => void }) {
   const colors = useThemeColors();
   const { t } = useTranslation('advent');
-  if (!offer || offer.joined || offer.dismissed) return null;
+  if (!offer || offer.joined) return null;
+  if (offer.dismissed) {
+    const undo = offer.undoDismiss;
+    if (!undo) return null;
+    // One tap hid the plan for the season: say so, with the way back beside it.
+    return (
+      <View style={styles.hidden}>
+        <Text style={[styles.hiddenLabel, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+          {t('dismissed')}
+        </Text>
+        <TextLink
+          weight="semibold"
+          label={t('undo')}
+          onPress={() => {
+            undo();
+            AccessibilityInfo.announceForAccessibility(t('restored'));
+          }}
+        />
+      </View>
+    );
+  }
   const main = formatRange(offer.plan.main.range);
   const short = formatRange(offer.plan.short.range);
   return (
     <Card>
-      <Text style={[styles.kicker, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>{t('kicker')}</Text>
+      <SectionHeader kind="kicker" title={t('kicker')} style={styles.kicker} />
       <Text accessibilityRole="header" style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
         {t('title')}
       </Text>
       <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
         {t('body', { passage: main })}
       </Text>
-      <Pressable
-        accessibilityRole="button"
+      {/* Tinted, not filled: Today has one primary button, and it is the
+          practice card's (07 §6). */}
+      <Button
+        variant="tinted"
+        label={t('start', { passage: main })}
         onPress={() => join(offer, offer.plan.main, t('goalTitle', { passage: main }))}
-        style={[styles.button, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('start', { passage: main })}</Text>
-      </Pressable>
+        style={styles.button}
+      />
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => join(offer, offer.plan.short, t('goalTitle', { passage: short }))}>
-          <Text style={[styles.action, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('startShort', { passage: short })}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
+        <TextLink
+          weight="semibold"
+          label={t('startShort', { passage: short })}
+          onPress={() => join(offer, offer.plan.short, t('goalTitle', { passage: short }))}
+        />
+        <TextLink
+          tone="quiet"
+          label={t('dismiss')}
           onPress={() => {
             onDismiss();
-            AccessibilityInfo.announceForAccessibility(t('dismissed'));
-          }}>
-          <Text style={[styles.action, styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('dismiss')}
-          </Text>
-        </Pressable>
+            AccessibilityInfo.announceForAccessibility(t('dismissedSpoken'));
+          }}
+        />
       </View>
     </Card>
   );
@@ -145,7 +179,6 @@ export function AdventInviteCard({ offer, onDismiss }: { offer: AdventOffer | nu
 
 /** Once started: which week it is and that week's verses; opens the passage. */
 export function AdventProgressCard({ offer }: { offer: AdventOffer | null }) {
-  const colors = useThemeColors();
   const { t } = useTranslation('advent');
   if (!offer?.joined || offer.joined.goal.status !== 'active') return null;
   const { plan, week, joined } = offer;
@@ -158,57 +191,40 @@ export function AdventProgressCard({ offer }: { offer: AdventOffer | null }) {
       ? t('progress.thisWeek', { passage: formatRange(plan.weeks[week - 1]) })
       : t('progress.byChristmas', { passage: whole });
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${detail}`}
-      accessibilityHint={t('progress.hint')}
-      onPress={() => router.push(`/practice/${joined.goal.id}`)}>
-      <Card>
-        <View style={styles.row}>
-          <View style={styles.text}>
-            <Text style={[styles.rowTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>{title}</Text>
-            <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>{detail}</Text>
-          </View>
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={14}
-            tintColor={colors.inkFaint}
-          />
-        </View>
-      </Card>
-    </Pressable>
+    <Card>
+      <NavRow
+        title={title}
+        detail={detail}
+        accessibilityHint={t('progress.hint')}
+        onPress={() => router.push(`/practice/${joined.goal.id}`)}
+      />
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  kicker: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: spacing.sm,
-  },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '600' },
-  body: { fontSize: 15, lineHeight: 20, marginTop: spacing.xs },
-  button: {
-    marginTop: spacing.lg,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
+  kicker: { marginBottom: spacing.sm },
+  title: { ...textStyle.title2, fontWeight: '600' },
+  body: { ...textStyle.subheadline, marginTop: spacing.xs },
+  button: { marginTop: spacing.lg },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
-    marginTop: spacing.md,
+    columnGap: spacing.md,
+    // The links are 44pt targets: their own height is the gap above them
+    // and between wrapped rows, and the card's padding absorbs the rest.
+    marginBottom: -spacing.md,
   },
-  action: { fontSize: 15, fontWeight: '600' },
-  quiet: { fontWeight: '400' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  text: { flex: 1 },
-  rowTitle: { fontSize: 17, fontWeight: '600' },
+  // Wraps at large text sizes; Undo keeps its 44pt target either way.
+  hidden: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  hiddenLabel: { ...textStyle.subheadline, flexShrink: 1 },
 });

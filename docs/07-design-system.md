@@ -23,6 +23,7 @@ The overall feel: a quiet, serious reading instrument that happens to be delight
 | `ink` | #1A1D26 | #E9E7E1 | Primary text |
 | `inkFaint` | #6E7280 | #8B8F9C | Secondary text, dissolved letters |
 | `lapis` | #2244AA | #5B7FE8 | Accent: actions, progress, selection, streak ember |
+| `onLapis` | #FFFFFF | #10131A | Labels, spinners and glyphs on a `lapis` (or `error`) fill: filled buttons. White on the dark-mode lapis is only 3.7:1 |
 | `lapisWash` | #E9EEFA | #1A2440 | Tinted fills, active states |
 | `gold` | #8F6C1F | #D4AF37 | Memorized state ONLY: medallions, memorized checkmarks, stitch-complete moments |
 | `error` | #B3402E | #E06A56 | Wrong words in feedback |
@@ -43,18 +44,24 @@ Both faces ship with iOS — zero font files, perfect legibility, unmistakably n
 
 Type scale follows Apple's text styles; do not invent sizes.
 
+The scale lives in `src/theme/tokens.ts` as `textStyle` (`largeTitle` 34/41, `title1` 28/34, `title2` 22/28, `title3` 20/25, `headline` 17/22 semibold, `body` 17/22, `callout` 16/21, `subheadline` 15/20, `footnote` 13/18, `caption1` 12/16, `caption2` 11/13); new UI text spreads one of these rather than a literal size, and older screens move over as they are next touched. Numerals above the scale use `displayType` (40, 56, 96). The small tracked uppercase label over a group or a card title is `src/components/section-header.tsx`; the capitals are styling, the strings stay sentence case (§9).
+
 ## 5. Spacing, shape, elevation
 
 - 4pt base grid; screen margins 20pt; card padding 16pt.
-- Corner radius: continuous-corner 12pt cards, 24pt sheets (match iOS), capsule buttons.
+- Corner radius: continuous-corner 12pt cards, 24pt sheets (match iOS), capsule buttons, 4pt heat-map cells — always `radius.*` from the theme, never a literal. Circles keep width / 2.
+- Buttons come from `src/components/button.tsx` (`primary` filled lapis capsule with an `onLapis` label, `secondary` outlined, `tinted`, `plain`; `role="destructive"`; `busy` / `disabled`) and text actions from `src/components/text-link.tsx`. Both are at least 44pt tall, dim while pressed and carry their accessibility role and state — never restyle a bare `Pressable` as a button in a screen.
+- Nothing to show comes from `src/components/unavailable.tsx`: `Unavailable` (`kind="empty"` or `"failed"`; symbol, title, one sentence, at most two actions, centred) and `LoadingState` (blank for a moment, then a labelled spinner). A failed load is always `failed` with **Try again** — never the empty state, a blank screen or an endless spinner — and its words come from the catalogue, never from the thrown error. `failed` carries a warning symbol and is announced to VoiceOver; `empty` is quiet.
 - Elevation by material, not shadow: cards use `surfaceRaised` + hairline `separator`; sheets use native materials/glass where `@expo/ui/swift-ui` exposes them.
 
 ## 6. Screens
 
 ### Today (home tab)
 - Large title "Today" with streak ember (small flame glyph + count, lapis; turns hollow if today not yet active).
-- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button (capsule, lapis) that names its step and reference — **Start John 3:17**, **Continue John 3:16**, **Seal John 3:16** (03 §5). Sub-line: "Chunk 4 of 12 · Next step · Blanks 50/75".
-- Below: **Due for review** row (count + up-to-3 references, tap → review session), then a quiet reading shortcut ("Continue reading Philippians 3").
+- Hero card: current verse in New York at its dissolution level, translation attribution, single primary button (capsule, lapis) that names its step — **Start**, **Continue**, **Seal** (03 §5). The reference is already on the attribution line above it, so the button does not repeat it; VoiceOver still hears step and reference together. A quiet "Continue reading …" row closes the card. The title row carries the streak and a plus button for adding a passage. Sub-line: "Chunk 4 of 12 · Next step · Blanks 50/75".
+- Below: **Due for review** row (the count as a badge, no references: a nudge, not a list; tap → review session), then a quiet reading shortcut ("Continue reading Philippians 3").
+- Order: with a passage, the hero card comes first in every layout and its button is the only filled one; other passages' actions and the Advent start are `tinted`. Also practicing lists each other passage with the Library's card (`features/goals/PassageCard`): title and More menu, summary, heatmap, one step; making it the focus is in the menu. Seasonal and prompt cards (Advent invitation, Year in the Word, reminders) follow the review rows. The Advent invitation leads only the empty state, above the starter deck (11 §3.2).
+- A card that opens another screen is a `NavRow` (`src/components/nav-row.tsx`: title, one line of detail or a count badge, chevron on iOS, the whole row the target) inside a `Card` — Stitch, Due for review, the Advent week and Year in the Word. Never a card with a link-coloured line inside it.
 
 ### Practice session
 - Minimal chrome: progress dots top (chunks in session), close (X) with resumability.
@@ -64,16 +71,24 @@ Type scale follows Apple's text styles; do not invent sizes.
   - **Type**: full-screen editor, New York, no autocorrect, reference watermark.
   - **Speak**: large mic button; live ghost transcript beneath the reference; waveform in lapis.
 - Feedback: word-level marking in place — never color alone (color-blind safe): correct=success green plain; typo=ink underline; missed/wrong=error red **plus** strikethrough and `errorWash` highlight. An almost (03 §3) marks the same slips in `amber` on `amberWash`, still struck through. Accuracy number counts up, haptic (success notch / soft buzz). Tier-up triggers the **dissolution animation** on the verse (≤1.2s).
+- Actions: a result, the summary and the Read round keep their buttons in the pinned footer (`ActionFooter`), so the way on is in the same place whatever the verse's length. Read and First Letters are not graded (03 §1): their results show the heading and no score. A memorized verse ends on the summary — Done, with the passage's next step beside it.
+- Leaving: while a Type or Speak round holds words, Close, the edge swipe and Android's back ask first (`src/features/practice/leave-guard.tsx`); only the session's position is saved. The unlock screen is not guarded.
+- Arrange: tapping a placed phrase takes it back out and leaves its position open; the next phrase tapped fills it.
 
 ### Library
-- Segmented: **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
+- Segmented (the system control, `@expo/ui/community/segmented-control`; on windows wider than tall both shelves show side by side instead): **In progress** (goal cards with chunk-grid heatmaps — each chunk a tiny square, `lapisWash`→`lapis` by tier, gold when memorized) and **Memorized** (list with health dot: fresh lapis / fading inkFaint / at-risk error, sorted by risk).
+- A goal card has one visible action, the capsule naming the day's step (as Today's hero does); Share challenge, Make this my focus and Delete passage / Stop passage sit in its More menu (ellipsis, a system menu). A chunk not yet started is an outlined square in the heatmap. Memorized is one card of hairline-separated rows.
 - Goal detail: chunk map, stats, stitch history, per-chunk drill-down.
 
 ### Reader
 - Pure typography. Chapter picker in nav title menu (native). Selection → context menu: "Memorize this…" starts goal wizard pre-filled.
+- As built: the bar's menu holds the text size (Smaller / Larger / Default size, 18–28 in steps of 2, remembered) above the book's chapters. Verse numbers are Unicode superscript digits in the text's own size. A long-press on a verse offers "Memorize this…" (VoiceOver: an action on each verse). A chapter ends in a link to the next one, a new chapter opens at its top, and the chapter last moved to in a book is offered ("Continue from John 5") when a link opens another.
 
 ### Stats
 - Streak, 30-day accuracy, verses memorized as three large New York numerals; below, weekly practice grid and badge medallions (engraved-style, gold when earned, `inkFaint` outline when locked and visible-by-design).
+- Practice grid: Monday-start week rows under weekday initials, the first and last rows padded so every day sits under its weekday (`src/services/stats/practice-grid.ts`). Missed days keep a `separator` outline, today carries an ink ring, and the count ("Practiced on 31 of the last 35 days") is the card's visible caption and its one VoiceOver label.
+- Lifetime: label-value rows (Reviews; the Recite to Unlock recitation and override counts once the lock has been used), stated without judgement (06 §2).
+- Badges are rows: medallion, the whole name, then how to earn it (locked) or the date it was earned. Each medallion has its own glyph, keyed by badge code in the `stats` catalog (30 / 100 / 365, I / II / III, an initial for the rest).
 
 ### Goal wizard (sheet)
 - Two steps, one screen each: **Passage → Plan**. Cancel/Back and Continue/Start memorizing stay in the sheet's bottom bar.
@@ -84,7 +99,10 @@ Type scale follows Apple's text styles; do not invent sizes.
   - The menus and chapter actions scroll with the verses; only the echo bar and buttons are pinned, so the list keeps its room on short windows (iPhone Duo opened, landscape) and at accessibility sizes, where the control rows wrap.
   - Licensed text (ESV) loads a chapter at a time through `services/bible`: a spinner while it loads; if it fails, a message in place of the verses with **Try again** and **Use the WEB instead**, and the menus stay usable.
   - VoiceOver: each row reads "Verse 16. ‹text›", its selected state and what a double-tap will do, and offers the custom actions "Start passage here" / "End passage here"; every change is announced ("John 3:16–18 selected").
-- **Plan.** Editable goal name, then verses, words, chunks and estimated days.
+- **Plan.** Editable goal name under a visible "Passage name" caption, then verses, words, chunks and estimated days. The passage step stays mounted underneath, so **Back** returns to the same chapter at the same place with nothing loaded again.
+- **Leaving.** Cancel, a swipe down or Android's back asks **Discard this passage?** (Discard / Keep editing) once the verses differ from the ones the sheet opened on, or the name was edited; untouched, it just closes. iOS presents the system confirmation dialog from the Cancel/Back button, which is a system button for that reason; Android uses the platform alert. While a plan is being worked out or a goal created, Cancel/Back is disabled and the sheet stays.
+- **Opening on a verse.** `/goal-wizard?bookId=Ps&chapter=23&verse=4` (plus an optional `translation` id) opens on that verse, selected and scrolled into view: the reader's "Memorize this…" uses it. The params are checked against the canon by `selectionFromParams`; anything else opens on John 1:1.
+- The book menu groups books under Old Testament and New Testament on iOS (a translation with one testament gets a plain list); Android's picker has no sections and lists them in canonical order.
 - Range logic is pure and unit-tested in `src/services/bible/selection.ts`.
 
 ### Lock setup & Unlock
@@ -92,6 +110,7 @@ Type scale follows Apple's text styles; do not invent sizes.
 
 ## 7. Iconography & illustration
 - SF Symbols throughout (book.closed, flame, checkmark.seal for memorized — seal filled gold).
+- Icons inside the app's own views come from `src/components/symbol.tsx` (`Symbol`: the SF Symbol on iOS, its Material Symbol on Android; a theme colour; grows with Dynamic Type; hidden from VoiceOver because the row or button carries the words). Never an emoji or a typed character (`+`, `›`, `✓`) as an icon. A link that opens another screen takes `disclosure` on `TextLink`: a chevron on iOS, none on Android. The widget's inline flame is the one exception (05 §1: typographic, no images).
 - Badges: custom typographic medallions — circled monogram/numeral with an engraved double-rule border, flat, no gradients or 3D.
 - No mascots. No stock-spiritual imagery (doves, sunbeams).
 
@@ -109,7 +128,40 @@ Type scale follows Apple's text styles; do not invent sizes.
 
 Nothing loops; nothing blocks input for >1.5s.
 
+Screens ask about Reduce Motion one way: `useMotion()` from `src/theme/motion.ts`, whose `reduce` is right on the first render and follows the setting while the app is open. Reanimated's entering / exiting animations already skip under it and need no flag; use `reduce` to choose the crossfade, to gate a `withTiming` or looping animation, or for `animated: !reduce` on a scroll.
+
 ## 9. Voice & copy
 - Sentence case everywhere. Verbs on buttons ("Practice", "Recite", "Review 3").
 - Encouraging, never saccharine, never guilt. Errors are factual and kind ("2 words slipped — they're marked below").
 - Scripture is always attributed (translation abbreviation after reference).
+- One sentence per screen body and per alert message where it fits; mechanics belong in the setup guide (Settings → How to set up Meno).
+- No developer wording on screen: no "simulator", "kill switch", "malformed", error codes or an exception's own message. Say what happened and what to do; the raw error goes to diagnostics.
+- Register: plain by default. The devotional line ("hidden in your heart", "The Word remains in you") is kept for the welcome screen and the moment something is memorized or unlocked; everywhere else state the fact ("Chunks you've memorized appear here"). No playful asides ("secret sauce", "ready to shine").
+
+### Glossary (one name per concept)
+
+User-facing copy uses these terms and no synonyms, in `en` and `es` together. Change a term here first, then everywhere it appears (locales, widgets, notifications, Siri, `.maestro/`).
+
+| Concept | English | Spanish | Not |
+|---|---|---|---|
+| What the user sets out to memorize (a `goal` in code) | passage | pasaje | goal, meta |
+| One day's piece of a passage (03 §5) | chunk | fragmento | part, section |
+| A single verse, and the unit reviews and stats count | verse | versículo | |
+| Adding a passage (Today link, Library button) | Add passage | Agregar pasaje | "+ Practice another passage" |
+| The wizard's first step | Choose a passage | Elige un pasaje | |
+| Fully learned (03 §1) | memorized | memorizado | mastered, learned |
+| The clean recitation on a second day that makes a chunk memorized | seal, sealed | sellar, sellado | |
+| Reciting the chunks learned so far as one passage (03 §5) | stitch | unir | seams |
+| Spaced repetition of memorized verses (03 §6) | review; a verse that held is "kept fresh" | repaso; "fresco" | |
+| Review health | fresh, fading, at risk | fresco, desvaneciéndose, en riesgo | |
+| The notifications feature and its Settings switch | Reminders | Recordatorios | quizzes, nudges |
+| Its three kinds (05 §2) | Daily reminder, Pop quiz, Streak reminder | Recordatorio diario, Prueba sorpresa, Recordatorio de racha | surprise quiz, nudge |
+| The phone lock feature (04) | Recite to Unlock (capitalised, no hyphens) | Recitar para desbloquear | recite-to-unlock |
+| The shield's primary button | Recite to unlock | Recitar para desbloquear | |
+| Leaving a shield without reciting | Override | Omitir | skip, bypass |
+| An app behind the lock | shielded app, shield | app bloqueada, bloqueo | blocked, locked |
+| The global off control (the "kill switch" of 04 §6) | Turn off and clear all shields now | Desactivar y quitar todos los bloqueos ahora | kill switch |
+| The lock where Screen Time is missing | isn't available on this device | no está disponible en este dispositivo | simulator, real iPhone |
+| The system's settings app, as opposed to Meno's Settings tab | iPhone Settings (Android: Settings) | Ajustes del iPhone | |
+
+Buttons in a session: **Continue** advances (never "Next round"); **Done for today** ends the session from a result (never "Finish"); **Try again**, **Keep going** and **Stop for today** as 03 §1 and §8 name them; **Done** closes a summary. Declining an optional step is **Not now**.

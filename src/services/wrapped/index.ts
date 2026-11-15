@@ -7,4 +7,4 @@ export {
   PERSONA_MIN_DAYS,
   ALSO_PERSONAS_MAX,
 } from '@/services/wrapped/persona';
-export { recapYearFor, isRecapSeason, firstSeasonCutoff } from '@/services/wrapped/season';
+export { recapYearFor, isRecapSeason, firstSeasonCutoff, pastRecapYears } from '@/services/wrapped/season';

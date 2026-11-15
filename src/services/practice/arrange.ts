@@ -112,3 +112,37 @@ export function gradeArrangement(round: ArrangeRound, placedOrder: number[]): nu
   }
   return Math.max(0, 1 - weightedErrors / n);
 }
+
+/**
+ * The answer area as slots: a tile index, or null where a tile was taken
+ * back out. Removing a tile leaves its slot open instead of closing the gap,
+ * so one misplaced phrase is fixed in two taps rather than by redoing
+ * everything after it.
+ */
+export type ArrangeSlots = readonly (number | null)[];
+
+/** Puts `tile` in the first open slot, or at the end when there is none. */
+export function placeTile(
+  slots: ArrangeSlots,
+  tile: number,
+): { slots: (number | null)[]; position: number } {
+  const open = slots.indexOf(null);
+  const position = open === -1 ? slots.length : open;
+  const next = [...slots];
+  next[position] = tile;
+  return { slots: next, position };
+}
+
+/** Takes the tile out of `position`. An open slot at the end is dropped. */
+export function removeTile(slots: ArrangeSlots, position: number): (number | null)[] {
+  const next = slots.map((tile, i) => (i === position ? null : tile));
+  while (next.length > 0 && next[next.length - 1] === null) next.pop();
+  return next;
+}
+
+/** The order to grade once every tile is placed; null while any slot is open. */
+export function arrangedOrder(round: ArrangeRound, slots: ArrangeSlots): number[] | null {
+  if (slots.length !== round.phrases.length) return null;
+  const order = slots.filter((tile): tile is number => tile !== null);
+  return order.length === slots.length ? order : null;
+}

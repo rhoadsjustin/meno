@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -19,25 +20,30 @@ import {
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
 import { RecapCard } from '@/features/wrapped/RecapCard';
 import { loadRecapView, type RecapView } from '@/features/wrapped/recap-view';
 import { ShareStage, type ShareFormat, type ShareStageHandle } from '@/features/wrapped/ShareStage';
+import { Button } from '@/components/button';
+import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import { shareGoalChallenge } from '@/services/challenges';
 import { markRecapSeen } from '@/services/db/repos/appFlags';
 import { getGoal } from '@/services/db/repos/goals';
 import { rescheduleAll } from '@/services/notifications';
 import type { CardId } from '@/services/wrapped';
-import { fonts, layout, radius, spacing, useThemeColors } from '@/theme';
+import { fonts, layout, radius, spacing, textStyle, useThemeColors } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
 /** Card content never spreads wider than this, even on the Duo's inner panel. */
 const CARD_MAX_WIDTH = 520;
@@ -46,16 +52,20 @@ export function WrappedScreen({ year }: { year: number }) {
   const colors = useThemeColors();
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const { t } = useTranslation(['wrapped', 'common']);
-  const { width, height } = useWindowDimensions();
-  const { sides } = useContentLayout();
+  const { width } = useWindowDimensions();
+  const { sides, twoPane } = useContentLayout();
   // The pager's own width: a page is as wide as its pane, not the window.
   const [pagerWidth, setPagerWidth] = useState(0);
   const { bottom } = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
+  const { reduce: reduceMotion } = useMotion();
   const closeIcon = useBarIcon('xmark', 'close');
   const shareIcon = useBarIcon('square.and.arrow.up', 'share');
 
   const [view, setView] = useState<RecapView | null>(null);
+  // A load that threw, kept apart from "still loading" (`view === null`).
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by Try again to run the load once more.
+  const [attempt, setAttempt] = useState(0);
   const [index, setIndex] = useState(0);
   const [sharing, setSharing] = useState(false);
   const list = useRef<FlatList<CardId>>(null);
@@ -70,11 +80,11 @@ export function WrappedScreen({ year }: { year: number }) {
         // Seen: the December notice has nothing left to announce.
         if (v.recap.eligible) void markRecapSeen(year).then(rescheduleAll);
       })
-      .catch(() => live && setView(null));
+      .catch(() => live && setLoadFailed(true));
     return () => {
       live = false;
     };
-  }, [year]);
+  }, [year, attempt]);
 
   const cards = useMemo(() => view?.recap.cards ?? [], [view]);
   const current = cards[index];
@@ -96,6 +106,14 @@ export function WrappedScreen({ year }: { year: number }) {
     [cards.length],
   );
 
+  // For VoiceOver's stepping, further down.
+  const indexNow = useRef(index);
+  useEffect(() => {
+    indexNow.current = index;
+  }, [index]);
+  const cardViews = useRef(new Map<number, ViewInstance>());
+  const steppedByAction = useRef(false);
+
   // A light tick per card; a success when the summary arrives (07 §8).
   const lastIndex = useRef(0);
   useEffect(() => {
@@ -103,8 +121,24 @@ export function WrappedScreen({ year }: { year: number }) {
     lastIndex.current = index;
     if (cards[index] === 'summary') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     else void Haptics.selectionAsync();
-    AccessibilityInfo.announceForAccessibility(t('screen.position', { index: index + 1, total: cards.length }));
-  }, [index, view, cards, t]);
+    if (!steppedByAction.current) {
+      // Swiped or tapped: say where the pager landed.
+      AccessibilityInfo.announceForAccessibility(t('screen.position', { index: index + 1, total: cards.length }));
+      return;
+    }
+    // Stepped with VoiceOver's adjust gesture: focus was on the card that
+    // just scrolled away, so move it to the new one, which reads itself and
+    // its position (its accessibility value) — no separate announcement.
+    steppedByAction.current = false;
+    const timer = setTimeout(
+      () => {
+        const card = cardViews.current.get(index);
+        if (card) AccessibilityInfo.sendAccessibilityEvent(card, 'focus');
+      },
+      reduceMotion ? 50 : 400,
+    );
+    return () => clearTimeout(timer);
+  }, [index, view, cards, t, reduceMotion]);
 
   const go = useCallback(
     (to: number) => {
@@ -115,14 +149,32 @@ export function WrappedScreen({ year }: { year: number }) {
     [cards.length, reduceMotion],
   );
 
+  // VoiceOver's increment / decrement, from whichever card has focus. It
+  // steps from the page on screen, not from the focused card's own place:
+  // focus can stay on a card that has scrolled away, and stepping from that
+  // one would ask for the page already showing.
+  const step = useCallback(
+    (by: 1 | -1) => {
+      const to = indexNow.current + by;
+      if (to < 0 || to >= cards.length) return;
+      steppedByAction.current = true;
+      go(to);
+    },
+    [cards.length, go],
+  );
+
   const share = useCallback(
     async (format: ShareFormat) => {
       if (!current || sharing) return;
       setSharing(true);
+      // The capture takes a moment before the share sheet appears.
+      announce(t('screen.sharing'));
       try {
         await stage.current?.share(current, format);
       } catch {
-        AccessibilityInfo.announceForAccessibility(t('screen.shareFailed'));
+        // An alert, not only an announcement: without it a sighted person
+        // taps a format and nothing happens. VoiceOver reads the alert.
+        Alert.alert(t('screen.shareFailedTitle'), t('screen.shareFailed'));
       } finally {
         setSharing(false);
       }
@@ -159,28 +211,51 @@ export function WrappedScreen({ year }: { year: number }) {
 
   if (!view) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.surface }]}>
+      <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
         {header}
-        <ActivityIndicator color={colors.inkFaint} />
+        {loadFailed ? (
+          <Unavailable
+            kind="failed"
+            layout="fill"
+            title={t('screen.loadFailedTitle')}
+            message={t('common:tryAgainSoon')}
+            action={{
+              label: t('common:retry'),
+              onPress: () => {
+                setLoadFailed(false);
+                setAttempt((n) => n + 1);
+              },
+            }}
+          />
+        ) : (
+          // Word counts read passage text, which may be a fetch.
+          <LoadingState />
+        )}
       </View>
     );
   }
 
   if (!view.recap.eligible) {
     return (
-      <View style={[styles.center, sides, { backgroundColor: colors.surface }]}>
+      <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
         {header}
-        <Text accessibilityRole="header" style={[styles.notYetTitle, { color: colors.ink, fontFamily: fonts?.scripture }]}>
-          {t('screen.notYetTitle')}
-        </Text>
-        <Text style={[styles.notYetBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>{t('notYet')}</Text>
+        {/* The title keeps the recap's New York voice. Close stays in the
+            bar; the button is the way to go and do what opens the recap. */}
+        <Unavailable
+          kind="empty"
+          layout="fill"
+          titleFont="scripture"
+          title={t('screen.notYetTitle')}
+          message={t('notYet')}
+          action={{ label: t('screen.practiceToday'), onPress: closeModal }}
+        />
       </View>
     );
   }
 
-  // Wider than tall (iPhone Duo opened): cards on one side, sharing on the
-  // other, as even halves that keep the crease between them when folded.
-  const twoPane = width >= layout.wideBreakpoint && width > height;
+  // `twoPane` — wider than tall (iPhone Duo opened): cards on one side,
+  // sharing on the other, as even halves that keep the crease between them
+  // when folded.
   const page = pagerWidth || width;
 
   const ticks = (
@@ -192,14 +267,11 @@ export function WrappedScreen({ year }: { year: number }) {
   );
 
   const inviteButton = view.passage && (
-    <Pressable
-      accessibilityRole="button"
+    <Button
+      label={t('cards.summary.invite', { next: year + 1 })}
       onPress={() => void invite()}
-      style={[styles.invite, { backgroundColor: colors.lapis }]}>
-      <Text style={[styles.inviteText, { fontFamily: fonts?.ui }]}>
-        {t('cards.summary.invite', { next: year + 1 })}
-      </Text>
-    </Pressable>
+      style={styles.invite}
+    />
   );
 
   const pager = (
@@ -222,18 +294,25 @@ export function WrappedScreen({ year }: { year: number }) {
               showsVerticalScrollIndicator={false}>
               <View
                 style={styles.cardColumn}
+                ref={(node) => {
+                  if (node) cardViews.current.set(i, node);
+                  else cardViews.current.delete(i);
+                }}
                 accessible
-                accessibilityHint={t('screen.position', { index: i + 1, total: cards.length })}
+                // A value, not a hint: hints can be switched off.
+                accessibilityValue={{ text: t('screen.position', { index: i + 1, total: cards.length }) }}
                 accessibilityActions={[
                   { name: 'increment', label: t('screen.next') },
                   { name: 'decrement', label: t('screen.previous') },
                 ]}
-                onAccessibilityAction={(e) => go(e.nativeEvent.actionName === 'increment' ? i + 1 : i - 1)}
+                onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
                 accessibilityRole="adjustable">
                 {i === index ? (
                   <Animated.View
                     key={`on-${i}`}
                     style={styles.fill}
+                    // Under Reduce Motion the card still arrives, as the
+                    // 200ms crossfade of 07 §8, so the default skip is off.
                     entering={(reduceMotion ? FadeIn.duration(200) : FadeInDown.duration(400)).reduceMotion(
                       ReduceMotion.Never,
                     )}>
@@ -262,16 +341,15 @@ export function WrappedScreen({ year }: { year: number }) {
         {t('screen.shareHeading')}
       </Text>
       {(['story', 'square'] as const).map((format) => (
-        <Pressable
+        <Button
           key={format}
-          accessibilityRole="button"
-          disabled={sharing}
+          variant="secondary"
+          label={t(format === 'story' ? 'screen.storyFormat' : 'screen.postFormat')}
+          accessibilityLabel={sharing ? t('screen.sharing') : undefined}
+          // The capture takes a moment (layout, two frames, the image).
+          busy={sharing}
           onPress={() => void share(format)}
-          style={[styles.shareButton, { borderColor: colors.separator, backgroundColor: colors.surfaceRaised }]}>
-          <Text style={[styles.shareButtonText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t(format === 'story' ? 'screen.storyFormat' : 'screen.postFormat')}
-          </Text>
-        </Pressable>
+        />
       ))}
       {current === 'summary' && inviteButton}
     </View>
@@ -286,6 +364,23 @@ export function WrappedScreen({ year }: { year: number }) {
         {pager}
         {sharePane}
       </FoldAwareRow>
+      {/* One pane: the bar's menu can only dim while the image is made, so
+          say so here. Two panes show it on the share buttons instead. */}
+      {sharing && !twoPane && (
+        <View
+          pointerEvents="none"
+          style={[styles.sharingNote, { bottom: Math.max(bottom, spacing.xl) }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants">
+          <View
+            style={[styles.sharingPill, { backgroundColor: colors.surfaceRaised, borderColor: colors.separator }]}>
+            <ActivityIndicator color={colors.inkFaint} />
+            <Text style={[styles.sharingText, { color: colors.ink, fontFamily: fonts?.ui }]}>
+              {t('screen.sharing')}
+            </Text>
+          </View>
+        </View>
+      )}
       <ShareStage ref={stage} view={view} scheme={scheme} />
     </View>
   );
@@ -295,18 +390,20 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1 },
   pager: { flex: 1, overflow: 'hidden' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: layout.screenMargin },
-  notYetTitle: { fontSize: 26, fontWeight: '600', marginBottom: spacing.sm, textAlign: 'center' },
-  notYetBody: { fontSize: 17, lineHeight: 24, textAlign: 'center', maxWidth: 360 },
   sharePane: { flex: 1, justifyContent: 'center', gap: spacing.md, paddingHorizontal: layout.screenMargin },
   shareHeading: { fontSize: 22, fontWeight: '600', marginBottom: spacing.sm },
-  shareButton: {
+  sharingNote: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  sharingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    maxWidth: '90%',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
     borderRadius: radius.capsule,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
   },
-  shareButtonText: { fontSize: 17, fontWeight: '600' },
+  sharingText: { ...textStyle.subheadline, flexShrink: 1 },
   ticks: {
     flexDirection: 'row',
     gap: spacing.xs,
@@ -337,12 +434,8 @@ const styles = StyleSheet.create({
   tapForward: { right: 0, width: '67%' },
   invite: {
     marginTop: spacing.lg,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xxl,
-    alignItems: 'center',
     width: '100%',
     maxWidth: CARD_MAX_WIDTH,
   },
-  inviteText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
 });

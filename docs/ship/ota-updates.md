@@ -17,7 +17,7 @@ binary to change.
 - When the user returns to Meno, it checks again (at most every 15 minutes), so
   a fix downloads without waiting for iOS to evict the app.
 - Settings shows **Update ready · Restart Meno now** while one is waiting, and
-  the footer reads **Meno 1.5.0, updated Oct 25** once one is running.
+  the Version row under About reads **1.5.0, updated Oct 25** once one is running.
 - A **critical** update (`--critical`, or any rollback) also asks once:
   _"Meno has a fix ready — Restart / Later."_ It asks only on a top-level tab,
   never during practice, review, the unlock quiz, onboarding or a sheet.
@@ -91,8 +91,8 @@ would crash the older one. `npm run ota` catches that, but bumping avoids it.
 
 3. **Verify on your iPhone** (a build from the App Store or TestFlight):
    fully close Meno and reopen it, wait a few seconds, then close and reopen it
-   once more. Or open Settings and tap **Restart Meno now**. The footer then
-   shows today's date. For adoption and crash rate:
+   once more. Or open Settings and tap **Restart Meno now**. The Version row
+   then shows today's date. For adoption and crash rate:
 
    ```bash
    npx eas-cli@latest update:insights
@@ -177,8 +177,8 @@ validated on iPhone 17 and every iPhone Duo pose.
    ```
 
 3. **Fully close and reopen Meno.** Settings shows **Update ready**, or a
-   critical update offers the restart on a tab. Restart, and the footer shows
-   the date. To rehearse a rollback, use the rollback command above with
+   critical update offers the restart on a tab. Restart, and the Version row
+   shows the date. To rehearse a rollback, use the rollback command above with
    `--channel ota-qa`.
 
 4. **Prebuild again without the variable** when done. Otherwise the next

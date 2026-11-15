@@ -13,7 +13,11 @@ export default {
     stats: 'Stats',
     settings: 'Settings',
   },
-  migrationError: 'Something went wrong preparing your data: {{message}}',
+  // A failed database migration at launch. The exception goes to diagnostics.
+  migrationError: {
+    title: 'Meno couldn’t open your data',
+    body: 'Your verses and progress are still on this device. Try again, or close Meno and reopen it.',
+  },
   recovery: {
     title: 'Something went wrong.',
     body: 'Your verses and progress are safe on this device.',

@@ -9,10 +9,11 @@ import { SectionList, StyleSheet, View } from 'react-native';
 
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { ScreenHeader } from '@/components/screen-header';
+import { Unavailable } from '@/components/unavailable';
 import { useCatalogSections } from '@/features/goals/translation-catalog';
 import { useTranslationChoice } from '@/features/goals/translation-choice';
 import { closePicker, type PickerSection } from '@/features/goals/translation-picker-nav';
-import { GroupFooter, GroupHeader, TranslationRow } from '@/features/goals/translation-rows';
+import { GroupFooter, TranslationRow } from '@/features/goals/translation-rows';
 import { useTranslation } from '@/i18n/react';
 import { useThemeColors, layout, spacing } from '@/theme';
 
@@ -32,7 +33,9 @@ export function LanguageTranslations() {
         ? [
             {
               key: section.languageId,
-              title: t('picker.translationCount', { count: section.translations.length }),
+              // Not drawn: the bar already names the language, and the row
+              // that opened this screen gave the count.
+              title: section.title,
               data: section.translations.map((translation) => ({
                 kind: 'translation',
                 translation,
@@ -40,7 +43,7 @@ export function LanguageTranslations() {
             },
           ]
         : [],
-    [section, t],
+    [section],
   );
 
   const pick = useCallback(
@@ -69,14 +72,14 @@ export function LanguageTranslations() {
             />
           ) : null
         }
-        renderSectionHeader={({ section: s }) => <GroupHeader title={s.title} />}
-        stickySectionHeadersEnabled={false}
+        // The language was pruned from the catalogue while this screen was up.
+        ListEmptyComponent={<Unavailable kind="empty" title={t('picker.empty')} />}
         ListFooterComponent={<GroupFooter>{t('picker.footnote')}</GroupFooter>}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.content,
           contentColumn,
-          { paddingBottom: insets.bottom + spacing.xxxl },
+          { paddingTop: spacing.lg, paddingBottom: insets.bottom + spacing.xxxl },
         ]}
       />
     </View>

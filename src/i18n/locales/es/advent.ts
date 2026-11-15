@@ -7,6 +7,9 @@ export default {
   startShort: 'O uno más corto: {{passage}}',
   dismiss: 'Este año no',
   dismissed: 'Plan de Adviento oculto',
+  dismissedSpoken: 'Plan de Adviento oculto. Puedes deshacerlo.',
+  undo: 'Deshacer',
+  restored: 'Plan de Adviento restaurado',
   goalTitle: 'Adviento: {{passage}}',
   progress: {
     before: 'El Adviento empieza el domingo',

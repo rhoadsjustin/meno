@@ -5,8 +5,9 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_TOUCH_TARGET } from '@/components/button';
 import { useTranslation } from '@/i18n/react';
 import { displayTokens, hashSeed, mulberry32, selectBlanks, shuffle } from '@/services/practice';
 import { useThemeColors, fonts, radius, spacing } from '@/theme';
@@ -62,9 +63,33 @@ export function BlanksRound({
     if (state === 'correct') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     else void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
+    // VoiceOver: the haptic alone does not say whether the answer was right
+    // or where the next blank is. The words keep their one-by-one reading
+    // order; this only speaks the result and the lead-in to the next blank.
+    const word = tokens[activeIndex].word;
+    const said: string[] = [
+      state === 'correct'
+        ? t('blanks.saidCorrect')
+        : state === 'missed'
+          ? t('blanks.saidMissed', { word })
+          : t('blanks.saidWrong', { word }),
+    ];
+
     if (cursor + 1 < blankIndices.length) {
+      const nextIndex = blankIndices[cursor + 1];
+      // Every earlier blank is answered by now, so these are all real words.
+      const words = tokens
+        .slice(Math.max(0, nextIndex - 4), nextIndex)
+        .map((tok) => tok.word)
+        .join(' ');
+      const place = { index: cursor + 2, total: blankIndices.length };
+      said.push(
+        words ? t('blanks.nextBlankAfter', { ...place, words }) : t('blanks.nextBlank', place),
+      );
+      AccessibilityInfo.announceForAccessibility(said.join(' '));
       setCursor(cursor + 1);
     } else {
+      AccessibilityInfo.announceForAccessibility(said.join(' '));
       const values = blankIndices.map((i) => next[i]);
       const correct = values.filter((s) => s === 'correct').length;
       onDone({
@@ -117,6 +142,32 @@ export function BlanksRound({
                   ? t('blanks.revealHint')
                   : undefined
               }
+              // VoiceOver: answer in place from the actions rotor, without
+              // leaving the verse to find the chips below it.
+              accessibilityActions={
+                isActive && !resolved
+                  ? [
+                      ...choices.map((choice, n) => ({
+                        name: `choice-${n}`,
+                        label: t('blanks.answerWith', { choice }),
+                      })),
+                      { name: 'reveal', label: t('blanks.reveal') },
+                    ]
+                  : undefined
+              }
+              onAccessibilityAction={
+                isActive && !resolved
+                  ? (e) => {
+                      const name = e.nativeEvent.actionName;
+                      if (name === 'reveal') {
+                        settle('missed');
+                        return;
+                      }
+                      const choice = choices[Number(name.replace('choice-', ''))];
+                      if (choice !== undefined) settle(choice === tok.word ? 'correct' : 'wrong');
+                    }
+                  : undefined
+              }
               onLongPress={isActive ? () => settle('missed') : undefined}
               style={[
                 styles.pill,
@@ -147,7 +198,11 @@ export function BlanksRound({
               accessibilityLabel={t('blanks.choice', { choice })}
               accessibilityHint={t('blanks.choiceHint')}
               onPress={() => settle(choice === tokens[activeIndex].word ? 'correct' : 'wrong')}
-              style={[styles.chip, { borderColor: colors.lapis }]}>
+              style={({ pressed }) => [
+                styles.chip,
+                { borderColor: colors.lapis },
+                pressed && styles.pressed,
+              ]}>
               <Text style={[styles.chipText, { color: colors.lapis, fontFamily: fonts?.ui }]}>
                 {choice}
               </Text>
@@ -181,8 +236,14 @@ const styles = StyleSheet.create({
   chip: {
     borderWidth: 1.5,
     borderRadius: radius.capsule,
+    // A wrong chip is graded as a miss, so each is a full touch target.
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
+  pressed: { opacity: 0.6 },
   chipText: { fontSize: 17, fontWeight: '600' },
 });

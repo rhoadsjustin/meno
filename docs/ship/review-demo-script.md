@@ -49,7 +49,7 @@ Times are targets, not limits. Pause a beat on each screen so the reviewer can r
 | 0:48 | Tap **Override** | Shield clears instantly; Safari opens. No quiz, no delay, no message. | The escape hatch is one tap and always present. |
 | 0:55 | Back in Meno: Settings → Recite to Unlock → Continue → continue past the picker (your selection is kept) → **Turn on** → Done | Same flow, now short. | Re-arms the shield for the second path. |
 | 1:05 | Open Safari again, tap **Recite to unlock** on the shield | Shield closes and a time-sensitive notification appears: the verse reference with "Tap here to recite and continue." Tap it. | iOS does not let a shield open an app, so the notification is the sanctioned bounce. |
-| 1:12 | Recite on Meno's unlock screen, or tap Type and type it | Verse reference, mic button, Type toggle, **Override** quietly at the bottom. Pass at 85% or better. | Friction with grace: one retry ("Close — a few words slipped. One more go?"), and Override stays on screen throughout. |
+| 1:12 | Recite on Meno's unlock screen, or tap Type and type it | Verse reference, mic button, Type toggle, **Override** at the top right, where the keyboard never covers it. Pass at 85% or better. | Friction with grace: one retry ("Close — a few words slipped. One more go?"), and Override stays on screen throughout. |
 | 1:25 | After the success state, open Safari | Opens with no shield. | A recitation clears the shield. |
 | 1:32 | Meno → Settings → **Turn off and clear all shields now** → open Safari | No shield, and the Recite to Unlock row reads as off. | The kill switch works even if speech or permissions are broken. |
 | 1:40 | Stop recording | | |

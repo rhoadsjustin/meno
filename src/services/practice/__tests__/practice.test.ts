@@ -6,6 +6,7 @@ import {
   currentMode,
   deserializeSession,
   dropTier,
+  firstLetterList,
   firstLetters,
   gradeArrangement,
   isComplete,
@@ -24,6 +25,14 @@ import {
 
 const phil11 =
   'Paul and Timothy, servants of Jesus Christ; To all the saints in Christ Jesus who are at Philippi, with the overseers and servants:';
+
+describe('firstLetterList', () => {
+  it('gives one letter per word, without punctuation, for a screen reader', () => {
+    expect(firstLetterList('“Come!” he said.')).toEqual(['C', 'h', 's']);
+    expect(firstLetterList('Él vino por testimonio,')).toEqual(['É', 'v', 'p', 't']);
+    expect(firstLetterList('')).toEqual([]);
+  });
+});
 
 describe('firstLetters', () => {
   it('reduces words to first letters, keeping punctuation', () => {

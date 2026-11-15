@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applyLocale } from '@/i18n';
 
 import {
+  challengeShareContent,
   challengeShareMessage,
+  challengeShareText,
   challengeTargetDate,
   ChallengeLinkError,
   encodeChallengeUrl,
@@ -11,6 +13,7 @@ import {
   isPassageTitle,
   parseChallengeParams,
   parseChallengeUrl,
+  targetDateStanding,
   toIsoDate,
   type Challenge,
 } from '@/services/challenges/codec';
@@ -123,6 +126,56 @@ describe('challenge codec', () => {
     expect(message).toContain(encodeChallengeUrl(phil));
     // The message must stay text-free: nothing verse-like beyond the reference.
     expect(message.toLowerCase()).not.toContain('rejoice in the lord');
+  });
+
+  it('hands iOS the link as its own item and keeps it in the text on Android', () => {
+    const url = encodeChallengeUrl(phil);
+    const ios = challengeShareContent(phil, 'ios');
+    expect(ios.url).toBe(url);
+    expect(ios.message).toBe(challengeShareText(phil));
+    expect(ios.message).not.toContain('http');
+    expect(ios.message).toContain('Philippians 4:4–9');
+    expect(ios.message).toContain('“Peace by Advent”');
+    expect(ios.message).toContain('December 25, 2026');
+
+    const android = challengeShareContent(phil, 'android');
+    expect(android.url).toBeUndefined();
+    expect(android.message).toBe(challengeShareMessage(phil));
+    expect(android.message).toContain(url);
+  });
+
+  it('says why a link failed, so the join screen can offer a next step', () => {
+    const good = { v: '1', c: 'ABCD2345', t: 'web', s: 'Phil.4.4', e: 'Phil.4.9' };
+    const reason = (params: Record<string, string>) => {
+      try {
+        parseChallengeParams(params);
+      } catch (err) {
+        return err instanceof ChallengeLinkError ? err.reason : 'not a link error';
+      }
+      return 'parsed';
+    };
+    expect(reason(good)).toBe('parsed');
+    expect(reason({ ...good, v: '2' })).toBe('newerVersion');
+    expect(reason({ ...good, v: '0' })).toBe('malformed');
+    expect(reason({ ...good, t: 'msg' })).toBe('unknownTranslation');
+    expect(reason({ ...good, e: 'Phil.9.1' })).toBe('passageNotFound');
+    expect(reason({ ...good, e: 'Col.1.1' })).toBe('multipleBooks');
+  });
+
+  it('classifies a target date against today and the day estimate', () => {
+    expect(targetDateStanding(undefined, '2026-12-01', 5)).toBe('none');
+    // Last year's link: the date is behind us.
+    expect(targetDateStanding('2025-12-25', '2026-12-01', 5)).toBe('past');
+    expect(targetDateStanding('2026-11-30', '2026-12-01', 5)).toBe('past');
+    // Due today is not past, but nothing fits before it.
+    expect(targetDateStanding('2026-12-01', '2026-12-01', 5)).toBe('tight');
+    expect(targetDateStanding('2026-12-25', '2026-12-21', 5)).toBe('tight');
+    // Exactly enough days, across a month and a year boundary.
+    expect(targetDateStanding('2026-12-25', '2026-12-20', 5)).toBe('reachable');
+    expect(targetDateStanding('2027-01-02', '2026-12-28', 5)).toBe('reachable');
+    expect(targetDateStanding('2027-01-02', '2026-12-29', 5)).toBe('tight');
+    // Across a daylight-saving change the count is still whole days.
+    expect(targetDateStanding('2026-03-10', '2026-03-05', 5)).toBe('reachable');
   });
 
   it('omits the quoted name when the title is just the passage', () => {

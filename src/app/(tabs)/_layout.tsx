@@ -1,11 +1,14 @@
 import { NativeTabs } from 'expo-router/native-tabs';
 
 import { useTranslation } from '@/i18n/react';
+import { useThemeColors } from '@/theme';
 
 export default function TabsLayout() {
   const { t } = useTranslation('app');
+  // The one accent (docs/07 §3): the selected tab is lapis, not system blue.
+  const colors = useThemeColors();
   return (
-    <NativeTabs>
+    <NativeTabs tintColor={colors.lapis}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>{t('tabs.today')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'book.closed', selected: 'book.closed.fill' }} md="menu_book" />

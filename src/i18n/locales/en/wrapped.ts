@@ -110,12 +110,21 @@ export default {
     previous: 'Previous card',
     shareFailed: 'This card couldn’t be turned into an image. Try again.',
     notYetTitle: 'Not quite yet',
+    practiceToday: 'Practice today',
+    loadFailedTitle: 'Couldn’t load your Year in the Word',
+    shareFailedTitle: 'Couldn’t share this card',
+    sharing: 'Preparing the image…',
   },
   /** The Today card before there's enough to show (docs/10 §4). */
   notYet: 'Your Year in the Word opens once you’ve practiced on 3 days.',
   todayCard: 'Your {{year}} in the Word is ready',
   todayCardHint: 'A look back at the Scripture you carried',
+  todayCardDismiss: 'Hide this card',
+  todayCardDismissed: 'Hidden. Your Year in the Word is still on the Stats tab.',
+  notYetDismissed: 'Hidden',
   statsRow: '{{year}} in the Word',
+  /** Stats group listing finished years' recaps (docs/10 §5.4). */
+  pastYears: 'Year in the Word',
   notification: {
     title: 'Your {{year}} in the Word',
     body: 'A look back at the Scripture you carried this year.',

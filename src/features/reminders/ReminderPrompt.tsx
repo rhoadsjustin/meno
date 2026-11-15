@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { announce } from '@/components/screen-reader';
+import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { dismissReminderPrompt, reminderPromptDismissed } from '@/services/db/repos/appFlags';
 import { setNotificationsEnabled } from '@/services/notifications';
-import { useThemeColors, fonts, spacing } from '@/theme';
+import { useThemeColors, fonts, spacing, textStyle } from '@/theme';
 
 /**
  * Today's one gentle prompt for someone with a passage under way whose
  * reminders are off, or on but blocked by iOS. Shown until answered or
  * closed, then never again (06 §6: no nagging, no guilt) — and never at all
  * for someone whose reminders have ever been getting through. Settings →
- * Reminders keeps saying where things stand after that.
+ * Reminders keeps saying where things stand after that, and "Not now" says
+ * so: a line takes the card's place for the rest of the session, so the
+ * prompt doesn't vanish for good without a word.
  */
 export function ReminderPrompt({ eligible }: { eligible: boolean }) {
   const colors = useThemeColors();
@@ -34,10 +38,14 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
     };
   }, []);
 
+  // Closed just now, from this card (not on an earlier day).
+  const [declined, setDeclined] = useState(false);
   const dismiss = useCallback(() => {
     setDismissed(true);
+    setDeclined(true);
+    announce(t('prompt.dismissed'));
     void dismissReminderPrompt();
-  }, []);
+  }, [t]);
 
   // Reminders getting through answers the prompt for good, whether they
   // were turned on from here or anywhere else.
@@ -55,7 +63,15 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
     };
   }, [working]);
 
-  if (!eligible || dismissed !== false || !status || status.overall === 'on') return null;
+  if (!eligible || !status || status.overall === 'on') return null;
+  if (declined) {
+    return (
+      <Text style={[styles.dismissed, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+        {t('prompt.dismissed')}
+      </Text>
+    );
+  }
+  if (dismissed !== false) return null;
 
   const blocked = status.overall === 'blocked';
   // iOS shows its prompt only once; after a "Don't Allow" the way back is
@@ -77,26 +93,26 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
       </Text>
       <View style={styles.actions}>
         {viaIphoneSettings ? (
-          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => void Linking.openSettings()}>
-            <Text style={[styles.action, text, { color: colors.lapis }]}>{t('prompt.openSettings')}</Text>
-          </Pressable>
+          <TextLink
+            accessibilityRole="link"
+            weight="semibold"
+            label={t('prompt.openSettings')}
+            onPress={() => void Linking.openSettings()}
+          />
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => void setNotificationsEnabled(true)}>
-            <Text style={[styles.action, text, { color: colors.lapis }]}>
-              {blocked ? t('prompt.allow') : t('prompt.turnOn')}
-            </Text>
-          </Pressable>
+          <TextLink
+            weight="semibold"
+            label={blocked ? t('prompt.allow') : t('prompt.turnOn')}
+            onPress={() => void setNotificationsEnabled(true)}
+          />
         )}
-        <Pressable
-          accessibilityRole="button"
+        <TextLink
+          tone="quiet"
+          weight="semibold"
+          label={t('common:notNow')}
           accessibilityHint={t('prompt.dismissHint')}
-          hitSlop={8}
-          onPress={dismiss}>
-          <Text style={[styles.action, text, { color: colors.inkFaint }]}>{t('common:notNow')}</Text>
-        </Pressable>
+          onPress={dismiss}
+        />
       </View>
     </Card>
   );
@@ -104,13 +120,15 @@ export function ReminderPrompt({ eligible }: { eligible: boolean }) {
 
 const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },
-  body: { fontSize: 15, lineHeight: 20 },
+  body: textStyle.subheadline,
+  dismissed: { ...textStyle.footnote, paddingHorizontal: spacing.xs },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.md,
+    columnGap: spacing.lg,
+    // The links are 44pt targets: their own height is the gap above them
+    // and between wrapped rows, and the card's padding absorbs the rest.
+    marginBottom: -spacing.md,
   },
-  action: { fontSize: 15, fontWeight: '600' },
 });

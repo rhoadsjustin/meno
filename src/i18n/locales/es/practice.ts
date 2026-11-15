@@ -15,7 +15,6 @@ export default {
   },
   chunkProgress: 'Fragmento {{index}} de {{total}} · {{tier}}',
   errors: {
-    goalNotFound: 'No se encontró la meta',
     allMemorized: 'Ya memorizaste todos los fragmentos de este pasaje. ¡Bien hecho!',
   },
   plan: {
@@ -57,6 +56,12 @@ export default {
     header: '{{reference}} · {{tier}}',
     sealingNote: 'Sellando {{reference}} · un intento limpio lo deja memorizado',
   },
+  leave: {
+    title: '¿Salir de esta ronda?',
+    message: 'Lo que escribiste o recitaste en esta ronda no se conservará.',
+    stay: 'Quedarme',
+    leave: 'Salir',
+  },
   restingTitle: 'A {{reference}} le falta un día para quedar sellado',
   restingBody:
     'Ya superaste {{tier}} hoy. Para quedar memorizado necesita un intento limpio en dos días distintos, así que este descansa hasta mañana.',
@@ -76,20 +81,18 @@ export default {
     notQuiteMarked: 'Todavía no — abajo están marcadas las palabras que fallaron',
     notQuiteRetry: 'Todavía no — intenta esta ronda otra vez',
     sealsTomorrowAlmost:
-      'Tu intento limpio de hoy sigue contando. Para quedar memorizado necesita un intento limpio en dos días distintos — vuelve mañana y este quedará sellado.',
+      'Tu intento limpio de hoy sigue contando. Vuelve mañana para sellarlo.',
     sealsTomorrowPass:
-      'Ya cuenta el intento de hoy. Para quedar memorizado necesita un intento limpio en dos días distintos — vuelve mañana y este quedará sellado.',
+      'El intento limpio de hoy ya cuenta. Vuelve mañana para sellarlo.',
     needsCleanPass:
-      'Estuvo cerca, pero no cuenta para memorizarlo: sellar {{reference}} requiere una recitación limpia en dos días distintos, y la de hoy todavía no cuenta. Inténtalo otra vez ahora, o detente aquí y vuelve más tarde.',
+      'Estuvo cerca, pero no cuenta para memorizarlo: sellar {{reference}} requiere una recitación limpia. Inténtalo otra vez ahora, o para por hoy.',
     almostAtType:
-      'Suficiente para avanzar a {{tier}}. Pero no cuenta para memorizarlo — eso requiere un intento limpio en dos días distintos.',
+      'Suficiente para avanzar a {{tier}}, pero no cuenta para memorizarlo.',
     restPoint:
       'Este es un buen lugar para detenerte hoy. {{first}}, {{second}} y {{third}} te estarán esperando — o sigue si tienes tiempo.',
     suggestDrop:
-      '¿Quieres reforzar la base? Baja un nivel — sin penalización, y {{tier}} te estará esperando cuando vuelvas a subir.',
-    finish: 'Terminar',
+      'Bajar un nivel puede ayudar — sin penalización, y {{tier}} te estará esperando cuando vuelvas a subir.',
     doneForToday: 'Listo por hoy',
-    nextRound: 'Siguiente ronda',
     keepGoing: 'Seguir',
     keepGoingHint: 'Continúa con {{tier}}',
     stopForToday: 'Parar por hoy',
@@ -105,7 +108,7 @@ export default {
     memorized: 'Memorizaste {{reference}}',
     sealsTomorrow: 'Siguiente: una recitación limpia mañana lo sella como memorizado.',
     needsCleanPass:
-      'Hiciste todos los pasos, pero {{reference}} todavía no está sellado: la última recitación estuvo cerca, pero no fue limpia. La próxima vez sigues en {{tier}} — solo una recitación limpia cuenta para memorizarlo.',
+      'Hiciste todos los pasos, pero {{reference}} todavía no está sellado: la última recitación estuvo cerca, pero no fue limpia. La próxima vez sigues en {{tier}}.',
     pickUp: 'La próxima vez sigues en {{tier}}.',
   },
   wordFeedback: {
@@ -115,6 +118,7 @@ export default {
   dissolution: {
     memorizedLabel: 'Memorizaste {{reference}} — ahora el texto vive en ti.',
     dissolvingLabel: 'El versículo se desvanece mientras pasa a tu memoria.',
+    skipHint: 'Omite la animación.',
     sealNote: 'Guardado en tu corazón.',
   },
   read: {
@@ -122,7 +126,7 @@ export default {
     done: 'Ya lo leí dos veces',
   },
   firstLetters: {
-    label: 'Primeras letras del pasaje',
+    spoken: 'Primeras letras del pasaje: {{letters}}',
     hint: 'Recita a partir de las letras — en voz alta o mentalmente — y luego compruébalo.',
     reveal: 'Mostrar',
     howDidItGo: '¿Cómo te fue?',
@@ -138,6 +142,13 @@ export default {
     revealHint: 'Mantén presionado para mostrar la palabra — contará como fallada',
     choice: 'Opción: {{choice}}',
     choiceHint: 'Toca dos veces para llenar el espacio actual',
+    answerWith: 'Responder: {{choice}}',
+    reveal: 'Mostrar la palabra (cuenta como fallada)',
+    saidCorrect: 'Correcto.',
+    saidWrong: 'Incorrecto. La palabra era {{word}}.',
+    saidMissed: 'Mostrada. La palabra era {{word}}.',
+    nextBlank: 'Espacio {{index}} de {{total}}.',
+    nextBlankAfter: 'Espacio {{index}} de {{total}}, después de “{{words}}”.',
   },
   arrange: {
     placeholder: 'Toca las frases en orden',
@@ -145,6 +156,10 @@ export default {
     placedHint: 'Toca dos veces para quitar esta frase',
     phrase: 'Frase: {{phrase}}',
     phraseHint: 'Toca dos veces para colocar esta frase a continuación',
+    phraseHintOpen: 'Toca dos veces para colocar esta frase en la posición libre',
+    openSlot: 'Posición {{position}}: vacía',
+    removed: 'Quitada: {{phrase}}',
+    allPlaced: 'Todas las frases colocadas. Revisar orden está al final.',
     check: 'Revisar orden',
   },
   type: {
@@ -153,7 +168,7 @@ export default {
     check: 'Revisar',
   },
   speak: {
-    error: 'El reconocimiento de voz tuvo un problema ({{error}}). Puedes escribirlo.',
+    error: 'No se pudo escuchar. Inténtalo de nuevo, o escríbelo.',
     micBusy: 'Otra app está usando el micrófono. Ciérrala e inténtalo de nuevo, o escríbelo.',
     packMissing:
       'Para recitar en voz alta, este teléfono necesita el paquete de voz sin conexión del idioma del versículo, así tu voz nunca sale del dispositivo. Descárgalo e inténtalo de nuevo, o escríbelo.',
@@ -162,7 +177,7 @@ export default {
     unavailableLanguage:
       'Este iPhone no reconoce la voz en el idioma de esta traducción, así que esta ronda se escribe.',
     unavailableOffline:
-      'Este iPhone no reconoce este idioma sin internet, y Meno mantiene tu voz en el teléfono, así que esta ronda se escribe. Activar el dictado en un teclado de este idioma puede añadirlo.',
+      'Este iPhone no reconoce este idioma sin internet, y Meno mantiene tu voz en el teléfono, así que esta ronda se escribe.',
     offlineUnsupported:
       'Este teléfono no puede reconocer la voz sin conexión, y Meno mantiene tu voz en el dispositivo. Escribe tu recitación.',
     pausedAnnouncement: 'En pausa. Tus palabras se conservan — edítalas o sigue.',
@@ -170,7 +185,8 @@ export default {
     speakInstead: 'Decirlo en voz alta',
     typeInstead: 'Escribirlo',
     permissionOff:
-      'El permiso de micrófono o de reconocimiento de voz está desactivado. Actívalo en Ajustes, o escríbelo abajo.',
+      'Meno no puede oírte: el micrófono o el reconocimiento de voz está desactivado para Meno. Actívalo en Ajustes, o escribe esta ronda.',
+    openSettings: 'Abrir Ajustes',
     liveTranscript: 'Transcripción en vivo',
     editLabel: 'Tu recitación — toca para editar',
     editHint: 'Toca las palabras para corregirlas, o sigue recitando.',
@@ -181,6 +197,7 @@ export default {
     pauseHint: 'Tus palabras se conservan al pausar',
     startHint: 'Se agrega a lo que has dicho hasta ahora',
     micListening: 'Escuchando — toca para pausar',
+    micProcessing: 'Terminando…',
     micMore: 'Toca para seguir',
     micStart: 'Toca para recitar',
   },

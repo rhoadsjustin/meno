@@ -12,6 +12,10 @@ export default {
   ok: 'OK',
   retry: 'Try again',
   loading: 'Loading…',
+  // A passage's text or record that could not be read (practice, stitch, review).
+  passageUnavailable: 'Couldn’t load this passage',
+  passageGone: 'This passage is no longer on this device.',
+  tryAgainSoon: 'Try again in a moment.',
   notNow: 'Not now',
   verseCount_one: '{{count}} verse',
   verseCount_other: '{{count}} verses',

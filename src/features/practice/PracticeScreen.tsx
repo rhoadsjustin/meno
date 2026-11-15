@@ -4,19 +4,23 @@
  * a place to stop for the day, and a summary. Resumable at any point.
  */
 import * as Haptics from 'expo-haptics';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { ActionFooter } from '@/components/action-footer';
+import { Button } from '@/components/button';
+import { LoadingState, Unavailable } from '@/components/unavailable';
 import { Card } from '@/components/card';
+import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
-import { t as translate } from '@/i18n';
 import { useTranslation } from '@/i18n/react';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
-import { formatRange, getPassage, getTranslation } from '@/services/bible';
+import { announce } from '@/components/screen-reader';
+import { formatRange, getPassage, getTranslation, loadFailureMessage } from '@/services/bible';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import {
   applyTierCleared,
@@ -34,10 +38,12 @@ import {
 } from '@/services/db/repos/sessionStore';
 import { currentStreakDisplay, secureToday } from '@/services/db/repos/streaks';
 import { rescheduleAll } from '@/services/notifications';
-import { slipCount, tokenize, type GradeResult, type RoundBand } from '@/services/grading';
+import { slipCount, tokenize, type GradeResult } from '@/services/grading';
 import {
   blanksDensity,
   currentMode,
+  describeFeedback,
+  describeStep,
   dropTier,
   ladderProgress,
   nextTier,
@@ -47,11 +53,15 @@ import {
   startSession,
   tierName,
   topTierStanding,
+  type FeedbackAction,
+  type FeedbackFacts,
   type SessionState,
   type TopTierStanding,
 } from '@/services/practice';
 import { Dissolution } from '@/features/practice/Dissolution';
 import { LadderProgress } from '@/features/practice/LadderProgress';
+import { UnsavedInputProvider, useLeaveGuard } from '@/features/practice/leave-guard';
+import { ScoreHeadline } from '@/features/practice/ScoreHeadline';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { WordFeedback } from '@/features/practice/WordFeedback';
 import { ArrangeRound } from '@/features/practice/rounds/ArrangeRound';
@@ -60,36 +70,19 @@ import { FirstLettersRound } from '@/features/practice/rounds/FirstLettersRound'
 import { ReadRound } from '@/features/practice/rounds/ReadRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle } from '@/theme';
 
 type Phase =
   | { kind: 'loading' }
-  | { kind: 'error'; message: string }
+  /** Nothing to practice. `failed` is a load that threw (retryable), `gone`
+   * a goal that is no longer on the device, `allMemorized` a finished one. */
+  | { kind: 'unavailable'; reason: 'failed' | 'gone' | 'allMemorized'; message?: string }
   | { kind: 'round' }
   /** Speak is cleared and today's mastery day is banked — only a second day
    * can seal the chunk, so there is nothing left to practice here today. */
   | { kind: 'sealsTomorrow' }
-  | {
-      kind: 'feedback';
-      accuracy: number;
-      /** The round moved on: a pass or an almost. */
-      passed: boolean;
-      band: RoundBand;
-      /** Slipped words in a graded text round; null where there is no
-       * word-level result (self-report, Blanks, Arrange). */
-      slips: number | null;
-      tierCleared: boolean;
-      memorized: boolean;
-      /** Cleared the top tier without sealing: do not serve it again. */
-      sealsTomorrow: boolean;
-      /** Cleared the top tier on an almost with nothing banked today: say
-       * so, and offer the clean recitation instead of promising tomorrow. */
-      needsCleanPass: boolean;
-      /** Just reached REST_TIER: offer to stop for the day. */
-      restPoint: boolean;
-      suggestDropTier: boolean;
-      result?: GradeResult;
-    }
+  /** What the round came to (`FeedbackFacts`, services/practice/feedback). */
+  | ({ kind: 'feedback'; result?: GradeResult } & FeedbackFacts)
   | {
       kind: 'summary';
       /** The chunk's highest cleared tier as the session ends. */
@@ -99,6 +92,9 @@ type Phase =
       needsCleanPass: boolean;
       memorized: boolean;
       streak: number;
+      /** After a verse is memorized: the passage's next step, as its button
+       * reads on Today ("Start John 3:17"); null when nothing is left today. */
+      next: string | null;
     };
 
 export function PracticeScreen({
@@ -117,11 +113,10 @@ export function PracticeScreen({
   // round keeps its reading column and a context rail sits beside it —
   // reference, chunk progress, ladder. Narrower windows keep one column so
   // Blanks and Arrange have room to work.
-  const { sides, height, isExtraWide: showRail } = useContentLayout();
-  // A short window (iPhone Duo opened in its landscape pose is 669pt high):
-  // the feedback screen spends less on air so both its actions fit without
-  // scrolling — the stopping point's "Keep going" sat on the bottom edge.
-  const short = height < layout.shortHeight;
+  const { sides, short, isExtraWide: showRail } = useContentLayout();
+  // Close, the edge swipe and Android's back ask first while a round holds
+  // typed or spoken words: only the session's position is saved.
+  const reportUnsaved = useLeaveGuard();
 
   const [goal, setGoal] = useState<Goal | null>(null);
   const [chunk, setChunk] = useState<Chunk | null>(null);
@@ -138,66 +133,81 @@ export function PracticeScreen({
   const finishing = useRef(false);
   const railShown = showRail && !!session && !!chunk && !!goal;
 
+  // Reads the goal's next step and its text. Never rejects: a failure becomes
+  // the `unavailable` phase, worded here rather than from the thrown error.
   const load = useCallback(async () => {
-    const g = await getGoal(goalId);
-    if (!g) throw new Error(translate('practice:errors.goalNotFound'));
-    const { plan, chunks } = await practicePlan(goalId);
-    setTotalChunks(chunks.length);
-    // A requested chunk is honoured only while it has something to do today.
-    // Once it is sealed (or resting) the reload after a cleared tier falls
-    // through to the goal's next step, like any other session.
-    const requested = chunkId
-      ? plan.steps.find((s) => s.chunkId === chunkId && s.kind !== 'rest')
-      : undefined;
-    const step = requested ?? plan.next;
-    const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
-    if (!step || !c) {
-      setPhase({ kind: 'error', message: translate('practice:errors.allMemorized') });
-      setGoal(g);
-      return;
-    }
-    const verses = await getPassage(g.translationId, {
-      start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
-      end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
-    });
-    const chunkText = verses.map((v) => v.text).join(' ');
-    setSealing(step.kind === 'seal' || (step.kind === 'continue' && !!step.seals));
+    const failure: { message?: string } = {};
+    try {
+      const g = await getGoal(goalId);
+      if (!g) {
+        setPhase({ kind: 'unavailable', reason: 'gone' });
+        return;
+      }
+      const { plan, chunks } = await practicePlan(goalId);
+      setTotalChunks(chunks.length);
+      // A requested chunk is honoured only while it has something to do today.
+      // Once it is sealed (or resting) the reload after a cleared tier falls
+      // through to the goal's next step, like any other session.
+      const requested = chunkId
+        ? plan.steps.find((s) => s.chunkId === chunkId && s.kind !== 'rest')
+        : undefined;
+      const step = requested ?? plan.next;
+      const c = step && chunks.find((candidate) => candidate.id === step.chunkId);
+      if (!step || !c) {
+        setPhase({ kind: 'unavailable', reason: 'allMemorized' });
+        setGoal(g);
+        return;
+      }
+      const range = {
+        start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+        end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+      };
+      // From here the likely failure is the text itself (licensed text is
+      // fetched): say which passage, and whether it needs a connection.
+      failure.message = loadFailureMessage(g.translationId, formatRange(range));
+      const verses = await getPassage(g.translationId, range);
+      const chunkText = verses.map((v) => v.text).join(' ');
+      setSealing(step.kind === 'seal' || (step.kind === 'continue' && !!step.seals));
 
-    // Topped the ladder and already banked today: serving Speak again would
-    // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
-    if (step.kind === 'rest') {
+      // Topped the ladder and already banked today: serving Speak again would
+      // just loop, since nextTier(6) is 6 and the chunk stays `learning`.
+      if (step.kind === 'rest') {
+        setGoal(g);
+        setChunk(c);
+        setText(chunkText);
+        setPhase({ kind: 'sealsTomorrow' });
+        return;
+      }
+
+      // Resume a persisted session for this chunk, else start fresh
+      // (M2 acceptance: killing the app mid-session resumes correctly).
+      const saved = await loadActiveSession();
+      const s =
+        saved && saved.chunkId === c.id && saved.roundIndex < saved.rounds.length
+          ? saved
+          : startSession({ goalId, chunkId: c.id, highestClearedTier: c.tier, now: Date.now() });
+      await saveActiveSession(s);
+
       setGoal(g);
       setChunk(c);
       setText(chunkText);
-      setPhase({ kind: 'sealsTomorrow' });
-      return;
+      setSession(s);
+      setPhase({ kind: 'round' });
+      setRoundStartedAt(Date.now());
+    } catch {
+      setPhase({ kind: 'unavailable', reason: 'failed', message: failure.message });
     }
-
-    // Resume a persisted session for this chunk, else start fresh
-    // (M2 acceptance: killing the app mid-session resumes correctly).
-    const saved = await loadActiveSession();
-    const s =
-      saved && saved.chunkId === c.id && saved.roundIndex < saved.rounds.length
-        ? saved
-        : startSession({ goalId, chunkId: c.id, highestClearedTier: c.tier, now: Date.now() });
-    await saveActiveSession(s);
-
-    setGoal(g);
-    setChunk(c);
-    setText(chunkText);
-    setSession(s);
-    setPhase({ kind: 'round' });
-    setRoundStartedAt(Date.now());
   }, [goalId, chunkId]);
 
   useEffect(() => {
     void (async () => {
-      try {
-        await load();
-      } catch (e) {
-        setPhase({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
-      }
+      await load();
     })();
+  }, [load]);
+
+  const retryLoad = useCallback(() => {
+    setPhase({ kind: 'loading' });
+    void load();
   }, [load]);
 
   const writeRound = useCallback(
@@ -279,10 +289,14 @@ export function PracticeScreen({
       setSession(outcome.state);
       setPhase({
         kind: 'feedback',
+        // Read is completion and First Letters a self-report (03 §1): the
+        // attempt log needs a number, the screen must not show one.
+        graded: input.accuracy !== undefined,
         accuracy: input.accuracy ?? (input.selfPass ? 1 : 0),
         passed: outcome.passed,
         band: outcome.band,
         slips: input.result ? slipCount(input.result) : null,
+        marked: !!input.result,
         tierCleared: outcome.tierCleared,
         memorized,
         sealsTomorrow: standing === 'sealsTomorrow',
@@ -316,6 +330,26 @@ export function PracticeScreen({
   const finishSession = useCallback(async () => {
     if (phase.kind !== 'feedback' || !session || !chunk) return;
     const streak = await currentStreakDisplay();
+    // A memorized verse is a place to stop, with the way on beside it.
+    let next: string | null = null;
+    if (phase.memorized) {
+      try {
+        const { plan, chunks } = await practicePlan(goalId);
+        const step = plan.next;
+        const c = step && step.kind !== 'rest' && chunks.find((x) => x.id === step.chunkId);
+        if (step && c) {
+          next = describeStep(
+            step,
+            formatRange({
+              start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+              end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+            }),
+          ).button;
+        }
+      } catch {
+        // The summary stands without the shortcut; Today still offers it.
+      }
+    }
     setPhase({
       kind: 'summary',
       standing: phase.memorized ? 6 : Math.max(chunk.tier, phase.tierCleared ? session.tier : -1),
@@ -323,8 +357,9 @@ export function PracticeScreen({
       needsCleanPass: phase.needsCleanPass,
       memorized: phase.memorized,
       streak: streak.current,
+      next,
     });
-  }, [phase, session, chunk]);
+  }, [phase, session, chunk, goalId]);
 
   const continueSession = useCallback(async () => {
     if (phase.kind !== 'feedback') return;
@@ -361,9 +396,18 @@ export function PracticeScreen({
     setRoundStartedAt(Date.now());
   }, [session]);
 
-  if (phase.kind === 'loading') {
-    return <View style={[styles.root, { backgroundColor: colors.surface }]} />;
-  }
+  /** From the memorized summary: on to the passage's next step. */
+  const startNext = useCallback(async () => {
+    setPhase({ kind: 'loading' });
+    await load();
+  }, [load]);
+
+  const act = (action: FeedbackAction) =>
+    void (action === 'finish'
+      ? finishSession()
+      : action === 'dropTier'
+        ? dropToLowerTier()
+        : continueSession());
 
   const reference = chunk
     ? formatRange({
@@ -372,19 +416,39 @@ export function PracticeScreen({
       })
     : '';
 
-  // Feedback for the almost band (docs/03 §3), and for a pass that leaned on
-  // the error budget — the score alone would not say a slip was let through.
+  // An almost (docs/03 §3) moved on without being a pass: amber, not green.
   const almost = phase.kind === 'feedback' && phase.band === 'almost';
   // Type and Speak are the tiers that count toward Memorized (docs/03 §1);
   // an almost at Type moves on to Speak without banking the day.
   const almostAtType =
     almost && !!session && phase.tierCleared && session.tier === 5 && !phase.memorized;
-  const forgiven =
-    phase.kind === 'feedback' && phase.band === 'pass' && phase.accuracy < 1
-      ? phase.slips === null
-        ? t('feedback.slipForgiven')
-        : t('feedback.slipsForgiven', { count: phase.slips })
-      : null;
+
+  // The result's heading (also what VoiceOver is told) and its buttons.
+  const feedback =
+    phase.kind === 'feedback' && session ? describeFeedback(phase, session.tier) : null;
+  const verdict = feedback?.heading ?? null;
+  const language = getTranslation(goal?.translationId ?? 'web').languageCode;
+
+  // The graded round is replaced by its result (the scroll view below is
+  // keyed by phase), which drops VoiceOver's focus: say the outcome rather
+  // than leave it to be found by swiping. Same for the resting screen and the
+  // summary, which also arrive in place.
+  const spoken =
+    phase.kind === 'feedback' && verdict
+      ? phase.graded
+        ? `${t('feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })}. ${verdict}`
+        : verdict
+      : phase.kind === 'summary'
+        ? phase.memorized
+          ? t('summary.memorized', { reference })
+          : t('feedback.doneForToday')
+        : phase.kind === 'sealsTomorrow'
+          ? t('restingTitle', { reference })
+          : null;
+  useEffect(() => {
+    if (spoken) announce(spoken);
+    // `phase` and not just the text: two rounds can end on the same words.
+  }, [spoken, phase]);
 
   // The round itself; on extra-wide windows it shares the row with the rail.
   const round = (
@@ -394,39 +458,49 @@ export function PracticeScreen({
       key={phase.kind}
       style={styles.flex}
       contentContainerStyle={[styles.content, contentColumn]}>
-      {phase.kind === 'error' && (
-        <>
-          <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            {phase.message}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.back()}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-          </Pressable>
-        </>
-      )}
+      {/* Blank for a moment, then a spinner: bundled text is instant,
+          licensed text is a network round trip. */}
+      {phase.kind === 'loading' && <LoadingState layout="inline" />}
+
+      {phase.kind === 'unavailable' &&
+        (phase.reason === 'allMemorized' ? (
+          <Unavailable
+            kind="empty"
+            title={t('errors.allMemorized')}
+            action={{ label: t('common:done'), onPress: closeModal }}
+          />
+        ) : phase.reason === 'gone' ? (
+          <Unavailable
+            kind="failed"
+            title={t('common:passageUnavailable')}
+            message={t('common:passageGone')}
+            action={{ label: t('common:done'), onPress: closeModal }}
+          />
+        ) : (
+          <Unavailable
+            kind="failed"
+            title={t('common:passageUnavailable')}
+            message={phase.message ?? t('common:tryAgainSoon')}
+            action={{ label: t('common:retry'), onPress: retryLoad }}
+            secondaryAction={{ label: t('common:done'), onPress: closeModal }}
+          />
+        ))}
 
       {phase.kind === 'sealsTomorrow' && (
         <>
-          <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
             {t('restingTitle', { reference })}
           </Text>
           <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('restingBody', { tier: tierName(6) })}
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.back()}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-          </Pressable>
         </>
       )}
 
       {phase.kind === 'round' && session && chunk && (
-        <>
+        <UnsavedInputProvider value={reportUnsaved}>
           <LadderProgress progress={ladderProgress(session)} current />
           <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('round.header', { reference, tier: tierName(session.tier) })}
@@ -446,7 +520,7 @@ export function PracticeScreen({
             translationId={goal?.translationId ?? 'web'}
             onFinish={finishRound}
           />
-        </>
+        </UnsavedInputProvider>
       )}
 
       {phase.kind === 'feedback' && session && (
@@ -455,28 +529,26 @@ export function PracticeScreen({
             progress={ladderProgress(session, { lastRoundOwed: phase.needsCleanPass })}
             current={false}
           />
-          <Text
-            accessibilityLabel={t('feedback.accuracyLabel', {
-              value: Math.round(phase.accuracy * 100),
-            })}
-            style={[
-              styles.accuracy,
-              short && styles.accuracyShort,
-              {
-                // Amber for an almost: it moved on, but it was not a pass.
-                // Gold only when the verse was just memorized.
-                color: phase.memorized
+          {/* A score only where the round was graded: Read and First
+              Letters end on their heading alone. */}
+          {phase.graded && (
+            <ScoreHeadline
+              accuracy={phase.accuracy}
+              label={t('feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })}
+              countUp={phase.passed}
+              // Amber for an almost: it moved on, but it was not a pass.
+              // Gold only when the verse was just memorized.
+              color={
+                phase.memorized
                   ? colors.gold
                   : almost
                     ? colors.amber
                     : phase.passed
                       ? colors.success
-                      : colors.error,
-                fontFamily: fonts?.scripture,
-              },
-            ]}>
-            {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
-          </Text>
+                      : colors.error
+              }
+            />
+          )}
           {/* The dissolve marks a clean clear; an almost shows its slips. */}
           {phase.tierCleared && !almost && (
             <Dissolution
@@ -486,29 +558,18 @@ export function PracticeScreen({
               compact={short}
             />
           )}
-          <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-            {phase.memorized
-              ? t('feedback.memorized')
-              : almost
-                ? phase.needsCleanPass
-                  ? t('feedback.almostNotClean')
-                  : phase.result
-                    ? t('feedback.almostMarked')
-                    : t('feedback.almostMoveOn')
-                : phase.tierCleared
-                  ? forgiven
-                    ? t('feedback.tierClearedForgiven', { tier: tierName(session.tier), forgiven })
-                    : t('feedback.tierCleared', { tier: tierName(session.tier) })
-                  : phase.passed
-                    ? forgiven
-                      ? t('feedback.passedForgiven', { forgiven })
-                      : t('feedback.roundPassed')
-                    : phase.result
-                      ? t('feedback.notQuiteMarked')
-                      : t('feedback.notQuiteRetry')}
+          <Text
+            accessibilityRole="header"
+            style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+            {verdict}
           </Text>
           {phase.result && (almost || !phase.tierCleared) && (
-            <WordFeedback result={phase.result} tone={almost ? 'almost' : 'error'} />
+            <WordFeedback
+              result={phase.result}
+              text={text}
+              language={language}
+              tone={almost ? 'almost' : 'error'}
+            />
           )}
           {phase.sealsTomorrow && (
             <Text style={[styles.suggestion, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -539,73 +600,6 @@ export function PracticeScreen({
               {t('feedback.suggestDrop', { tier: tierName(session.tier) })}
             </Text>
           )}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void (phase.restPoint ? finishSession() : continueSession())}
-            style={[
-              styles.primaryButton,
-              short && styles.primaryButtonShort,
-              { backgroundColor: colors.lapis },
-            ]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-              {phase.sealsTomorrow
-                ? t('feedback.finish')
-                : phase.needsCleanPass
-                  ? t('common:retry')
-                  : phase.restPoint
-                    ? t('feedback.doneForToday')
-                    : phase.tierCleared
-                      ? t('common:continue')
-                      : phase.passed
-                        ? t('feedback.nextRound')
-                        : t('common:retry')}
-            </Text>
-          </Pressable>
-          {phase.restPoint && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint={t('feedback.keepGoingHint', { tier: tierName(REST_TIER + 1) })}
-              onPress={() => void continueSession()}
-              style={styles.secondaryButton}>
-              <Text
-                style={[
-                  styles.secondaryButtonText,
-                  { color: colors.lapis, fontFamily: fonts?.ui },
-                ]}>
-                {t('feedback.keepGoing')}
-              </Text>
-            </Pressable>
-          )}
-          {phase.needsCleanPass && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint={t('feedback.stopForTodayHint', { tier: tierName(6) })}
-              onPress={() => void finishSession()}
-              style={styles.secondaryButton}>
-              <Text
-                style={[
-                  styles.secondaryButtonText,
-                  { color: colors.lapis, fontFamily: fonts?.ui },
-                ]}>
-                {t('feedback.stopForToday')}
-              </Text>
-            </Pressable>
-          )}
-          {phase.suggestDropTier && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityHint={t('feedback.rebuildHint')}
-              onPress={() => void dropToLowerTier()}
-              style={styles.secondaryButton}>
-              <Text
-                style={[
-                  styles.secondaryButtonText,
-                  { color: colors.lapis, fontFamily: fonts?.ui },
-                ]}>
-                {t('feedback.rebuildAt', { tier: tierName(Math.max(0, session.tier - 1)) })}
-              </Text>
-            </Pressable>
-          )}
         </>
       )}
 
@@ -625,6 +619,41 @@ export function PracticeScreen({
     </KeyboardScroll>
   );
 
+  // The way on, pinned under the scroll view: the same place on every result,
+  // the summary and the Read round, however long the verse above it is, and
+  // on screen on a short window (iPhone Duo opened is 669pt high). Rounds
+  // with a text field or their own controls keep their actions with them.
+  const footer =
+    phase.kind === 'round' && session && chunk && currentMode(session) === 'read' ? (
+      <ActionFooter>
+        <Button label={t('read.done')} onPress={() => void finishRound({ selfPass: true })} />
+      </ActionFooter>
+    ) : feedback ? (
+      <ActionFooter>
+        <Button label={feedback.primary.label} onPress={() => act(feedback.primary.action)} />
+        {feedback.secondary.map((button) => (
+          <Button
+            key={button.label}
+            variant="plain"
+            label={button.label}
+            accessibilityHint={button.hint}
+            onPress={() => act(button.action)}
+          />
+        ))}
+      </ActionFooter>
+    ) : phase.kind === 'sealsTomorrow' ? (
+      <ActionFooter>
+        <Button label={t('common:done')} onPress={closeModal} />
+      </ActionFooter>
+    ) : phase.kind === 'summary' ? (
+      <ActionFooter>
+        <Button label={t('common:done')} onPress={closeModal} />
+        {phase.next && (
+          <Button variant="plain" label={phase.next} onPress={() => void startNext()} />
+        )}
+      </ActionFooter>
+    ) : null;
+
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
       {/* Native bar: Close at the top of the vertical axis. Progress lives in
@@ -634,7 +663,7 @@ export function PracticeScreen({
           <Stack.Toolbar.Button
             icon={closeIcon}
             accessibilityLabel={t('closeLabel')}
-            onPress={() => router.back()}>
+            onPress={closeModal}>
             {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
@@ -650,7 +679,10 @@ export function PracticeScreen({
             and a half-folded iPhone Duo keeps its crease in the gutter
             instead of under a centred column. */}
         <FoldAwareRow fill>
-          {round}
+          <View style={styles.flex}>
+            {round}
+            {footer}
+          </View>
           {showRail && session && chunk && goal ? (
             <View style={styles.rail}>
               <Card>
@@ -710,7 +742,8 @@ function RoundBody({
   const mode = currentMode(session);
   switch (mode) {
     case 'read':
-      return <ReadRound text={text} onDone={() => onFinish({ selfPass: true })} />;
+      // Its one action is in the screen's footer.
+      return <ReadRound text={text} />;
     case 'firstLetters':
       return <FirstLettersRound text={text} onResult={(selfPass) => onFinish({ selfPass })} />;
     case 'blanks25':
@@ -795,7 +828,9 @@ function SessionSummary({
 
   return (
     <>
-      <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {memorized ? t('summary.memorized', { reference }) : t('feedback.doneForToday')}
       </Text>
       <View style={styles.summaryStats}>
@@ -831,12 +866,6 @@ function SessionSummary({
               : t('summary.pickUp', { tier: tierName(nextTier(standing)) })}
         </Text>
       )}
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.back()}
-        style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-      </Pressable>
     </>
   );
 }
@@ -848,7 +877,7 @@ const styles = StyleSheet.create({
     paddingRight: layout.screenMargin,
     paddingTop: layout.screenMargin,
   },
-  railTitle: { fontSize: 22, lineHeight: 28 },
+  railTitle: textStyle.title2,
   railSub: { fontSize: 13, marginTop: spacing.xs },
   railLadder: { marginTop: spacing.lg },
   summaryStats: {
@@ -866,21 +895,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
     gap: spacing.sm,
   },
-  reference: { fontSize: 14, marginBottom: spacing.lg },
+  reference: { ...textStyle.footnote, marginBottom: spacing.lg },
   // Sits under the reference line, inside the gap it leaves above the round.
   sealNote: { fontSize: 15, fontWeight: '600', marginTop: -spacing.md, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  accuracy: { fontSize: 56, marginTop: spacing.xl },
-  accuracyShort: { fontSize: 44, marginTop: 0 },
-  suggestion: { fontSize: 15, lineHeight: 20, marginTop: spacing.md },
-  primaryButton: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  primaryButtonShort: { marginTop: spacing.lg },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  secondaryButton: { marginTop: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center' },
-  secondaryButtonText: { fontSize: 16, fontWeight: '600' },
+  suggestion: { ...textStyle.subheadline, marginTop: spacing.md },
 });

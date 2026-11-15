@@ -2,6 +2,7 @@ import { StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useReservedRegions } from '@modules/reserved-regions';
+import { windowLayout } from '@/components/window-layout';
 import { layout, spacing } from '@/theme';
 
 /**
@@ -43,6 +44,10 @@ export const panes = StyleSheet.create({
  * `sides` carries the horizontal safe-area insets, which are asymmetric on
  * iPhone Duo (status bar and camera sit in one corner) — each side is
  * applied on its own, never mirrored.
+ *
+ * The size flags come from `windowLayout` (window-layout.ts, unit-tested
+ * against the Duo poses): screens lay two panes side by side on `twoPane`
+ * only, and tighten up on `short`.
  */
 export function useContentLayout() {
   const { width, height } = useWindowDimensions();
@@ -58,8 +63,9 @@ export function useContentLayout() {
     width,
     height,
     insets,
-    isWide: width >= layout.wideBreakpoint,
-    isExtraWide: width >= layout.extraWideBreakpoint,
+    // isWide, twoPane, isExtraWide, short. Split a screen on `twoPane`
+    // (wide and wider than tall), never on `isWide` alone.
+    ...windowLayout(width, height),
     fold,
     foldAxis,
     sides: { paddingLeft: insets.left, paddingRight: insets.right },

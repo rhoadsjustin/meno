@@ -64,6 +64,7 @@ export {
   type CatalogRefresh,
 } from '@/services/bible/youversion-catalog';
 export { youversionKeyConfigured, YouVersionError } from '@/services/bible/youversion';
+export { loadFailureMessage } from '@/services/bible/load-failure';
 export { DEFAULT_STARTER, STARTER_VERSES, trimUnbalancedQuotes } from '@/services/bible/starters';
 export type { StarterPassage, StarterVerse } from '@/services/bible/starters';
 export type { Ref, RefRange, Translation, Verse } from '@/services/bible/types';

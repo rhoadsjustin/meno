@@ -18,14 +18,34 @@ export type Page = { start: number; end: number };
 export type MeasuredLine = { text: string; height: number };
 
 /** A piece of a page with a single style. */
-export type Run = { key: string; kind: Segment['kind']; text: string };
+export type Run = { key: string; kind: Segment['kind']; verse: number; text: string };
 
-/** The chapter as one string: "1 In the beginning… 2 The same was… ". */
+const SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+
+/**
+ * A verse number as superscript digits ("¹²"), docs/07 §4. React Native's
+ * Text has no baseline offset, so the raised numerals are the Unicode ones:
+ * they sit in the line as ordinary characters, which keeps the measured
+ * flow and what each page draws identical.
+ */
+export function superscript(n: number): string {
+  return String(n).replace(/\d/g, (d) => SUPERSCRIPT_DIGITS[Number(d)]);
+}
+
+/**
+ * A verse number as it is set before its verse: raised, and tied to the
+ * first word by a no-break space so it never ends a line on its own.
+ */
+export function verseMark(verse: number): string {
+  return `${superscript(verse)}\u00A0`;
+}
+
+/** The chapter as one string: "¹ In the beginning… ² The same was… ". */
 export function buildFlow(verses: Verse[]): Flow {
   let text = '';
   const segments: Segment[] = [];
   for (const v of verses) {
-    const num = `${v.verse} `;
+    const num = verseMark(v.verse);
     segments.push({
       start: text.length,
       end: text.length + num.length,
@@ -85,7 +105,7 @@ export function pageRuns(flow: Flow, page: Page): Run[] {
     if (s.end <= page.start) continue;
     if (s.start >= page.end) break;
     const text = flow.text.slice(Math.max(s.start, page.start), Math.min(s.end, page.end));
-    if (text) runs.push({ key: `${s.verse}:${s.kind}`, kind: s.kind, text });
+    if (text) runs.push({ key: `${s.verse}:${s.kind}`, kind: s.kind, verse: s.verse, text });
   }
   return runs;
 }

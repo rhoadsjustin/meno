@@ -17,6 +17,7 @@ import {
   languageKey,
   languagesById,
   preferredLanguageIds,
+  selectedFirst,
   youversionKeyConfigured,
   versionsStale,
   type TranslationSection,
@@ -29,22 +30,35 @@ import {
 type CatalogStatus = 'loading' | 'ready' | 'error';
 
 /**
- * A refresh of the version list over a cached catalog, shown at the top of
- * the picker: checking, then how many versions it added, or why it failed.
+ * A check of the version list that the person asked for (the bar's refresh
+ * button), shown at the top of the picker: checking, then how many versions
+ * it added, or that it failed. The check the picker runs by itself on
+ * opening reports nothing: new versions simply appear, and a failure leaves
+ * the cached list, which works. The error's own words are never shown: they
+ * are developer text, in English, and name the Platform (02 §5).
  */
 export type CatalogRefreshState =
   | { state: 'idle' }
   | { state: 'checking' }
   | { state: 'done'; added: number }
-  | { state: 'failed'; reason: string | null };
+  | { state: 'failed' };
 
-type LoadOptions = { force?: boolean; versionsMaxAge?: number };
+type LoadOptions = {
+  force?: boolean;
+  versionsMaxAge?: number;
+  /** Asked for by hand: say what the check is doing and what it found. */
+  report?: boolean;
+};
 
 type CatalogState = {
   status: CatalogStatus;
   refresh: CatalogRefreshState;
+  /** A check is in flight, reported or not; the refresh button waits on it. */
+  checking: boolean;
   version: number;
   load: (options?: LoadOptions) => Promise<void>;
+  /** Forgets the last reported check, so it is not shown again on the next open. */
+  resetRefresh: () => void;
 };
 
 /**
@@ -55,41 +69,47 @@ type CatalogState = {
  */
 export const PICKER_VERSIONS_MAX_AGE = 5 * 60 * 1000;
 
-/** The error's own words when it has any; the row adds a connection hint otherwise. */
-function reasonOf(error: unknown): string | null {
-  return error instanceof Error && error.message.trim() ? error.message.trim() : null;
-}
-
 export const useTranslationCatalog = create<CatalogState>((set, get) => ({
   status: youversionKeyConfigured() && !catalogFetched() ? 'loading' : 'ready',
   refresh: { state: 'idle' },
+  checking: false,
   version: 0,
   load: async (options) => {
     if (!youversionKeyConfigured()) {
       set({ status: 'ready' });
       return;
     }
-    if (get().refresh.state === 'checking') return;
-    // Over a cached list, say so while the Platform is asked; the first load
-    // of all has its own row under the list.
+    if (get().checking) return;
+    // Over a cached list a check asked for by hand says so while the
+    // Platform is asked; the first load of all has its own row under the list.
     const hadCatalog = catalogFetched();
     const willFetch = options?.force || versionsStale(options?.versionsMaxAge);
-    if (!hadCatalog) set({ status: 'loading' });
-    else if (willFetch) set({ refresh: { state: 'checking' } });
+    const report = hadCatalog && options?.report === true;
+    if (!hadCatalog) set({ status: 'loading', checking: true });
+    else if (willFetch) {
+      set(report ? { checking: true, refresh: { state: 'checking' } } : { checking: true });
+    }
     try {
       const result = await ensureCatalog(deviceLocale(), options);
       set((s) => ({
         status: 'ready',
+        checking: false,
         version: s.version + 1,
-        refresh: hadCatalog && result.fetched ? { state: 'done', added: result.added } : s.refresh,
+        refresh: report && result.fetched ? { state: 'done', added: result.added } : s.refresh,
       }));
     } catch (error) {
+      if (__DEV__) console.warn('Translation catalog refresh failed', error);
       set((s) => ({
         status: catalogFetched() ? 'ready' : 'error',
+        checking: false,
         version: s.version + 1,
-        refresh: hadCatalog ? { state: 'failed', reason: reasonOf(error) } : s.refresh,
+        refresh: report ? { state: 'failed' } : s.refresh,
       }));
     }
+  },
+  resetRefresh: () => {
+    // A check still running keeps its row until it lands.
+    if (get().refresh.state !== 'checking') set({ refresh: { state: 'idle' } });
   },
 }));
 
@@ -105,9 +125,10 @@ export function languageOf(translationId: string | undefined): string | null {
 
 /**
  * Every language with at least one translation, as picker sections. The
- * featured languages lead, in order: the current choice's language (so the
- * check mark is on screen when the picker opens), the device's language,
- * then English.
+ * featured languages lead, in order: the current choice's language, the
+ * device's language, then English. The current choice is also the first row
+ * of its language, on both screens, so the check mark is on screen when the
+ * picker opens without any scrolling; the rest keep the catalog's order.
  */
 type CatalogSections = {
   sections: TranslationSection[];
@@ -131,7 +152,9 @@ function catalogSections(version: number, selected: string | undefined): Catalog
   const preferred = preferredLanguageIds(deviceLocale());
   const current = languageOf(selected);
   const order = current ? [current, ...preferred.filter((id) => id !== current)] : preferred;
-  const sections = groupByLanguage(availableTranslations(), languagesById(), order);
+  const sections = groupByLanguage(availableTranslations(), languagesById(), order).map((s) =>
+    selectedFirst(s, selected),
+  );
   const present = new Set(sections.map((s) => s.languageId));
   return { sections, featured: order.filter((id) => present.has(id)), version };
 }

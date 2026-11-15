@@ -4,16 +4,21 @@
  * Speak alternation arrives with the speech tier; recall is typed for now.
  */
 import * as Haptics from 'expo-haptics';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { closeModal } from '@/components/close-modal';
+import { ActionFooter } from '@/components/action-footer';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
+import { Button } from '@/components/button';
+import { LoadingState, Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
-import { formatRange, getPassage } from '@/services/bible';
+import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { recordAttempt } from '@/services/db/repos/attempts';
 import { dueReviewItems, recordReviewResult, type ReviewItem } from '@/services/db/repos/reviews';
@@ -23,8 +28,10 @@ import { gradeBandAtLine, type GradeResult } from '@/services/grading';
 import { BlanksRound } from '@/features/practice/rounds/BlanksRound';
 import { SpeakRound } from '@/features/practice/rounds/SpeakRound';
 import { TypeRound } from '@/features/practice/rounds/TypeRound';
+import { UnsavedInputProvider, useLeaveGuard } from '@/features/practice/leave-guard';
+import { ScoreHeadline } from '@/features/practice/ScoreHeadline';
 import { WordFeedback } from '@/features/practice/WordFeedback';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, textStyle } from '@/theme';
 import { eq } from 'drizzle-orm';
 
 type QueueEntry = {
@@ -41,25 +48,37 @@ type QueueEntry = {
 /** A review reads as kept at this accuracy; the colour only, SM-2 is fed the score itself. */
 const REVIEW_PASS = 0.9;
 
-
 type Phase =
   | { kind: 'loading' }
   | { kind: 'empty' }
+  /** The queue or a passage's text could not be read: not the same as nothing due. */
+  | { kind: 'failed' }
   | { kind: 'round'; index: number }
-  | { kind: 'feedback'; index: number; accuracy: number; result: GradeResult }
-  | { kind: 'summary'; reviewed: number; averageAccuracy: number };
+  /** `held`: the schedule kept the verse (SM-2 quality 3+), as opposed to
+   * resetting it to tomorrow. Not the same line as REVIEW_PASS. */
+  | { kind: 'feedback'; index: number; accuracy: number; held: boolean; result: GradeResult }
+  | { kind: 'summary'; held: number; reset: number; averageAccuracy: number };
 
 export function ReviewSession() {
   const colors = useThemeColors();
   const { t } = useTranslation(['review', 'practice', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
   const { sides } = useContentLayout();
+  // Close, the edge swipe and Android's back ask first while a round holds
+  // typed or spoken words: a review in progress is not saved.
+  const reportUnsaved = useLeaveGuard();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [accuracies, setAccuracies] = useState<number[]>([]);
+  // Reviews that held (SM-2 quality 3+); the rest were reset to tomorrow.
+  const [heldCount, setHeldCount] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
 
+  // Bumped by Try again to read the queue once more.
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       try {
         const items = await dueReviewItems();
@@ -101,13 +120,23 @@ export function ReviewSession() {
                   : 'type',
           });
         }
+        if (cancelled) return;
         setQueue(entries);
         setPhase(entries.length === 0 ? { kind: 'empty' } : { kind: 'round', index: 0 });
         setStartedAt(Date.now());
       } catch {
-        setPhase({ kind: 'empty' });
+        // A due review hidden behind "Nothing due" would be a false statement.
+        if (!cancelled) setPhase({ kind: 'failed' });
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
+
+  const retryLoad = useCallback(() => {
+    setPhase({ kind: 'loading' });
+    setAttempt((n) => n + 1);
   }, []);
 
   const finishRound = useCallback(
@@ -124,7 +153,8 @@ export function ReviewSession() {
         missedWords: outcome.missedWords,
         source: 'review',
       });
-      await recordReviewResult(entry.item, outcome.accuracy);
+      const held = await recordReviewResult(entry.item, outcome.accuracy);
+      if (held) setHeldCount((n) => n + 1);
       if ((await secureToday()).daySecured) void rescheduleAll();
       const { refreshBadges } = await import('@/services/db/repos/badges');
       void refreshBadges();
@@ -134,7 +164,13 @@ export function ReviewSession() {
           ? Haptics.NotificationFeedbackType.Success
           : Haptics.NotificationFeedbackType.Warning,
       );
-      setPhase({ kind: 'feedback', index, accuracy: outcome.accuracy, result: outcome.result });
+      setPhase({
+        kind: 'feedback',
+        index,
+        accuracy: outcome.accuracy,
+        held,
+        result: outcome.result,
+      });
     },
     [queue, startedAt],
   );
@@ -149,11 +185,12 @@ export function ReviewSession() {
       const all = accuracies;
       setPhase({
         kind: 'summary',
-        reviewed: all.length,
+        held: heldCount,
+        reset: all.length - heldCount,
         averageAccuracy: all.length ? all.reduce((s, a) => s + a, 0) / all.length : 0,
       });
     }
-  }, [phase, queue.length, accuracies]);
+  }, [phase, queue.length, accuracies, heldCount]);
 
   const tone =
     // The pass line is where it has always been; beneath it the ladder's
@@ -163,21 +200,59 @@ export function ReviewSession() {
       ? gradeBandAtLine(REVIEW_PASS, phase.accuracy, phase.result.unitCount)
       : null;
 
+  // What the schedule did with the verse, in words: the score's colour alone
+  // would carry it otherwise (07 §6, never colour alone), and a Blanks review
+  // has no marked words to back the colour up. "Back tomorrow" only when the
+  // interval really was reset, which is below 50%, not below the 90% line.
+  const outcome =
+    phase.kind !== 'feedback'
+      ? null
+      : !phase.held
+        ? t('outcome.reset')
+        : tone === 'pass'
+          ? t('outcome.kept')
+          : tone === 'almost'
+            ? phase.result.words.length > 0
+              ? t('almostMarked')
+              : t('almost')
+            : phase.result.words.length > 0
+              ? t('outcome.heldMarked')
+              : t('outcome.held');
+  const accuracyLabel =
+    phase.kind === 'feedback'
+      ? t('practice:feedback.accuracyLabel', { value: Math.round(phase.accuracy * 100) })
+      : null;
+
+  // "2 of 5": where this verse is in the queue.
+  const index = phase.kind === 'round' || phase.kind === 'feedback' ? phase.index + 1 : 0;
+  const position = t('position', { index, total: queue.length });
+  const positionLabel = t('positionLabel', { index, total: queue.length });
+
+  // The round is replaced by its result in place: tell VoiceOver the outcome.
+  const spoken =
+    phase.kind === 'feedback'
+      ? `${accuracyLabel}. ${outcome}`
+      : phase.kind === 'summary'
+        ? [
+            t('keptFresh', { count: phase.held }),
+            ...(phase.reset > 0 ? [t('comeBack', { count: phase.reset })] : []),
+          ].join('. ')
+        : null;
+  useEffect(() => {
+    if (spoken) announce(spoken);
+    // `phase` too: two reviews in a row can end on the same words.
+  }, [spoken, phase]);
+
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface }]}>
-      {/* Native bar: Close, with the queue position as the title. */}
-      <ScreenHeader
-        backHidden
-        title={
-          queue.length > 0 && (phase.kind === 'round' || phase.kind === 'feedback')
-            ? t('position', { index: Math.min(phase.index + 1, queue.length), total: queue.length })
-            : t('title')
-        }>
+      {/* Native bar: Close, titled Review. The queue position is in the
+          content, so the screen keeps its name. */}
+      <ScreenHeader backHidden title={t('title')}>
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Button
             icon={closeIcon}
             accessibilityLabel={t('closeLabel')}
-            onPress={() => router.back()}>
+            onPress={closeModal}>
             {t('common:close')}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>
@@ -185,27 +260,43 @@ export function ReviewSession() {
 
       <View style={styles.flex}>
         <KeyboardScroll contentContainerStyle={[styles.content, contentColumn]}>
+          {/* Blank for a moment, then a spinner: licensed text is fetched. */}
+          {phase.kind === 'loading' && <LoadingState layout="inline" />}
+
           {phase.kind === 'empty' && (
-            <>
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {t('emptyTitle')}
-              </Text>
-              <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {t('emptyBody')}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.back()}
-                style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-              </Pressable>
-            </>
+            <Unavailable
+              kind="empty"
+              symbol={{ ios: 'checkmark.circle', android: 'check_circle' }}
+              title={t('emptyTitle')}
+              message={t('emptyBody')}
+              action={{ label: t('common:done'), onPress: closeModal }}
+            />
+          )}
+
+          {phase.kind === 'failed' && (
+            <Unavailable
+              kind="failed"
+              title={t('loadFailedTitle')}
+              message={t('loadFailedBody')}
+              action={{ label: t('common:retry'), onPress: retryLoad }}
+              secondaryAction={{ label: t('common:done'), onPress: closeModal }}
+            />
           )}
 
           {phase.kind === 'round' && queue[phase.index] && (
-            <>
-              <Text style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {t('roundHeader', { reference: queue[phase.index].reference })}
+            <UnsavedInputProvider value={reportUnsaved}>
+              {/* Where this verse is in the queue. Speak prints the
+                  reference itself, large, so it is not said twice there. */}
+              <Text
+                accessibilityLabel={
+                  queue[phase.index].mode === 'speak'
+                    ? positionLabel
+                    : `${positionLabel}, ${queue[phase.index].reference}`
+                }
+                style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {queue[phase.index].mode === 'speak'
+                  ? position
+                  : t('roundHeader', { position, reference: queue[phase.index].reference })}
               </Text>
               {queue[phase.index].mode === 'blanks75' ? (
                 <BlanksRound
@@ -244,62 +335,75 @@ export function ReviewSession() {
                   onDone={(o) => void finishRound(phase.index, o)}
                 />
               )}
-            </>
+            </UnsavedInputProvider>
           )}
 
           {phase.kind === 'feedback' && (
             <>
               <Text
-                accessibilityLabel={t('practice:feedback.accuracyLabel', {
-                  value: Math.round(phase.accuracy * 100),
-                })}
-                style={[
-                  styles.accuracy,
-                  {
-                    color:
-                      tone === 'pass'
-                        ? colors.success
-                        : tone === 'almost'
-                          ? colors.amber
-                          : colors.error,
-                    fontFamily: fonts?.scripture,
-                  },
-                ]}>
-                {t('common:percent', { value: Math.round(phase.accuracy * 100) })}
+                accessibilityLabel={`${positionLabel}, ${queue[phase.index].reference}`}
+                style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                {t('roundHeader', { position, reference: queue[phase.index].reference })}
               </Text>
-              {tone === 'almost' && (
-                <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                  {phase.result.words.length > 0 ? t('almostMarked') : t('almost')}
-                </Text>
-              )}
-              <WordFeedback result={phase.result} tone={tone === 'almost' ? 'almost' : 'error'} />
-              <Pressable
-                accessibilityRole="button"
-                onPress={advance}
-                style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
-              </Pressable>
+              <ScoreHeadline
+                accuracy={phase.accuracy}
+                label={accuracyLabel ?? ''}
+                countUp={phase.held && tone === 'pass'}
+                // Red only for a review the schedule reset; one that held
+                // below the pass line reads amber, like an almost.
+                color={
+                  !phase.held ? colors.error : tone === 'pass' ? colors.success : colors.amber
+                }
+              />
+              <Text
+                accessibilityRole="header"
+                style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                {outcome}
+              </Text>
+              <WordFeedback
+                result={phase.result}
+                text={queue[phase.index].text}
+                language={getTranslation(queue[phase.index].translationId).languageCode}
+                tone={tone === 'almost' ? 'almost' : 'error'}
+              />
             </>
           )}
 
           {phase.kind === 'summary' && (
             <>
+              <ScoreHeadline
+                accuracy={phase.averageAccuracy}
+                label={t('averageAccuracyLabel', {
+                  value: Math.round(phase.averageAccuracy * 100),
+                })}
+                color={colors.lapis}
+              />
               <Text
-                style={[styles.accuracy, { color: colors.lapis, fontFamily: fonts?.scripture }]}>
-                {t('common:percent', { value: Math.round(phase.averageAccuracy * 100) })}
+                accessibilityRole="header"
+                style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                {t('keptFresh', { count: phase.held })}
               </Text>
-              <Text style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {t('keptFresh', { count: phase.reviewed })}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.back()}
-                style={[styles.button, { backgroundColor: colors.lapis }]}>
-                <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>{t('common:done')}</Text>
-              </Pressable>
+              {phase.reset > 0 && (
+                <Text
+                  style={[styles.summaryNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {t('comeBack', { count: phase.reset })}
+                </Text>
+              )}
             </>
           )}
         </KeyboardScroll>
+        {/* Pinned under the marked verse: the way on stays on screen without
+            scrolling past it. Only in the phases without a text field. */}
+        {phase.kind === 'feedback' && (
+          <ActionFooter>
+            <Button label={t('common:continue')} onPress={advance} />
+          </ActionFooter>
+        )}
+        {phase.kind === 'summary' && (
+          <ActionFooter>
+            <Button label={t('common:done')} onPress={closeModal} />
+          </ActionFooter>
+        )}
       </View>
     </View>
   );
@@ -309,15 +413,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
   content: { padding: layout.screenMargin, paddingBottom: spacing.xxxl, gap: spacing.sm },
-  reference: { fontSize: 14, marginBottom: spacing.lg },
+  reference: { ...textStyle.footnote, marginBottom: spacing.lg },
   heading: { fontSize: 20, fontWeight: '600', marginVertical: spacing.md },
-  body: { fontSize: 15, lineHeight: 20 },
-  accuracy: { fontSize: 56, marginTop: spacing.xl },
-  button: {
-    marginTop: spacing.xxl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  summaryNote: { ...textStyle.subheadline, marginBottom: spacing.md },
 });

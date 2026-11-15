@@ -4,10 +4,12 @@
  * the user has a passage of their own.
  */
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
+import { Button } from '@/components/button';
+import { LoadingState } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
 import {
   formatRange,
@@ -15,7 +17,7 @@ import {
   trimUnbalancedQuotes,
   type StarterPassage,
 } from '@/services/bible';
-import { useThemeColors, fonts, layout, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, layout, spacing, scriptureType } from '@/theme';
 
 /** Share of the row one card takes, so the next card peeks in as the cue to swipe. */
 const CARD_SHARE = 0.86;
@@ -77,21 +79,15 @@ export function StarterDeck({
             {getTranslation(passage.translationId).abbrev}
           </Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={t('starter.practiceThisVerse')}
           accessibilityLabel={t('starter.practiceReference', { reference })}
-          accessibilityState={{ disabled: startingId !== null, busy: starting }}
-          disabled={startingId !== null}
+          // The tapped card's button shows a spinner; the others only dim.
+          busy={starting}
+          disabled={startingId !== null && !starting}
           onPress={() => onStart(passage)}
-          style={[
-            styles.button,
-            { backgroundColor: colors.lapis },
-            startingId !== null && styles.buttonDisabled,
-          ]}>
-          <Text style={[styles.buttonText, { fontFamily: fonts?.ui }]}>
-            {starting ? t('starter.starting') : t('starter.practiceThisVerse')}
-          </Text>
-        </Pressable>
+          style={styles.button}
+        />
       </Card>
     );
   });
@@ -121,7 +117,22 @@ export function StarterDeck({
   );
 }
 
+/**
+ * Holds the deck's place while the starter verses load (ESV can take a
+ * moment), so the empty state is not a headline over nothing and the page
+ * does not jump when the cards arrive.
+ */
+export function StarterDeckPlaceholder() {
+  return (
+    <Card style={styles.placeholder}>
+      <LoadingState layout="inline" />
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  // About one card of a short verse at the default text size.
+  placeholder: { minHeight: 260, justifyContent: 'center' },
   root: { gap: spacing.md },
   row: { gap: spacing.md },
   stack: { gap: spacing.md },
@@ -134,14 +145,6 @@ const styles = StyleSheet.create({
     lineHeight: scriptureType.defaultLineHeight,
   },
   abbrev: { fontSize: 13, marginTop: spacing.md },
-  button: {
-    marginTop: spacing.lg,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
+  button: { marginTop: spacing.lg },
   attribution: { fontSize: 12, lineHeight: 17, paddingHorizontal: spacing.xs },
 });

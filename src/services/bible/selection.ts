@@ -2,6 +2,7 @@
  * Passage selection for the goal wizard (docs/07 §6): tap the first verse,
  * then the last. Pure — no React Native imports. Ranges stay inside one book.
  */
+import { getBook, isValidBookId } from '@/services/bible/canon';
 import type { RefRange } from '@/services/bible/types';
 
 export type VersePoint = { chapter: number; verse: number };
@@ -27,6 +28,48 @@ function single(bookId: string, point: VersePoint): PassageSelection {
 export function defaultSelection(bookId: string): PassageSelection {
   const first = { chapter: 1, verse: 1 };
   return { bookId, start: first, end: first, open: false };
+}
+
+/** No chapter of the canon is longer (Psalm 119). */
+const LONGEST_CHAPTER = 176;
+
+/** A whole number written in plain digits, or null: route params are strings from anywhere. */
+function wholeNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isInteger(value) && value > 0 ? value : null;
+  if (typeof value !== 'string' || !/^[1-9]\d{0,3}$/.test(value)) return null;
+  return Number(value);
+}
+
+/**
+ * The single settled verse a link asked the wizard to open on (the reader's
+ * "Memorize this…", docs/07 §6), or null when any part is missing or names
+ * nothing in the canon. The values are route params, so nothing about them
+ * is trusted. A verse past the chapter's real end is pulled back by
+ * `clampToChapter` once the chapter has loaded.
+ */
+export function selectionFromParams(params: {
+  bookId?: unknown;
+  chapter?: unknown;
+  verse?: unknown;
+}): PassageSelection | null {
+  const { bookId } = params;
+  if (typeof bookId !== 'string' || !isValidBookId(bookId)) return null;
+  const chapter = wholeNumber(params.chapter);
+  const verse = wholeNumber(params.verse);
+  if (chapter === null || verse === null) return null;
+  if (chapter > getBook(bookId).chapters || verse > LONGEST_CHAPTER) return null;
+  const point = { chapter, verse };
+  return { bookId, start: point, end: point, open: false };
+}
+
+/** Whether two selections name the same verses, whether or not a range is still open. */
+export function sameSelection(a: PassageSelection | null, b: PassageSelection | null): boolean {
+  if (a === null || b === null) return a === b;
+  return (
+    a.bookId === b.bookId &&
+    comparePoints(a.start, b.start) === 0 &&
+    comparePoints(a.end, b.end) === 0
+  );
 }
 
 /**

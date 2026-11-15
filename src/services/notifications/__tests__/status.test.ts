@@ -61,7 +61,7 @@ describe('reminderStatus', () => {
   });
 
   it('is blocked when on in Meno but declined in iOS', () => {
-    // "Yes, quiz me" in onboarding, then "Don't Allow" on the system prompt.
+    // "Turn on reminders" in onboarding, then "Don't Allow" on the system prompt.
     const status = reminderStatus(input({ permission: 'denied', scheduled: [] }));
     expect(status.overall).toBe('blocked');
     expect(status.canAsk).toBe(false);
@@ -199,7 +199,7 @@ describe('describeReminder', () => {
   it('keeps the quiz time a surprise but not the day or the window', () => {
     const quiz = line('popQuiz', { hasMemorized: true });
     expect(quiz.detail).toMatch(
-      /^Next quiz (today|tomorrow), at a surprise time between 9:00 AM and 9:00 PM\.$/,
+      /^Next pop quiz (today|tomorrow), sometime between 9:00 AM and 9:00 PM\.$/,
     );
     expect(quiz.tone).toBe('ok');
   });

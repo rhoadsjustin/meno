@@ -40,7 +40,7 @@ const updatesChannel = process.env.MENO_UPDATES_CHANNEL;
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
-  version: '1.8.1',
+  version: '1.9.0',
   runtimeVersion: { policy: 'appVersion' },
   updates: {
     url: 'https://u.expo.dev/6473c486-4b56-4c2c-9365-2ca7eeef6729',

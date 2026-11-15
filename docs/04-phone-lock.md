@@ -57,9 +57,9 @@ Extensions can't touch the app's SQLite. Share via **App Group** UserDefaults: c
 
 ## 6. Override — non-negotiable design rules
 
-- Override is **always** reachable from the shield and from the unlock screen. Options for self-chosen friction: instant, or press-and-hold 10 seconds with breathing animation. Nothing stronger in v1.
+- Override is **always** reachable from the shield and from the unlock screen. On the unlock screen it is on screen and enabled in every phase until the shields are cleared (loading, reciting or typing with the keyboard up, after a miss, when the quiz cannot start): a text button in the top bar, and the main button after a second miss or an error. The rule is `unlockActions` in `src/services/lock/unlock-flow.ts`, with a unit test. It has one name everywhere: Override. Options for self-chosen friction: instant, or press-and-hold 10 seconds with breathing animation. Nothing stronger in v1.
 - Overrides are logged and shown neutrally in stats ("This week: 12 recitations, 3 overrides"). **No shaming copy, ever.**
-- A global kill switch in Settings disables all shields immediately and cancels schedules — works even if speech/permissions are broken.
+- A global kill switch in Settings disables all shields immediately and cancels schedules — works even if speech/permissions are broken. It is the only control that turns the lock off: leaving or cancelling setup never does, since setup is also how a running lock is edited. Turning a mode on stops the previous mode's schedules first (`switchLockMode` in `src/services/lock/setup-flow.ts`).
 - Failure-safety: if the app is deleted, iOS clears its managed settings; document for users that deletion removes locks.
 - These rules are also an App Review defense: reviewers must be able to escape the lock trivially.
 

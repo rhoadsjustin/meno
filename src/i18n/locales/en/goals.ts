@@ -3,7 +3,7 @@ export default {
   // The translation picker opened from the passage step.
   picker: {
     onDevice: 'On this device',
-    savedForGoals: 'Saved for your goals',
+    savedForGoals: 'Saved for your passages',
     needsConnection: 'Needs a connection',
     otherLanguages: 'Other languages',
     translations: 'Translations',
@@ -24,12 +24,12 @@ export default {
     refreshAdded_other: 'Added {{count}} new translations',
     refreshUpToDate: 'Translations are up to date',
     refreshFailed: 'Couldn’t check for new translations.',
-    refreshHint: 'Check your connection, then tap the refresh button.',
+    refreshHint: 'Check your connection, then try again.',
     noResults: 'No results for “{{query}}”',
     noResultsHint: 'Check the spelling, or search by a language or abbreviation.',
     empty: 'No translations available.',
     footnote:
-      'Translations that need a connection are read online each time; Meno doesn’t store their text.',
+      'Translations not marked “On this device” or “Saved for your passages” need a connection. They are read online each time; Meno doesn’t store their text.',
   },
   wizard: {
     choosePassage: 'Choose a passage',
@@ -37,13 +37,20 @@ export default {
     stepOf: 'Step {{step}} of {{total}}',
     passageName: 'Passage name',
     planNote: 'About one new chunk a day, with reviews to keep what you’ve hidden.',
+    // {{date}} is today plus the plan's estimated days (03 §5).
+    finishAround: 'At that pace you’d finish around {{date}}.',
     startMemorizing: 'Start memorizing',
+    // Asked before Cancel or a swipe down throws away a chosen passage.
+    discardTitle: 'Discard this passage?',
+    discardMessage: 'The verses you chose won’t be kept.',
+    discard: 'Discard',
+    keepEditing: 'Keep editing',
   },
   stats: {
     verses: 'Verses',
     words: 'Words',
     chunks: 'Chunks',
-    estDays: 'Est. days',
+    estDays: 'Days',
     /** VoiceOver reading of one stat, e.g. "12 Verses". */
     a11y: '{{value}} {{label}}',
   },
@@ -67,6 +74,7 @@ export default {
     clear: 'Clear',
     clearSelection: 'Clear selection',
     chapterFailed: 'This chapter didn’t load.',
+    chapterFailedTitle: 'This chapter didn’t load',
     tapToBegin: 'Tap a verse to begin.',
     tapToEnd: 'Tap another verse to end the range, or continue with this one.',
     tapToChooseAgain: 'Tap a verse to choose again.',

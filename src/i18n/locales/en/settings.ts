@@ -1,16 +1,14 @@
-/** Settings tab: guide, reminders, Recite to Unlock, and the credits footer. */
+/** Settings tab: guide, reminders, Recite to Unlock, the update prompt and About. */
 export default {
   guide: {
     title: 'How to set up Meno',
-    body: 'Step by step: quizzes, widgets, speaking, and recite-to-unlock — plus common questions.',
     hintWide: 'Shows the guide beside this list',
     hint: 'Opens a step-by-step guide',
   },
   reminders: {
     title: 'Reminders',
-    body: 'A daily nudge to practice, plus surprise pop quizzes on verses you’ve memorized. Never more than two a day.',
-    hintWide: 'Shows how quizzes work beside this list',
-    off: 'Off. Meno won’t send you anything until you turn this on.',
+    body: 'A daily reminder to practice, plus pop quizzes on verses you’ve memorized. Never more than two a day.',
+    hintWide: 'Shows how reminders work beside this list',
     remindAt: 'Remind me at',
     timeLabel: 'Daily reminder time',
     focusNote:
@@ -23,11 +21,15 @@ export default {
   lock: {
     title: 'Recite to Unlock',
     hintWide: 'Shows the setup steps beside this list',
+    on: 'On',
+    off: 'Off',
     // {{recitations}} / {{overrides}} are stats:recitationCount / overrideCount.
-    onSummary: 'On · this week: {{recitations}}, {{overrides}}',
+    // All-time counts (repos/lock lockEventCounts), so no period is named.
+    usage: '{{recitations}}, {{overrides}}.',
     offBody: 'Ask for a verse before your distracting apps open.',
-    unavailable: 'Available on your iPhone (not in the simulator).',
+    unavailable: 'Not available on this device.',
     killSwitch: 'Turn off and clear all shields now',
+    killSwitchDone: 'Recite to Unlock is off. All shields are cleared.',
   },
   update: {
     title: 'Update ready',
@@ -35,10 +37,17 @@ export default {
     restart: 'Restart Meno now',
     hint: 'Restarts Meno into the new version',
   },
-  // {{version}} in footer when an over-the-air update is running.
-  updatedVersion: '{{version}}, updated {{date}}',
+  about: {
+    title: 'About',
+    version: 'Version',
+    // The Version row's value when an over-the-air update is running.
+    updatedVersion: '{{version}}, updated {{date}}',
+    privacy: 'Privacy policy',
+    support: 'Support',
+    linkHint: 'Opens in your browser',
+    credits:
+      'Scripture: {{translations}} — public domain. Recitation audio never leaves this device.',
+  },
   catalogCredit:
     'Other translations are shown under license from their publishers, each with its own copyright line, and aren’t stored on this device.',
-  footer:
-    'Meno {{version}} · Scripture: {{translations}} — public domain. Recitation audio never leaves this device.',
 } as const;

@@ -1,8 +1,9 @@
 import * as Haptics from 'expo-haptics';
-import { router, useFocusEffect, type Href } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -13,11 +14,32 @@ import {
 import { Card } from '@/components/card';
 import { useContentLayout } from '@/components/content-layout';
 import { FoldAwareRow } from '@/components/fold-aware-row';
+import { NavRow } from '@/components/nav-row';
+import { useScreenReader } from '@/components/screen-reader';
 import { Screen } from '@/components/screen';
-import { t } from '@/i18n';
+import { SectionHeader } from '@/components/section-header';
+import { Button } from '@/components/button';
+import { SymbolIcon } from '@/components/symbol';
+import { TextLink } from '@/components/text-link';
+import { Unavailable } from '@/components/unavailable';
 import { useTranslation } from '@/i18n/react';
+import { ChunkHeatmap, PassageCard } from '@/features/goals/PassageCard';
+import { useGoalRemoval } from '@/features/goals/useGoalRemoval';
 import { AdventInviteCard, AdventProgressCard, useAdventOffer } from '@/features/advent/AdventCard';
-import { STARTER_STACK_TEXT_SCALE, StarterDeck } from '@/features/goals/StarterDeck';
+import {
+  chunkRangeLabel,
+  goalAction,
+  practiceHref,
+  progressFor,
+  stepCopy,
+  type GoalProgress,
+} from '@/services/goals/progress';
+import {
+  STARTER_STACK_TEXT_SCALE,
+  StarterDeck,
+  StarterDeckPlaceholder,
+} from '@/features/goals/StarterDeck';
+import { useStartStarter } from '@/features/goals/useStartStarter';
 import { TierLadder } from '@/features/practice/TierLadder';
 import { ReminderPrompt } from '@/features/reminders/ReminderPrompt';
 import { RecapTodayCard, useRecapOffer } from '@/features/wrapped/RecapEntry';
@@ -30,84 +52,25 @@ import {
 } from '@/services/bible';
 import {
   activeGoal,
-  chunkProgressLabel,
   listActiveGoals,
   listGoals,
-  practicePlan,
-  startStarterGoal,
-  type Chunk,
   type Goal,
 } from '@/services/db/repos/goals';
+import { shareGoalChallengeOrAlert } from '@/services/challenges';
 import { countDueReviews } from '@/services/db/repos/reviews';
-import { stitchPlan } from '@/services/db/repos/stitch';
 import { currentStreakDisplay } from '@/services/db/repos/streaks';
-import { describeStep, firstLetters, type PracticeStep } from '@/services/practice';
+import { firstLetters } from '@/services/practice';
 import type { StreakDisplay } from '@/services/streaks';
 import { showGoalOnWidgets } from '@/services/widgets';
-import { useThemeColors, fonts, radius, spacing, scriptureType } from '@/theme';
+import { useThemeColors, fonts, spacing, scriptureType, textStyle } from '@/theme';
+import { useMotion } from '@/theme/motion';
 
-/** Where one passage in progress stands. */
-type GoalProgress = {
-  goal: Goal;
-  /** The chunk the main button opens, and what opening it does. */
-  chunk: Chunk | null;
-  step: PracticeStep | null;
-  /** The verse that follows when `step` is a seal ahead of new work. */
-  thenChunk: Chunk | null;
-  /** A verse one recitation from memorized, offered beside the new work. */
-  sealChunk: Chunk | null;
-  totalChunks: number;
-  stitchDue: boolean;
-};
+/** 07 §8, "Streak day secured: ember pulse": one bounce, then cleared. */
+const EMBER_PULSE = { effect: { type: 'bounce', wholeSymbol: true } } as const;
+const EMBER_PULSE_MS = 1200;
 
 /** The focus passage (the one on the widgets) gets the hero card and its text. */
 type TodayData = GoalProgress & { chunkText: string };
-
-async function progressFor(goal: Goal): Promise<GoalProgress> {
-  const [{ plan, chunks }, stitch] = await Promise.all([
-    practicePlan(goal.id),
-    stitchPlan(goal.id),
-  ]);
-  const chunkOf = (step: PracticeStep | null) =>
-    (step && chunks.find((c) => c.id === step.chunkId)) || null;
-  return {
-    goal,
-    chunk: chunkOf(plan.next),
-    step: plan.next,
-    thenChunk: chunkOf(plan.then),
-    sealChunk: chunkOf(plan.optionalSeal),
-    totalChunks: chunks.length,
-    stitchDue: stitch.due,
-  };
-}
-
-/** Button and sub-line copy for a passage's next step (services/practice/plan). */
-function stepCopy(p: GoalProgress & { chunk: Chunk; step: PracticeStep }) {
-  const copy = describeStep(
-    p.step,
-    chunkRangeLabel(p.chunk),
-    p.thenChunk ? chunkRangeLabel(p.thenChunk) : undefined,
-  );
-  // Where the verse sits in a longer passage (07 §6); a one-chunk goal has
-  // nothing to place.
-  const place =
-    p.totalChunks > 1
-      ? t('today:hero.chunkPlace', { index: p.chunk.orderIndex + 1, total: p.totalChunks })
-      : '';
-  return {
-    ...copy,
-    subline: place ? t('today:hero.placeAndDetail', { place, detail: copy.subline }) : copy.subline,
-    // The sub-line is not read on its own (the button says it all), so the
-    // spoken sentence carries the position too.
-    spoken: place ? t('today:hero.spokenWithPlace', { spoken: copy.spoken, place }) : copy.spoken,
-  };
-}
-
-function practiceHref(goalId: string, chunk?: Chunk): Href {
-  return chunk
-    ? `/practice/${goalId}?chunk=${encodeURIComponent(chunk.id)}`
-    : `/practice/${goalId}`;
-}
 
 /** Dissolution level for the hero card (07 §1): the text thins as the tier
  * climbs — full → first letters → reference only. */
@@ -119,96 +82,145 @@ function dissolve(text: string, tier: number): { display: string; mono: boolean 
 
 export default function TodayScreen() {
   const colors = useThemeColors();
-  const { t } = useTranslation(['today', 'app']);
-  // Wide windows (iPhone Duo opened, Split View): hero on the left, the
-  // ladder and secondary cards on the right instead of one long stack.
-  const { isWide } = useContentLayout();
+  const { t } = useTranslation(['today', 'app', 'common']);
+  // Windows wider than tall (iPhone Duo opened, Split View): hero on the
+  // left, the ladder and secondary cards on the right instead of one long
+  // stack. Opened and rotated (669×951) keeps the one column.
+  const { twoPane } = useContentLayout();
   // At accessibility text sizes the starter cards stack (StarterDeck), so
   // there is nothing to swipe and the stack is long: the way into the picker
   // goes above it instead of several screens below.
   const stackedStarters = useWindowDimensions().fontScale >= STARTER_STACK_TEXT_SCALE;
+  // With VoiceOver the deck is some thirty stops (eight cards of four), so
+  // "Choose my own passage" comes before it there too.
+  const actionsFirst = useScreenReader() || stackedStarters;
   const [data, setData] = useState<TodayData | null>(null);
   const [others, setOthers] = useState<GoalProgress[]>([]);
   const [streak, setStreak] = useState<StreakDisplay | null>(null);
   const [dueCount, setDueCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  // Quick start (empty state only): the starter cards, and which one is
-  // being turned into a passage right now.
+  // The first load threw, so there is nothing true to show: neither the
+  // passages nor the first-run empty state. Once a load has succeeded, a
+  // later failure keeps what is on screen instead.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const everLoaded = useRef(false);
+  // Quick start (empty state only): the starter cards.
   const [starters, setStarters] = useState<StarterPassage[] | null>(null);
-  const [startingId, setStartingId] = useState<string | null>(null);
-  const [startFailed, setStartFailed] = useState(false);
+  const [startersFailed, setStartersFailed] = useState(false);
   // Nothing in progress, but passages finished earlier: the empty state
   // must not tell someone with memorized verses that they have none.
   const [hasFinished, setHasFinished] = useState(false);
-  const startBusy = useRef(false);
   // Year in the Word, in season (docs/10 §5.5).
   const recapOffer = useRecapOffer();
   // The Advent plan, in season (docs/11 §3.2).
   const advent = useAdventOffer();
 
-  // Reads everything this screen shows; `isCancelled` guards a blurred screen.
-  const load = useCallback(async (isCancelled: () => boolean) => {
-    const [goal, goals] = await Promise.all([activeGoal(), listActiveGoals()]);
-    // First launch: run onboarding before anything else.
-    if (!goal) {
-      const { onboardingDone } = await import('@/services/db/repos/appFlags');
-      if (!(await onboardingDone()) && !isCancelled()) {
-        router.push('/onboarding');
-        setLoaded(true);
-        return;
-      }
-    }
-    const streakNow = await currentStreakDisplay();
-    const due = await countDueReviews();
-    if (!isCancelled()) setDueCount(due);
-    if (!goal) {
-      const finished = (await listGoals()).length > 0;
-      if (!isCancelled()) {
-        setHasFinished(finished);
-        setData(null);
-        setOthers([]);
-        setStreak(streakNow);
-        setLoaded(true);
-      }
-      // The empty state doesn't wait on the cards: bundled text is instant,
-      // but ESV may take a moment (and gives way to KJV if it can't be had).
+  // The quick-start cards for the empty state. A failure says so and offers
+  // a retry, rather than leaving the empty state with no cards.
+  const loadStarters = useCallback(
+    (isCancelled: () => boolean) => {
+      setStartersFailed(false);
       starterPassages()
         .then((passages) => {
           if (!isCancelled()) setStarters(passages);
         })
-        .catch(() => {});
-      return;
-    }
-    const [focus, rest] = await Promise.all([
-      progressFor(goal),
-      Promise.all(goals.filter((g) => g.id !== goal.id).map(progressFor)),
-    ]);
-    let chunkText = '';
-    if (focus.chunk) {
-      const c = focus.chunk;
-      const verses = await getPassage(goal.translationId, {
-        start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
-        end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
-      });
-      chunkText = verses.map((v) => v.text).join(' ');
-    }
-    if (!isCancelled()) {
-      setData({ ...focus, chunkText });
-      setOthers(rest);
-      setStreak(streakNow);
-      setLoaded(true);
-    }
-  }, []);
+        .catch(() => {
+          if (isCancelled()) return;
+          setStartersFailed(true);
+          AccessibilityInfo.announceForAccessibility(t('empty.startersFailed'));
+        });
+    },
+    [t],
+  );
+
+  // Reads everything this screen shows; `isCancelled` guards a blurred screen.
+  const load = useCallback(
+    async (isCancelled: () => boolean) => {
+      const [goal, goals] = await Promise.all([activeGoal(), listActiveGoals()]);
+      // First launch: run onboarding before anything else.
+      if (!goal) {
+        const { onboardingDone } = await import('@/services/db/repos/appFlags');
+        if (!(await onboardingDone()) && !isCancelled()) {
+          router.push('/onboarding');
+          setLoaded(true);
+          return;
+        }
+      }
+      const streakNow = await currentStreakDisplay();
+      const due = await countDueReviews();
+      if (!isCancelled()) setDueCount(due);
+      if (!goal) {
+        const finished = (await listGoals()).length > 0;
+        if (!isCancelled()) {
+          setHasFinished(finished);
+          setData(null);
+          setOthers([]);
+          setStreak(streakNow);
+          setLoaded(true);
+        }
+        // The empty state doesn't wait on the cards: bundled text is instant,
+        // but ESV may take a moment (and gives way to KJV if it can't be had).
+        if (!isCancelled()) loadStarters(isCancelled);
+        return;
+      }
+      const [focus, rest] = await Promise.all([
+        progressFor(goal),
+        Promise.all(goals.filter((g) => g.id !== goal.id).map(progressFor)),
+      ]);
+      let chunkText = '';
+      if (focus.chunk) {
+        const c = focus.chunk;
+        const verses = await getPassage(goal.translationId, {
+          start: { bookId: c.startBookId, chapter: c.startChapter, verse: c.startVerse },
+          end: { bookId: c.endBookId, chapter: c.endChapter, verse: c.endVerse },
+        });
+        chunkText = verses.map((v) => v.text).join(' ');
+      }
+      if (!isCancelled()) {
+        setData({ ...focus, chunkText });
+        setOthers(rest);
+        setStreak(streakNow);
+        setLoaded(true);
+      }
+    },
+    [loadStarters],
+  );
+
+  // `load` with its outcome recorded. Never rejects.
+  const reload = useCallback(
+    (isCancelled: () => boolean) =>
+      load(isCancelled).then(
+        () => {
+          if (isCancelled()) return;
+          everLoaded.current = true;
+          setLoadFailed(false);
+        },
+        () => {
+          if (isCancelled()) return;
+          // Stale data stays on screen; with none, say the load failed.
+          if (!everLoaded.current) setLoadFailed(true);
+          setLoaded(true);
+        },
+      ),
+    [load],
+  );
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      load(() => cancelled).catch(() => setLoaded(true));
+      void reload(() => cancelled);
       return () => {
         cancelled = true;
       };
-    }, [load]),
+    }, [reload]),
   );
+
+  const retryLoad = useCallback(async () => {
+    setRetrying(true);
+    await reload(() => false);
+    setRetrying(false);
+  }, [reload]);
 
   const showOnWidgets = useCallback(
     async (goal: Goal) => {
@@ -216,59 +228,84 @@ export default function TodayScreen() {
       try {
         await showGoalOnWidgets(goal.id);
         AccessibilityInfo.announceForAccessibility(t('nowOnWidgets', { title: goal.title }));
+      } catch {
+        Alert.alert(t('widgetsFailed', { title: goal.title }), t('common:tryAgainSoon'));
       } finally {
-        await load(() => false);
+        await reload(() => false);
       }
     },
-    [load, t],
+    [reload, t],
   );
 
-  // One tap, one passage: the ref blocks a second tap before React has
-  // re-rendered the disabled buttons (and `startStarterGoal` dedupes too).
-  const startStarter = useCallback(async (passage: StarterPassage) => {
-    if (startBusy.current) return;
-    startBusy.current = true;
-    setStartingId(passage.starter.id);
-    setStartFailed(false);
-    void Haptics.selectionAsync();
-    try {
-      // Stay in the translation the card showed: no ESV attempt for a KJV card.
-      const goal = await startStarterGoal(passage.starter, {
-        preferEsv: passage.translationId !== 'kjv',
-      });
-      router.push(`/practice/${goal.id}`);
-    } catch {
-      setStartFailed(true);
-    } finally {
-      startBusy.current = false;
-      setStartingId(null);
-    }
-  }, []);
+  // Delete or Stop in an Also practicing card's menu, as in Library.
+  const reloadNow = useCallback(() => reload(() => false), [reload]);
+  const removalFor = useGoalRemoval(reloadNow);
+
+  // Quick start: the same path as onboarding's last step (useStartStarter).
+  const openPractice = useCallback((goal: Goal) => router.push(`/practice/${goal.id}`), []);
+  const { startingId, failed: startFailed, start } = useStartStarter(openPractice);
+  // Stay in the translation the card showed: no ESV attempt for a KJV card.
+  const startStarter = useCallback(
+    (passage: StarterPassage) =>
+      start(passage.starter, { preferEsv: passage.translationId !== 'kjv' }),
+    [start],
+  );
+
+  // The flame bounces once when today becomes secured while this screen is
+  // alive (coming back from a session), never on the first read and never
+  // under Reduce Motion. The effect plays when it is set, so it is cleared
+  // again rather than left to replay on a later prop change.
+  const { reduce } = useMotion();
+  const secured = streak ? streak.activeToday : null;
+  const wasSecured = useRef<boolean | null>(null);
+  const [emberPulse, setEmberPulse] = useState(false);
+  useEffect(() => {
+    const before = wasSecured.current;
+    wasSecured.current = secured;
+    if (before !== false || secured !== true || reduce) return;
+    setEmberPulse(true);
+    const timer = setTimeout(() => setEmberPulse(false), EMBER_PULSE_MS);
+    return () => clearTimeout(timer);
+  }, [secured, reduce]);
 
   const ember = streak && streak.current > 0 && (
-    <Text
+    // 07 §6: a lapis flame, hollow until today is secured. The label says
+    // which, so the state never rests on the fill or the colour alone.
+    <View
+      accessible
       accessibilityLabel={t(streak.activeToday ? 'streakSecured' : 'streak', {
         count: streak.current,
       })}
-      style={[
-        styles.ember,
-        { color: streak.activeToday ? colors.lapis : colors.inkFaint, fontFamily: fonts?.ui },
-      ]}>
-      🔥 {streak.current}
-    </Text>
+      style={styles.ember}>
+      <SymbolIcon
+        ios={streak.activeToday ? 'flame.fill' : 'flame'}
+        android="local_fire_department"
+        size={17}
+        weight="semibold"
+        color={streak.activeToday ? colors.lapis : colors.inkFaint}
+        maxFontSizeMultiplier={1.6}
+        animationSpec={emberPulse ? EMBER_PULSE : undefined}
+      />
+      <Text
+        maxFontSizeMultiplier={1.6}
+        style={[
+          styles.emberCount,
+          { color: streak.activeToday ? colors.lapis : colors.inkFaint, fontFamily: fonts?.ui },
+        ]}>
+        {streak.current}
+      </Text>
+    </View>
   );
 
   // Only worth saying which passage is on the widgets once there's a choice.
   const focusLabel = others.length > 0 && (
-    <Text style={[styles.focusLabel, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-      {t('focusLabel')}
-    </Text>
+    <SectionHeader kind="kicker" tone="accent" title={t('focusLabel')} style={styles.focusLabel} />
   );
 
   // First run, before the user has a passage: the quick-start cards and the
   // way into the wizard. Kept apart from `hero` so a wide window can give the
   // cards a pane of their own instead of leaving half the screen empty.
-  const isEmpty = loaded && !data;
+  const isEmpty = loaded && !data && !loadFailed;
   const emptyIntro = isEmpty && (
     <View style={styles.emptyIntro}>
       <Text
@@ -277,13 +314,7 @@ export default function TodayScreen() {
         {hasFinished ? t('empty.titleAgain') : t('empty.titleFirst')}
       </Text>
       <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {hasFinished
-          ? stackedStarters
-            ? t('empty.bodyAgainChoose')
-            : t('empty.bodyAgainSwipe')
-          : stackedStarters
-            ? t('empty.bodyFirstChoose')
-            : t('empty.bodyFirstSwipe')}
+        {hasFinished ? t('empty.bodyAgain') : t('empty.bodyFirst')}
       </Text>
     </View>
   );
@@ -294,6 +325,8 @@ export default function TodayScreen() {
       onStart={(passage) => void startStarter(passage)}
     />
   );
+  // Holds the deck's place until the cards arrive (or their load fails).
+  const emptyDeckLoading = isEmpty && !starters && !startersFailed && <StarterDeckPlaceholder />;
   const emptyActions = isEmpty && (
     <>
       {startFailed && (
@@ -307,16 +340,71 @@ export default function TodayScreen() {
           {t('empty.startFailed')}
         </Text>
       )}
-      <Pressable
-        accessibilityRole="button"
-        hitSlop={8}
+      {startersFailed && !starters && (
+        <View style={styles.emptyIntro}>
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.emptyBody, { color: colors.error, fontFamily: fonts?.ui }]}>
+            {t('empty.startersFailed')}
+          </Text>
+          <TextLink label={t('common:retry')} onPress={() => loadStarters(() => false)} />
+        </View>
+      )}
+      <TextLink
+        label={t('empty.chooseOwn')}
         onPress={() => router.push('/goal-wizard')}
-        style={styles.quietAction}>
-        <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-          {t('empty.chooseOwn')}
-        </Text>
-      </Pressable>
+        labelStyle={styles.readingLink}
+      />
     </>
+  );
+
+  // Reading the passage in context belongs with the passage: a quiet row at
+  // the foot of its card, not a link under everything else on the page.
+  const readingRow = data && (
+    <View style={[styles.cardFoot, { borderTopColor: colors.inkFaint }]}>
+      <TextLink
+        accessibilityRole="link"
+        label={t('continueReading', {
+          range: formatRange({
+            start: {
+              bookId: data.goal.startBookId,
+              chapter: data.goal.startChapter,
+              verse: data.goal.startVerse,
+            },
+            end: {
+              bookId: data.goal.endBookId,
+              chapter: data.goal.endChapter,
+              verse: data.goal.endVerse,
+            },
+          }),
+        })}
+        onPress={() =>
+          router.push(
+            `/reader/${data.goal.startBookId}.${data.chunk?.startChapter ?? data.goal.startChapter}.1?translation=${data.goal.translationId}`,
+          )
+        }
+        labelStyle={styles.readingLink}
+      />
+    </View>
+  );
+
+  // Adding a passage sits with the title, where a bar button would be. The
+  // memorized card already offers the wizard, so it is not repeated there.
+  const addPassage = data?.chunk && (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('addPassage')}
+      hitSlop={spacing.sm}
+      onPress={() => router.push('/goal-wizard')}
+      style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
+      <SymbolIcon ios="plus" android="add" size={20} weight="semibold" color={colors.lapis} />
+    </Pressable>
+  );
+  const titleAccessory = (ember || addPassage) && (
+    <View style={styles.titleAccessory}>
+      {ember}
+      {addPassage}
+    </View>
   );
 
   const hero = (
@@ -359,6 +447,9 @@ export default function TodayScreen() {
               translation: getTranslation(data.goal.translationId).abbrev,
             })}
           </Text>
+          {/* The same picture of progress as the cards under Also practicing
+              and in Library. */}
+          <ChunkHeatmap title={data.goal.title} chunks={data.chunks} style={styles.heatmap} />
           {(() => {
             const copy = stepCopy({ ...data, chunk: data.chunk, step: data.step });
             // Topped the ladder today: there is nothing to open, so this
@@ -377,15 +468,13 @@ export default function TodayScreen() {
             }
             return (
               <>
-                <Pressable
-                  accessibilityRole="button"
+                <Button
+                  // The reference is on the line above; the button only names the step.
+                  label={copy.verb}
                   accessibilityLabel={copy.spoken}
                   onPress={() => router.push(practiceHref(data.goal.id))}
-                  style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-                  <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-                    {copy.button}
-                  </Text>
-                </Pressable>
+                  style={styles.primaryButton}
+                />
                 <Text
                   // Hidden from VoiceOver: the button's label already says it.
                   // (`accessible={false}` alone still leaves text readable.)
@@ -404,20 +493,21 @@ export default function TodayScreen() {
               const sealChunk = data.sealChunk;
               const sealRef = chunkRangeLabel(sealChunk);
               return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t('hero.sealSpoken', { ref: sealRef })}
-                  onPress={() => router.push(practiceHref(data.goal.id, sealChunk))}
-                  style={[styles.sealOffer, { borderTopColor: colors.inkFaint }]}>
-                  <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                <View style={[styles.sealOffer, { borderTopColor: colors.inkFaint }]}>
+                  <Text
+                    style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
                     {t('hero.sealOffer', { ref: sealRef })}
                   </Text>
-                  <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                    {t('hero.recite', { ref: sealRef })}
-                  </Text>
-                </Pressable>
+                  <TextLink
+                    weight="semibold"
+                    label={t('hero.recite', { ref: sealRef })}
+                    accessibilityLabel={t('hero.sealSpoken', { ref: sealRef })}
+                    onPress={() => router.push(practiceHref(data.goal.id, sealChunk))}
+                  />
+                </View>
               );
             })()}
+          {readingRow}
         </Card>
       )}
 
@@ -430,14 +520,13 @@ export default function TodayScreen() {
           <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
             {t('hero.memorizedBody')}
           </Text>
-          <Pressable
-            accessibilityRole="button"
+          <ChunkHeatmap title={data.goal.title} chunks={data.chunks} style={styles.heatmap} />
+          <Button
+            label={t('hero.chooseAnother')}
             onPress={() => router.push('/goal-wizard')}
-            style={[styles.primaryButton, { backgroundColor: colors.lapis }]}>
-            <Text style={[styles.primaryButtonText, { fontFamily: fonts?.ui }]}>
-              {t('hero.chooseAnother')}
-            </Text>
-          </Pressable>
+            style={styles.primaryButton}
+          />
+          {readingRow}
         </Card>
       )}
     </>
@@ -447,156 +536,63 @@ export default function TodayScreen() {
     <>
       {data?.stitchDue && (
         <Card>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push(`/stitch/${data.goal.id}`)}>
-            <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {t('stitch.title')}
-            </Text>
-            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t('stitch.body')}
-            </Text>
-            <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('stitch.begin')}
-            </Text>
-          </Pressable>
+          <NavRow
+            title={t('stitch.title')}
+            detail={t('stitch.body')}
+            onPress={() => router.push(`/stitch/${data.goal.id}`)}
+          />
         </Card>
       )}
 
       {dueCount > 0 && (
         <Card>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/review')}>
-            <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-              {t('due.title')}
-            </Text>
-            <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {t('due.body', { count: dueCount })}
-            </Text>
-            <Text style={[styles.reviewLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('due.action', { count: dueCount })}
-            </Text>
-          </Pressable>
+          <NavRow
+            title={t('due.title')}
+            // A count, not a list: the row is a nudge, and the session
+            // itself names the verses.
+            badge={dueCount}
+            accessibilityLabel={`${t('due.title')}. ${t('due.body', { count: dueCount })}`}
+            onPress={() => router.push('/review')}
+          />
         </Card>
       )}
 
       {others.length > 0 && (
         <>
-          <Text
-            accessibilityRole="header"
-            style={[styles.sectionHeader, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('others.header')}
-          </Text>
+          <SectionHeader title={t('others.header')} style={styles.sectionHeader} />
           {others.map((o) => {
-            const copy = o.chunk && o.step ? stepCopy({ ...o, chunk: o.chunk, step: o.step }) : null;
-            // A stitch outranks the next chunk; a resting verse has no action.
-            const action = o.stitchDue
-              ? {
-                  label: t('others.stitch'),
-                  spoken: t('others.stitchSpoken', { title: o.goal.title }),
-                  href: `/stitch/${o.goal.id}` as Href,
-                }
-              : copy && o.step?.kind !== 'rest'
-                ? {
-                    label: copy.verb,
-                    spoken: t('others.stepSpoken', { title: o.goal.title, spoken: copy.spoken }),
-                    href: practiceHref(o.goal.id),
-                  }
-                : null;
             const sealChunk = o.sealChunk;
             return (
-              <Card key={o.goal.id}>
-                <Text style={[styles.emptyTitle, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                  {o.goal.title}
-                </Text>
-                <Text style={[styles.emptyBody, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  {o.chunk && copy
-                    ? // A one-verse passage is its own chunk: no need to name it twice.
-                      chunkRangeLabel(o.chunk) === o.goal.title
-                      ? copy.subline
-                      : t('others.chunkAndDetail', {
-                          ref: chunkRangeLabel(o.chunk),
-                          detail: copy.subline,
-                        })
-                    : t('others.allMemorized')}
-                </Text>
-                <View style={styles.otherActions}>
-                  {action && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={action.spoken}
-                      onPress={() => router.push(action.href)}
-                      style={[styles.smallButton, { backgroundColor: colors.lapis }]}>
-                      <Text style={[styles.smallButtonText, { fontFamily: fonts?.ui }]}>
-                        {action.label}
-                      </Text>
-                    </Pressable>
-                  )}
-                  {sealChunk && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t('others.sealSpoken', { ref: chunkRangeLabel(sealChunk) })}
-                      hitSlop={8}
-                      onPress={() => router.push(practiceHref(o.goal.id, sealChunk))}>
-                      <Text
-                        style={[styles.textAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                        {t('others.seal', { ref: chunkRangeLabel(sealChunk) })}
-                      </Text>
-                    </Pressable>
-                  )}
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t('others.showOnWidgetsSpoken', { title: o.goal.title })}
-                    hitSlop={8}
-                    onPress={() => void showOnWidgets(o.goal)}>
-                    <Text
-                      style={[styles.textAction, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-                      {t('others.showOnWidgets')}
-                    </Text>
-                  </Pressable>
-                </View>
-              </Card>
+              // The Library's card for a passage in progress, so the two
+              // lists read as one. Tinted: the hero's is the one filled
+              // button (07 §6). Making it the focus is in the More menu.
+              <PassageCard
+                key={o.goal.id}
+                goal={o.goal}
+                chunks={o.chunks}
+                action={goalAction(o)}
+                actionVariant="tinted"
+                menu={{
+                  onShare: () => void shareGoalChallengeOrAlert(o.goal),
+                  onShowOnWidgets: () => void showOnWidgets(o.goal),
+                  removal: removalFor(o.goal, o.chunks),
+                }}
+                secondary={
+                  sealChunk && (
+                    <TextLink
+                      weight="semibold"
+                      label={t('others.seal', { ref: chunkRangeLabel(sealChunk) })}
+                      accessibilityLabel={t('others.sealSpoken', {
+                        ref: chunkRangeLabel(sealChunk),
+                      })}
+                      onPress={() => router.push(practiceHref(o.goal.id, sealChunk))}
+                    />
+                  )
+                }
+              />
             );
           })}
         </>
-      )}
-    </>
-  );
-
-  const links = (
-    <>
-      {data && (
-        <Pressable
-          accessibilityRole="link"
-          onPress={() =>
-            router.push(
-              `/reader/${data.goal.startBookId}.${data.chunk?.startChapter ?? data.goal.startChapter}.1?translation=${data.goal.translationId}`,
-            )
-          }>
-          <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('continueReading', {
-              range: formatRange({
-                start: {
-                  bookId: data.goal.startBookId,
-                  chapter: data.goal.startChapter,
-                  verse: data.goal.startVerse,
-                },
-                end: {
-                  bookId: data.goal.endBookId,
-                  chapter: data.goal.endChapter,
-                  verse: data.goal.endVerse,
-                },
-              }),
-            })}
-          </Text>
-        </Pressable>
-      )}
-
-      {data && (
-        <Pressable accessibilityRole="button" onPress={() => router.push('/goal-wizard')}>
-          <Text style={[styles.readingLink, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('practiceAnother')}
-          </Text>
-        </Pressable>
       )}
     </>
   );
@@ -613,138 +609,122 @@ export default function TodayScreen() {
   // once there is a second column.
   const ladder = data?.chunk && (
     <Card>
-      <Text
-        accessibilityRole="header"
-        style={[styles.asideTitle, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {t('ladder.title')}
-      </Text>
-      <TierLadder highestCleared={data.chunk.tier} />
-      <Text style={[styles.attribution, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-        {streak && streak.current > 0
-          ? t(streak.activeToday ? 'ladder.withStreakSecured' : 'ladder.withStreak', {
-              progress: chunkProgressLabel(data.chunk, data.totalChunks),
-              count: streak.current,
-            })
-          : chunkProgressLabel(data.chunk, data.totalChunks)}
-      </Text>
+      <SectionHeader title={t('ladder.title')} style={styles.asideTitle} />
+      <TierLadder
+        highestCleared={data.chunk.tier}
+        // The rung the button opens is ringed; a resting verse has none.
+        current={data.step && data.step.kind !== 'rest' ? data.step.tier : undefined}
+      />
     </Card>
   );
 
-  const recapCard = <RecapTodayCard offer={recapOffer} />;
+  // Seasonal cards never come before the practice card (docs/11 §3.2): the
+  // Advent invitation leads only the empty state, above the starter deck.
+  // Neither shows until the first load says which of the two this is.
+  const recapCard = loaded && <RecapTodayCard offer={recapOffer} />;
   const adventInvite = <AdventInviteCard offer={advent.offer} onDismiss={advent.dismiss} />;
   const adventProgress = <AdventProgressCard offer={advent.offer} />;
 
   return (
-    <Screen title={t('app:tabs.today')} accessory={ember || undefined} wide>
-      {isWide ? (
-        <FoldAwareRow>
+    <Screen
+      title={t('app:tabs.today')}
+      accessory={titleAccessory || undefined}
+      wide
+      // Side by side, each pane scrolls on its own under the title.
+      panes={twoPane && !loadFailed}>
+      {loadFailed ? (
+        // Not the first-run empty state: someone with passages in progress
+        // must not be told they have memorized nothing.
+        <Unavailable
+          kind="failed"
+          title={t('loadFailed.title')}
+          message={t('loadFailed.body')}
+          action={{ label: t('common:retry'), busy: retrying, onPress: () => void retryLoad() }}
+        />
+      ) : twoPane ? (
+        <FoldAwareRow scroll>
           <>
-            {recapCard}
             {emptyIntro}
             {emptyActions}
             {hero}
-            {links}
           </>
           <>
-            {adventInvite}
+            {isEmpty && adventInvite}
             {adventProgress}
             {emptyDeck}
+            {emptyDeckLoading}
             {ladder}
             {secondary}
+            {data && adventInvite}
+            {recapCard}
             {reminderPrompt}
           </>
         </FoldAwareRow>
       ) : (
         <>
-          {recapCard}
-          {adventInvite}
+          {isEmpty && adventInvite}
           {emptyIntro}
-          {stackedStarters && emptyActions}
+          {actionsFirst && emptyActions}
           {emptyDeck}
-          {!stackedStarters && emptyActions}
+          {emptyDeckLoading}
+          {!actionsFirst && emptyActions}
           {hero}
           {adventProgress}
           {secondary}
+          {data && adventInvite}
+          {recapCard}
           {reminderPrompt}
-          {links}
         </>
       )}
     </Screen>
   );
 }
 
-function chunkRangeLabel(chunk: Chunk): string {
-  return formatRange({
-    start: { bookId: chunk.startBookId, chapter: chunk.startChapter, verse: chunk.startVerse },
-    end: { bookId: chunk.endBookId, chapter: chunk.endChapter, verse: chunk.endVerse },
-  });
-}
-
 const styles = StyleSheet.create({
   emptyIntro: { paddingHorizontal: spacing.xs },
-  quietAction: { paddingVertical: spacing.sm },
   emptyTitle: { fontSize: 17, fontWeight: '600', marginBottom: spacing.xs },
-  emptyBody: { fontSize: 15, lineHeight: 20 },
+  emptyBody: textStyle.subheadline,
   scripture: {
     fontSize: scriptureType.defaultSize,
     lineHeight: scriptureType.defaultLineHeight,
   },
   attribution: { fontSize: 13, marginTop: spacing.md },
+  heatmap: { marginTop: spacing.md },
   subline: { fontSize: 13, marginTop: spacing.sm, textAlign: 'center' },
-  primaryButton: {
-    marginTop: spacing.lg,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  // Centred and padded: "Continue 1 Thessalonians 5:16–18" wraps at large text.
-  primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
+  primaryButton: { marginTop: spacing.lg },
   restNote: { marginTop: spacing.lg },
   restTitle: { fontSize: 17, fontWeight: '600', textAlign: 'center' },
   sealOffer: {
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
+    // The link under the line is a 44pt target; the card's padding absorbs it.
+    marginBottom: -spacing.md,
   },
-  readingLink: { fontSize: 15, paddingHorizontal: spacing.xs },
-  reviewLink: { fontSize: 15, fontWeight: '600', marginTop: spacing.md },
-  ember: { fontSize: 17, fontWeight: '600' },
-  focusLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: spacing.sm,
+  readingLink: { paddingHorizontal: 0 },
+  cardFoot: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    // The link is a 44pt target; the card's padding absorbs its lower half.
+    marginBottom: -spacing.md,
   },
-  asideTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: spacing.md,
+  titleAccessory: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  addButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -spacing.md,
   },
+  pressed: { opacity: 0.5 },
+  ember: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  emberCount: { fontSize: 17, fontWeight: '600' },
+  focusLabel: { marginBottom: spacing.sm },
+  asideTitle: { marginBottom: spacing.md },
   sectionHeader: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
     marginTop: spacing.sm,
     marginBottom: -spacing.sm,
     paddingHorizontal: spacing.xs,
   },
-  otherActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.md,
-  },
-  smallButton: {
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
-  },
-  smallButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  textAction: { fontSize: 15, fontWeight: '600' },
 });

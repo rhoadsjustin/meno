@@ -37,8 +37,23 @@ const CODE_RE = /^[A-Z0-9]{4,16}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TITLE_MAX = 80;
 
+/** Why a link can't be honored: the join screen picks its next step from it. */
+export type ChallengeLinkReason =
+  | 'malformed'
+  | 'newerVersion'
+  | 'unknownTranslation'
+  | 'passageNotFound'
+  | 'multipleBooks';
+
 /** Thrown for links we can't honor; `message` is safe to show the user. */
-export class ChallengeLinkError extends Error {}
+export class ChallengeLinkError extends Error {
+  readonly reason: ChallengeLinkReason;
+
+  constructor(reason: ChallengeLinkReason) {
+    super(t(`challenge:errors.${reason}`));
+    this.reason = reason;
+  }
+}
 
 export function encodeChallengeUrl(challenge: Challenge): string {
   const params: [string, string][] = [
@@ -65,40 +80,40 @@ type RawParams = Record<string, string | string[] | undefined>;
 export function parseChallengeParams(params: RawParams): Challenge {
   const version = Number(first(params.v));
   if (!Number.isInteger(version) || version < 1) {
-    throw new ChallengeLinkError(t('challenge:errors.malformed'));
+    throw new ChallengeLinkError('malformed');
   }
   if (version > CHALLENGE_VERSION) {
-    throw new ChallengeLinkError(t('challenge:errors.newerVersion'));
+    throw new ChallengeLinkError('newerVersion');
   }
 
   const code = (first(params.c) ?? '').toUpperCase();
   if (!CODE_RE.test(code)) {
-    throw new ChallengeLinkError(t('challenge:errors.malformed'));
+    throw new ChallengeLinkError('malformed');
   }
 
   const translationId = first(params.t) ?? '';
   try {
     getTranslation(translationId);
   } catch {
-    throw new ChallengeLinkError(t('challenge:errors.unknownTranslation'));
+    throw new ChallengeLinkError('unknownTranslation');
   }
 
   const startOsis = first(params.s);
   const endOsis = first(params.e);
   if (!startOsis || !endOsis) {
-    throw new ChallengeLinkError(t('challenge:errors.malformed'));
+    throw new ChallengeLinkError('malformed');
   }
   let range: RefRange;
   try {
     range = { start: parseOsisRef(startOsis), end: parseOsisRef(endOsis) };
   } catch {
-    throw new ChallengeLinkError(t('challenge:errors.passageNotFound'));
+    throw new ChallengeLinkError('passageNotFound');
   }
   if (range.start.bookId !== range.end.bookId) {
-    throw new ChallengeLinkError(t('challenge:errors.multipleBooks'));
+    throw new ChallengeLinkError('multipleBooks');
   }
   if (compareRefs(range.start, range.end) > 0) {
-    throw new ChallengeLinkError(t('challenge:errors.passageNotFound'));
+    throw new ChallengeLinkError('passageNotFound');
   }
 
   const title = (first(params.n) ?? '').trim().slice(0, TITLE_MAX) || formatRange(range);
@@ -121,28 +136,60 @@ export function parseChallengeUrl(url: string): Challenge {
     try {
       params[key] = decodeURIComponent(value.replace(/\+/g, ' '));
     } catch {
-      throw new ChallengeLinkError(t('challenge:errors.malformed'));
+      throw new ChallengeLinkError('malformed');
     }
   }
   return parseChallengeParams(params);
 }
 
 /**
- * The share-sheet message. References and the goal name only — verse text
- * never leaves the app this way (02 §5, CLAUDE.md licensing guardrail).
+ * The share-sheet message, link included. References and the goal name only —
+ * verse text never leaves the app this way (02 §5, CLAUDE.md licensing
+ * guardrail).
  */
 export function challengeShareMessage(challenge: Challenge): string {
+  return shareSentence(challenge, encodeChallengeUrl(challenge));
+}
+
+/** The same invitation without the link, for when the link is its own item. */
+export function challengeShareText(challenge: Challenge): string {
+  return shareSentence(challenge, null);
+}
+
+function shareSentence(challenge: Challenge, url: string | null): string {
   const values = {
     passage: formatRange(challenge.range),
     abbrev: getTranslation(challenge.translationId).abbrev,
-    url: encodeChallengeUrl(challenge),
   };
-  const message = challenge.targetDate
-    ? t('challenge:share.messageDue', { ...values, date: friendlyDate(challenge.targetDate) })
-    : t('challenge:share.message', values);
+  const dated = challenge.targetDate
+    ? { ...values, date: friendlyDate(challenge.targetDate) }
+    : null;
+  const message =
+    url === null
+      ? dated
+        ? t('challenge:share.textDue', dated)
+        : t('challenge:share.text', values)
+      : dated
+        ? t('challenge:share.messageDue', { ...dated, url })
+        : t('challenge:share.message', { ...values, url });
   return isPassageTitle(challenge.title, challenge.range)
     ? message
     : t('challenge:share.named', { title: challenge.title, message });
+}
+
+/**
+ * What the share sheet is handed. iOS takes the link as its own item, so the
+ * sheet shows a link header and AirDrop, Messages and Mail get a URL rather
+ * than a sentence with one inside. Android ignores `url`, so there the link
+ * stays in the message.
+ */
+export function challengeShareContent(
+  challenge: Challenge,
+  platform: string,
+): { message: string; url?: string } {
+  return platform === 'ios'
+    ? { message: challengeShareText(challenge), url: encodeChallengeUrl(challenge) }
+    : { message: challengeShareMessage(challenge) };
 }
 
 /** The share sheet's subject line (mail and the like). */
@@ -178,6 +225,37 @@ export function challengeTargetDate(challenge: Challenge): Date | undefined {
   if (!challenge.targetDate) return undefined;
   const [y, m, d] = challenge.targetDate.split('-').map(Number);
   return new Date(y, m - 1, d);
+}
+
+/**
+ * Where a challenge's target date stands for someone joining today:
+ * - `none`: the link carries no date.
+ * - `past`: the date has gone by (an old link); it is neither shown nor saved.
+ * - `tight`: still ahead, but nearer than the passage's day estimate, so the
+ *   date is something to aim for rather than a promise.
+ * - `reachable`: the estimate fits before the date.
+ * `today` is a local ISO date; `projectedDays` is the preview's estimate.
+ */
+export type TargetDateStanding = 'none' | 'past' | 'tight' | 'reachable';
+
+export function targetDateStanding(
+  targetDate: string | undefined,
+  today: string,
+  projectedDays: number,
+): TargetDateStanding {
+  if (!targetDate) return 'none';
+  // ISO dates order as strings.
+  if (targetDate < today) return 'past';
+  return daysBetween(today, targetDate) < projectedDays ? 'tight' : 'reachable';
+}
+
+/** Whole calendar days from one local ISO date to a later one. */
+function daysBetween(from: string, to: string): number {
+  const utc = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
 }
 
 /** Local ISO date (YYYY-MM-DD) from a goal's stored target Date. */

@@ -2,35 +2,42 @@
  * First-launch onboarding (docs/08 M6): the thesis, the notification
  * opt-in ("Can we quiz you out of the blue?"), a visual tour of the widget
  * (Home + Lock Screen) and recite-to-unlock, then straight into practicing
- * a first verse. Skippable at every step, never guilt (06 §6).
+ * a first verse. Skippable at every step, never guilt (06 §6): the native
+ * bar carries Back and Skip on each one, and dots for where you are.
  */
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   BackHandler,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
 import { ReservedRegionsProvider } from '@modules/reserved-regions';
+import { useBarIcon } from '@/components/bar-icon';
 import { closeModal } from '@/components/close-modal';
 import { contentColumn, contentColumnWide, useContentLayout } from '@/components/content-layout';
 import { HomeWidgetShot, LockScreenShot } from '@/components/feature-captures';
 import { FoldAwareRow } from '@/components/fold-aware-row';
 import { ModalSafeArea } from '@/components/modal-safe-area';
+import { ScreenHeader } from '@/components/screen-header';
+import { announce } from '@/components/screen-reader';
+import { Button } from '@/components/button';
+import { TextLink } from '@/components/text-link';
+import { useStartStarter } from '@/features/goals/useStartStarter';
 import { useTranslation } from '@/i18n/react';
 import { DEFAULT_STARTER, formatRange, formatRef } from '@/services/bible';
 import { markOnboardingDone } from '@/services/db/repos/appFlags';
-import { startStarterGoal } from '@/services/db/repos/goals';
+import type { Goal } from '@/services/db/repos/goals';
 import { isLockAvailable } from '@/services/lock';
 import { useReminderStatus } from '@/features/reminders/useReminderStatus';
 import { setNotificationsEnabled } from '@/services/notifications';
-import { useThemeColors, fonts, layout, radius, spacing } from '@/theme';
+import { useThemeColors, fonts, layout, radius, spacing, textStyle } from '@/theme';
 
 /** `notificationsBlocked`: said yes in Meno, then no to the iOS prompt. */
 type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'lock';
@@ -42,7 +49,7 @@ type Step = 'welcome' | 'notifications' | 'notificationsBlocked' | 'widget' | 'l
 const onIos = Platform.OS === 'ios';
 const afterNotifications: Step = onIos ? 'widget' : 'lock';
 
-/** Where the Android back button goes from each step. */
+/** Where Back (the bar's, and Android's hardware button) goes from each step. */
 const previous: Record<Step, Step | null> = {
   welcome: null,
   notifications: 'welcome',
@@ -50,6 +57,11 @@ const previous: Record<Step, Step | null> = {
   widget: 'notifications',
   lock: onIos ? 'widget' : 'notifications',
 };
+
+/** The steps the dots count. The blocked step is part of the reminders one. */
+const pages: Step[] = onIos
+  ? ['welcome', 'notifications', 'widget', 'lock']
+  : ['welcome', 'notifications', 'lock'];
 
 /**
  * A full-screen modal takes the root view out of the window, and with it the
@@ -67,13 +79,20 @@ export default function OnboardingRoute() {
   );
 }
 
+/** From the accessibility text sizes up, the actions scroll with the step:
+ * pinned, three or four of them would take most of a short window. */
+const SCROLL_ACTIONS_TEXT_SCALE = 1.4;
+
 /** The verse the widget captures and the shield preview show. */
 const PREVIEW_REF = { bookId: 'Phil', chapter: 4, verse: 4 };
 
 function Onboarding() {
   const colors = useThemeColors();
-  const { t } = useTranslation(['onboarding', 'common']);
-  const { insets, sides, fold, foldAxis, isWide, width, height } = useContentLayout();
+  const { t } = useTranslation(['onboarding', 'common', 'goals', 'today']);
+  const backIcon = useBarIcon('chevron.left', 'arrow_back');
+  const skipIcon = useBarIcon('xmark', 'close');
+  const { insets, sides, fold, foldAxis, isWide, twoPane } = useContentLayout();
+  const { fontScale } = useWindowDimensions();
   // iPhone Duo half-open: a centred column would put its buttons on the
   // crease, so the column moves into the leading half, clear of the folding
   // region, and returns to the centre when the phone is flat again.
@@ -95,6 +114,16 @@ function Onboarding() {
       ? afterNotifications
       : chosenStep;
 
+  // Each step replaces the last in place, so nothing tells VoiceOver the page
+  // changed (the live region on the blocked title is Android-only): say the
+  // new step's title. Not the first one, which the screen opens on.
+  const announced = useRef(step);
+  useEffect(() => {
+    if (announced.current === step) return;
+    announced.current = step;
+    announce(t(`${step}.title`));
+  }, [step, t]);
+
   // Android's back button walks back through the steps (the modal can't be
   // swiped away on iOS either). From the first step it leaves the app rather
   // than closing onboarding, which Today would only open again.
@@ -108,32 +137,25 @@ function Onboarding() {
     return () => sub.remove();
   }, [step]);
 
-  const finish = useCallback(async (then?: 'goal-wizard' | 'lock-setup') => {
+  const finish = useCallback(async (then?: '/goal-wizard' | '/lock-setup') => {
     await markOnboardingDone();
     closeModal();
-    if (then) router.push(`/${then}`);
+    if (then) router.push(then);
   }, []);
 
-  // "Try it" skips every decision: the default starter verse becomes the
-  // first passage and practice opens on it. One tap only — the ref covers
-  // the gap before the disabled button renders.
-  const [starting, setStarting] = useState(false);
-  const startBusy = useRef(false);
-  const tryStarter = useCallback(async () => {
-    if (startBusy.current) return;
-    startBusy.current = true;
-    setStarting(true);
-    try {
-      const goal = await startStarterGoal(DEFAULT_STARTER);
-      await markOnboardingDone();
-      // Replace, not back-then-push: Today's empty state showed for a moment
-      // between the two.
-      router.replace(`/practice/${goal.id}`);
-    } catch {
-      // Couldn't set it up — Today offers the same verses and the picker.
-      await finish();
-    }
-  }, [finish]);
+  // The quick start skips every decision: the default starter verse becomes
+  // the first passage and practice opens on it (the same path as Today's
+  // starter cards). A failure stays on this step and says so.
+  const openPractice = useCallback(async (goal: Goal) => {
+    await markOnboardingDone();
+    // Replace, not back-then-push: Today's empty state showed for a moment
+    // between the two.
+    router.replace(`/practice/${goal.id}`);
+  }, []);
+  const { startingId, failed: startFailed, start } = useStartStarter(openPractice);
+  // Up to four seconds (the ESV fetch timeout): every way out of the step
+  // waits, or the pending replace would land on whatever was opened instead.
+  const starting = startingId !== null;
 
   // A yes here that iOS then declines must not pass silently: the user
   // would leave onboarding believing reminders are coming.
@@ -144,11 +166,19 @@ function Onboarding() {
 
   const welcome = {
     visual: (
-      <Text style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>M</Text>
+      // Decoration: VoiceOver would read it as the letter M.
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        style={[styles.mark, { color: colors.lapis, fontFamily: fonts?.scripture }]}>
+        M
+      </Text>
     ),
     copy: (
       <>
-        <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: colors.ink, fontFamily: fonts?.scripture }]}>
           {t('welcome.title')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -160,12 +190,11 @@ function Onboarding() {
       </>
     ),
     actions: (
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label={t('common:continue')}
         onPress={() => setStep('notifications')}
-        style={[styles.primary, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
-      </Pressable>
+        style={styles.primary}
+      />
     ),
   };
 
@@ -173,7 +202,9 @@ function Onboarding() {
     visual: null,
     copy: (
       <>
-        <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+        <Text
+        accessibilityRole="header"
+        style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
           {t('notifications.title')}
         </Text>
         <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
@@ -183,19 +214,18 @@ function Onboarding() {
     ),
     actions: (
       <>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={t('notifications.optIn')}
           onPress={() => void optIn()}
-          style={[styles.primary, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-            {t('notifications.optIn')}
-          </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setStep(afterNotifications)}>
-          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('notifications.later')}
-          </Text>
-        </Pressable>
+          style={styles.primary}
+        />
+        <TextLink
+          tone="quiet"
+          label={t('notifications.later')}
+          onPress={() => setStep(afterNotifications)}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
       </>
     ),
   };
@@ -220,26 +250,27 @@ function Onboarding() {
     ),
     actions: (
       <>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={t('notificationsBlocked.openSettings')}
           onPress={() => void Linking.openSettings()}
-          style={[styles.primary, { backgroundColor: colors.lapis }]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-            {t('notificationsBlocked.openSettings')}
-          </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setStep(afterNotifications)}>
-          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('common:notNow')}
-          </Text>
-        </Pressable>
+          style={styles.primary}
+        />
+        <TextLink
+          tone="quiet"
+          label={t('common:notNow')}
+          onPress={() => setStep(afterNotifications)}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
       </>
     ),
   };
 
   const widget = {
     title: (
-      <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {t('widget.title')}
       </Text>
     ),
@@ -263,18 +294,19 @@ function Onboarding() {
       </>
     ),
     actions: (
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label={t('common:continue')}
         onPress={() => setStep('lock')}
-        style={[styles.primary, { backgroundColor: colors.lapis }]}>
-        <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>{t('common:continue')}</Text>
-      </Pressable>
+        style={styles.primary}
+      />
     ),
   };
 
   const lock = {
     title: (
-      <Text style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.title, { color: colors.ink, fontFamily: fonts?.ui }]}>
         {t('lock.title')}
       </Text>
     ),
@@ -290,44 +322,60 @@ function Onboarding() {
         </Text>
         {onIos && !isLockAvailable() && (
           <Text style={[styles.hint, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('lock.simulatorHint')}
+            {t('lock.unavailableHint')}
           </Text>
         )}
       </>
     ),
     actions: (
       <>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: starting, busy: starting }}
-          disabled={starting}
-          onPress={() => void tryStarter()}
-          style={[
-            styles.primary,
-            { backgroundColor: colors.lapis },
-            starting && styles.primaryBusy,
-          ]}>
-          <Text style={[styles.primaryText, { fontFamily: fonts?.ui }]}>
-            {t('lock.tryStarter', { passage: formatRange(DEFAULT_STARTER.range) })}
+        {startFailed && (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.failed, { color: colors.error, fontFamily: fonts?.ui }]}>
+            {t('today:empty.startFailed')}
           </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => void finish('goal-wizard')}>
-          <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-            {t('lock.chooseOwn')}
-          </Text>
-        </Pressable>
-        {isLockAvailable() && (
-          <Pressable accessibilityRole="button" onPress={() => void finish('lock-setup')}>
-            <Text style={[styles.quiet, { color: colors.lapis, fontFamily: fonts?.ui }]}>
-              {t('lock.setUpLock')}
-            </Text>
-          </Pressable>
         )}
-        <Pressable accessibilityRole="button" onPress={() => void finish()}>
-          <Text style={[styles.quiet, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-            {t('lock.exploreFirst')}
-          </Text>
-        </Pressable>
+        {/* The one filled button starts the verse, named as on Today. */}
+        <Button
+          label={
+            starting
+              ? t('goals:starter.starting')
+              : t('goals:starter.practiceReference', {
+                  reference: formatRange(DEFAULT_STARTER.range),
+                })
+          }
+          busy={starting}
+          onPress={() => void start(DEFAULT_STARTER)}
+          style={startFailed ? undefined : styles.primary}
+        />
+        <TextLink
+          label={t('lock.chooseOwn')}
+          disabled={starting}
+          onPress={() => void finish('/goal-wizard')}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
+        {/* The lock is the step's subject, not its next move: quiet, and
+            after the two ways to start a passage. */}
+        {isLockAvailable() && (
+          <TextLink
+            tone="quiet"
+            label={t('lock.setUpLock')}
+            disabled={starting}
+            onPress={() => void finish('/lock-setup')}
+            style={styles.quiet}
+            labelStyle={styles.quietLabel}
+          />
+        )}
+        <TextLink
+          tone="quiet"
+          label={t('lock.exploreFirst')}
+          disabled={starting}
+          onPress={() => void finish()}
+          style={styles.quiet}
+          labelStyle={styles.quietLabel}
+        />
       </>
     ),
   };
@@ -344,6 +392,15 @@ function Onboarding() {
     lock,
   };
   const current = steps[step];
+  const back = previous[step];
+
+  // Two panes: a step with a picture and a title, on a window wider than tall.
+  const split = twoPane && !!current.visual && !!current.title;
+  // In the one-column layouts the actions are pinned under the scrolling
+  // step, so they stay on screen on short windows (iPhone Duo's cover panel,
+  // where the widget captures pushed Continue below the fold) and clear the
+  // home indicator. The two-pane layout already fits them beside the picture.
+  const pinActions = !split && fontScale < SCROLL_ACTIONS_TEXT_SCALE;
 
   let body: ReactNode;
   if (!isWide) {
@@ -353,10 +410,10 @@ function Onboarding() {
         {current.title}
         {current.visual}
         {current.copy}
-        {current.actions}
+        {!pinActions && current.actions}
       </>
     );
-  } else if (current.visual && current.title && width > height) {
+  } else if (split) {
     // Wide, short windows (iPhone Duo opened in its landscape pose): the
     // words and buttons on the leading pane, the preview on the trailing one,
     // so the step fits on one screen instead of scrolling past a full-width
@@ -380,13 +437,42 @@ function Onboarding() {
         {current.title}
         {current.visual}
         {current.copy}
-        {current.actions}
+        {!pinActions && current.actions}
       </View>
     );
   }
 
   return (
     <View style={[styles.root, sides, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
+      <ScreenHeader
+        backHidden
+        titleView={
+          <PageDots
+            count={pages.length}
+            current={pages.indexOf(step === 'notificationsBlocked' ? 'notifications' : step)}
+          />
+        }>
+        {back && (
+          <Stack.Toolbar placement="left">
+            <Stack.Toolbar.Button
+              icon={backIcon}
+              accessibilityLabel={t('common:back')}
+              disabled={starting}
+              onPress={() => setStep(back)}>
+              {t('common:back')}
+            </Stack.Toolbar.Button>
+          </Stack.Toolbar>
+        )}
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            icon={skipIcon}
+            accessibilityLabel={t('skip')}
+            disabled={starting}
+            onPress={() => void finish()}>
+            {t('skip')}
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      </ScreenHeader>
       <ScrollView
         contentContainerStyle={
           isWide
@@ -395,6 +481,43 @@ function Onboarding() {
         }>
         {body}
       </ScrollView>
+      {pinActions && (
+        // The same column as the step above it, so the buttons line up with
+        // the words and move beside the fold with them when half-open.
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, layout.screenMargin) },
+            isWide ? contentColumnWide : [contentColumn, besideFold],
+          ]}>
+          {isWide ? (
+            <View style={[styles.narrowColumn, besideFold ?? styles.centred]}>
+              {current.actions}
+            </View>
+          ) : (
+            current.actions
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** Which step this is, as dots in the bar's title slot. */
+function PageDots({ count, current }: { count: number; current: number }) {
+  const colors = useThemeColors();
+  const { t } = useTranslation('onboarding');
+  return (
+    <View
+      accessible
+      accessibilityLabel={t('progress', { current: current + 1, total: count })}
+      style={styles.dots}>
+      {Array.from({ length: count }, (_, i) => (
+        <View
+          key={i}
+          style={[styles.dot, { backgroundColor: i === current ? colors.ink : colors.separator }]}
+        />
+      ))}
     </View>
   );
 }
@@ -413,7 +536,8 @@ function ShieldMock() {
         {t('shieldMock.verse', { ref: formatRef(PREVIEW_REF) })}
       </Text>
       <View style={styles.shieldMockButtons}>
-        <View style={[styles.shieldMockPill, { backgroundColor: colors.lapis }]}>
+        {/* Drawn flat and neutral: a lapis pill read as a second button. */}
+        <View style={styles.shieldMockPill}>
           <Text style={[styles.shieldMockPillText, { fontFamily: fonts?.ui }]}>
             {t('shieldMock.recite')}
           </Text>
@@ -430,28 +554,33 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: {
     padding: layout.screenMargin,
-    paddingTop: spacing.xxxl * 2,
+    // The native bar above takes the rest of what was a 64pt top margin.
+    paddingTop: spacing.xl,
     gap: spacing.lg,
   },
   // Wide windows are short (669pt on iPhone Duo opened): no tall top margin,
   // and each step sits in the middle of the window rather than at its top.
   contentWide: { flexGrow: 1, justifyContent: 'center', paddingTop: layout.screenMargin },
   wideRow: { alignItems: 'center' },
+  // Pinned actions: the step's side margins and gap. The first action's own
+  // top margin separates it from the scrolling step.
+  footer: { paddingHorizontal: layout.screenMargin, gap: spacing.lg },
   narrowColumn: { width: '100%', maxWidth: 520, gap: spacing.lg },
   centred: { alignSelf: 'center' },
   mark: { fontSize: 64 },
-  title: { fontSize: 28, lineHeight: 36, fontWeight: '600' },
-  body: { fontSize: 16, lineHeight: 23 },
-  hint: { fontSize: 13, lineHeight: 19 },
+  title: { ...textStyle.title1, fontWeight: '600' },
+  body: textStyle.body,
+  hint: textStyle.footnote,
+  failed: { ...textStyle.subheadline, textAlign: 'center', marginTop: spacing.xl },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  dot: { width: 7, height: 7, borderRadius: 3.5 },
   primary: {
     marginTop: spacing.xl,
-    borderRadius: radius.capsule,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
   },
-  primaryBusy: { opacity: 0.5 },
-  primaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  quiet: { fontSize: 15, textAlign: 'center', marginTop: spacing.md },
+  // A 44pt target in the 32pt the text row took: it reaches 6pt into the
+  // gaps around it, so a step with three of these is no taller.
+  quiet: { marginVertical: -6 },
+  quietLabel: { textAlign: 'center' },
 
   shotStack: { gap: spacing.sm },
   shieldMock: {
@@ -472,10 +601,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   shieldMockPill: {
+    backgroundColor: '#2A3038',
     borderRadius: radius.capsule,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  shieldMockPillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  shieldMockPillText: { color: '#C9CED6', fontSize: 14, fontWeight: '600' },
   shieldMockOverride: { color: '#8A919B', fontSize: 14 },
 });

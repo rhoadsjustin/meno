@@ -6,11 +6,12 @@
  * codes later.
  */
 import * as Crypto from 'expo-crypto';
-import { Share } from 'react-native';
+import { Alert, Platform, Share } from 'react-native';
 
 import { getGoal, setGoalChallengeId, type Goal } from '@/services/db/repos/goals';
+import { t } from '@/i18n';
 import {
-  challengeShareMessage,
+  challengeShareContent,
   challengeShareSubject,
   toIsoDate,
   type Challenge,
@@ -51,11 +52,27 @@ export async function challengeForGoal(staleGoal: Goal): Promise<Challenge> {
   };
 }
 
-/** Opens the system share sheet with the challenge invitation. */
+/**
+ * Opens the system share sheet with the challenge invitation. Rejects when
+ * the code could not be saved or the sheet could not open; closing the sheet
+ * without sharing is not a failure.
+ */
 export async function shareGoalChallenge(goal: Goal): Promise<void> {
   const challenge = await challengeForGoal(goal);
-  await Share.share(
-    { message: challengeShareMessage(challenge) },
-    { subject: challengeShareSubject(challenge) }
-  );
+  await Share.share(challengeShareContent(challenge, Platform.OS), {
+    subject: challengeShareSubject(challenge),
+  });
+}
+
+/**
+ * `shareGoalChallenge` for a button with nowhere of its own to show a
+ * failure: an alert says the share did not happen, so a tap never does
+ * nothing. Never rejects.
+ */
+export async function shareGoalChallengeOrAlert(goal: Goal): Promise<void> {
+  try {
+    await shareGoalChallenge(goal);
+  } catch {
+    Alert.alert(t('challenge:share.failedTitle'), t('challenge:share.failed'));
+  }
 }
