@@ -196,15 +196,17 @@ carousel post (a memorization tip, a tester's line used with permission).
 ### 6.1 Desktop-only publishing
 
 No social app is installed on the owner's phone. Everything is published
-from a laptop browser. The tool details below are from general knowledge,
-not checked against the live products; confirm them at account setup.
+from a laptop browser. The tool details were checked by web search on
+2026-11-16, mostly against third-party guides rather than the platforms'
+own help pages; the two items marked *unconfirmed* need a test on the
+real accounts.
 
-| Channel | Published from |
-|---|---|
-| Instagram + Facebook | Meta Business Suite in the browser: schedules Reels, feed posts, carousels and Stories for both. The Instagram account must be a professional account linked to the Facebook Page. |
-| YouTube Shorts | YouTube Studio upload; a vertical video of Shorts length is treated as a Short and can be scheduled. |
-| X | Scheduling on the website. |
-| LinkedIn | Scheduling on the website. |
+| Channel | Published from | Checked |
+|---|---|---|
+| Instagram + Facebook | Meta Business Suite in the browser (business.facebook.com): schedules Reels, feed posts, carousels and Stories for both. The Instagram account must be a professional account (business or creator) connected to the Facebook Page. | Confirmed; Meta's overview page says Business Suite publishes or schedules posts and stories for both. Reel editing and audio tools are thinner than in the app, which does not matter for finished Remotion renders. |
+| YouTube Shorts | YouTube Studio upload. A vertical or square video of 3 minutes or less is classified as a Short automatically. | Classification confirmed. Scheduling a Short from Studio is *unconfirmed* by search; test with V1. |
+| X | The clock icon in the composer on x.com. Free accounts can schedule; the scheduler exists only on the website, not in the phone apps. | Confirmed. Single posts only: a thread cannot be scheduled natively, so build-in-public threads are posted live in a reply window or kept to one post. |
+| LinkedIn | The schedule option in the post composer, free, for profiles and Pages. | Confirmed. |
 
 - **Weekly batch, Mondays.** Alongside the metrics check (§9), schedule
   that week's Sunday, Wednesday and Friday posts on every channel. Claude
@@ -217,12 +219,15 @@ not checked against the live products; confirm them at account setup.
   Security codes come from an authenticator app or SMS, not the social
   apps.
 - **Recap reshares.** The one-tap reshare of a Story that mentions the
-  account is app-only. Instead: ask the person for the image and their
+  account is described only for the phone app (no source shows it on the
+  web), and it lasts only the 24 hours the Story is live. Instead: ask the person for the image and their
   permission, then post it as Meno's own Story or feed post from Business
   Suite. If that proves fiddly, drop it; nothing else depends on it.
-- **Links in Stories.** Desktop Story tools may not offer the link
-  sticker. The Advent link goes in the bio and the caption, not in a
-  sticker.
+- **Links in Stories.** Whether Business Suite on desktop can add a link
+  sticker is *unconfirmed*: sources conflict, and interactive stickers are
+  reported as app-only. The plan assumes it cannot; the Advent link goes
+  in the bio and the caption. If the first desktop Story shows a link
+  option, use it.
 - **V3 recording** is a screen recording on the iPhone, AirDropped to the
   Mac. It needs no social app.
 - **If four websites become a chore**, a scheduler such as Buffer gives
