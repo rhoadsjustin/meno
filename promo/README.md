@@ -47,6 +47,12 @@ adding one line to `CUTS` in `src/Root.tsx`.
   are under 25% of the work's text — a verse-heavy cut like this one leans on the app's
   existing ESV API licence, so keep the notice in.
 
+- **Advent** (`src/Advent.tsx`, 19s): V1 of the winter campaign (docs/11 §5), the Advent
+  teaser. Luke 2:10–11 goes down the dissolution ladder (the verse, its first letters, the
+  reference alone), then the invitation and the Nov 29 start date. ESV text, with "(ESV)"
+  beside the reference and the full notice on the outro. Its cue is the first four bars of
+  the piano phrase (`advent.wav`).
+
 ```bash
 npm install
 npm run music          # build the soundtracks first (see Assets)
@@ -56,6 +62,8 @@ npm run render:abide   # -> out/meno-abide.mp4
 npm run render:duo     # -> out/meno-duo.mp4
 npm run render:reel        # -> out/meno-promo-9x16.mp4
 npm run render:abide:reel  # -> out/meno-abide-9x16.mp4
+npm run render:advent      # -> out/meno-advent.mp4
+npm run render:advent:reel # -> out/meno-advent-9x16.mp4
 npm run typecheck
 ```
 

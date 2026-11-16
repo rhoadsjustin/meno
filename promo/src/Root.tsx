@@ -2,6 +2,7 @@ import React from 'react';
 import { Composition } from 'remotion';
 
 import { Abide, ABIDE_FRAMES } from './Abide';
+import { Advent, ADVENT_FRAMES } from './Advent';
 import { Duo, DUO_FRAMES } from './Duo';
 import { FEED, FPS, REEL } from './layout';
 import { Promo, TOTAL_FRAMES } from './Promo';
@@ -14,6 +15,7 @@ const CUTS: { id: string; component: React.FC; frames: number; reel: boolean }[]
   { id: 'Promo', component: Promo, frames: TOTAL_FRAMES, reel: true },
   { id: 'Duo', component: Duo, frames: DUO_FRAMES, reel: false },
   { id: 'Abide', component: Abide, frames: ABIDE_FRAMES, reel: true },
+  { id: 'Advent', component: Advent, frames: ADVENT_FRAMES, reel: true },
 ];
 
 export const RemotionRoot: React.FC = () => (
