@@ -10,6 +10,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 
+import { SafeFill, useLayout } from './layout';
 import { Clip, Headline, Phone, Scene, Theme, Widgets } from './parts';
 import { C, SANS, SERIF } from './theme';
 
@@ -32,6 +33,7 @@ const Verse: React.FC<{
   size?: number;
   delay?: number;
 }> = ({ theme, text, mark = [], size = 66, delay = 8 }) => {
+  const { reel, type } = useLayout();
   const frame = useCurrentFrame();
   // "\n" forces a line break; word timing runs continuously across lines.
   const lines = text.split('\n').map((l) => l.split(' '));
@@ -44,11 +46,13 @@ const Verse: React.FC<{
     <div
       style={{
         fontFamily: SERIF,
-        fontSize: size,
+        fontSize: type(size),
         lineHeight: 1.3,
         textAlign: 'center',
         fontWeight: 500,
         color: base,
+        // More lines in the taller shape; keep the last one from being one word.
+        textWrap: reel ? 'balance' : undefined,
       }}>
       {lines.map((words, li) => (
         <React.Fragment key={li}>
@@ -89,6 +93,7 @@ const Passage: React.FC<{
   reference: string;
   size?: number;
 }> = ({ theme, kicker, text, mark, reference, size }) => {
+  const { type } = useLayout();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const faint = theme === 'vellum' ? C.inkFaint : C.onLapisFaint;
@@ -96,12 +101,12 @@ const Passage: React.FC<{
   const wordCount = text.split(/\s+/).length;
   const r = spring({ frame: frame - (12 + wordCount * PER_WORD), fps, config: { damping: 200 } });
   return (
-    <AbsoluteFill style={{ justifyContent: 'center', padding: '0 88px' }}>
+    <SafeFill style={{ justifyContent: 'center', padding: '0 88px' }}>
       {kicker ? (
         <div
           style={{
             fontFamily: SANS,
-            fontSize: 36,
+            fontSize: type(36),
             color: faint,
             textAlign: 'center',
             marginBottom: 48,
@@ -116,30 +121,31 @@ const Passage: React.FC<{
         style={{
           marginTop: 48,
           fontFamily: SANS,
-          fontSize: 32,
+          fontSize: type(32),
           color: faint,
           textAlign: 'center',
           opacity: r,
         }}>
         {reference}
       </div>
-    </AbsoluteFill>
+    </SafeFill>
   );
 };
 
 /** The Greek word itself, then how to say it. */
 const GreekWord: React.FC = () => {
+  const { type } = useLayout();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const a = spring({ frame, fps, config: { damping: 18, mass: 0.8 } });
   const b = spring({ frame: frame - 26, fps, config: { damping: 200 } });
   const c = spring({ frame: frame - 42, fps, config: { damping: 200 } });
   return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+    <SafeFill style={{ alignItems: 'center', justifyContent: 'center' }}>
       <div
         style={{
           fontFamily: SERIF,
-          fontSize: 260,
+          fontSize: type(260),
           fontWeight: 500,
           lineHeight: 1,
           color: C.lapis,
@@ -152,17 +158,17 @@ const GreekWord: React.FC = () => {
         style={{
           marginTop: 36,
           fontFamily: SANS,
-          fontSize: 46,
+          fontSize: type(46),
           color: C.ink,
           opacity: b,
           transform: `translateY(${(1 - b) * 20}px)`,
         }}>
         Meno &nbsp;·&nbsp; “MEN-oh”
       </div>
-      <div style={{ marginTop: 16, fontFamily: SANS, fontSize: 32, color: C.inkFaint, opacity: c }}>
+      <div style={{ marginTop: 16, fontFamily: SANS, fontSize: type(32), color: C.inkFaint, opacity: c }}>
         Greek, verb
       </div>
-    </AbsoluteFill>
+    </SafeFill>
   );
 };
 
@@ -170,17 +176,18 @@ const SENSES = ['to remain', 'to abide', 'to live, to dwell', 'to stand steadfas
 
 /** A lexicon entry: the senses, numbered, rising one after another. */
 const Lexicon: React.FC = () => {
+  const { type } = useLayout();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const head = spring({ frame, fps, config: { damping: 200 } });
   return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+    <SafeFill style={{ alignItems: 'center', justifyContent: 'center' }}>
       <div
         style={{
           position: 'absolute',
           top: 120,
           fontFamily: SERIF,
-          fontSize: 64,
+          fontSize: type(64),
           color: C.white,
           opacity: head,
         }}>
@@ -202,7 +209,7 @@ const Lexicon: React.FC = () => {
               <span
                 style={{
                   fontFamily: SANS,
-                  fontSize: 36,
+                  fontSize: type(36),
                   color: C.onLapisFaint,
                   width: 44,
                   textAlign: 'right',
@@ -212,7 +219,7 @@ const Lexicon: React.FC = () => {
               <span
                 style={{
                   fontFamily: SERIF,
-                  fontSize: 88,
+                  fontSize: type(88),
                   fontWeight: 500,
                   color: C.white,
                   lineHeight: 1.1,
@@ -223,26 +230,27 @@ const Lexicon: React.FC = () => {
           );
         })}
       </div>
-    </AbsoluteFill>
+    </SafeFill>
   );
 };
 
 const Outro: React.FC = () => {
+  const { type } = useLayout();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const a = spring({ frame, fps, config: { damping: 200 } });
   const b = spring({ frame: frame - 22, fps, config: { damping: 200 } });
   return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', padding: 80 }}>
+    <SafeFill style={{ alignItems: 'center', justifyContent: 'center', padding: 80 }}>
       <div
-        style={{ fontFamily: SERIF, fontSize: 150, fontWeight: 600, color: C.white, opacity: a }}>
+        style={{ fontFamily: SERIF, fontSize: type(150), fontWeight: 600, color: C.white, opacity: a }}>
         Meno
       </div>
       <div
         style={{
           marginTop: 6,
           fontFamily: SANS,
-          fontSize: 38,
+          fontSize: type(38),
           color: C.onLapisFaint,
           opacity: a,
         }}>
@@ -252,7 +260,7 @@ const Outro: React.FC = () => {
         style={{
           marginTop: 54,
           fontFamily: SERIF,
-          fontSize: 56,
+          fontSize: type(56),
           fontWeight: 500,
           color: C.white,
           textAlign: 'center',
@@ -271,7 +279,7 @@ const Outro: React.FC = () => {
           color: C.lapis,
           fontFamily: SANS,
           fontWeight: 600,
-          fontSize: 40,
+          fontSize: type(40),
           opacity: b,
           transform: `scale(${0.9 + b * 0.1})`,
         }}>
@@ -281,7 +289,7 @@ const Outro: React.FC = () => {
         style={{
           marginTop: 34,
           fontFamily: SANS,
-          fontSize: 30,
+          fontSize: type(30),
           color: C.onLapisFaint,
           opacity: b,
         }}>
@@ -294,7 +302,7 @@ const Outro: React.FC = () => {
           right: 70,
           bottom: 56,
           fontFamily: SANS,
-          fontSize: 21,
+          fontSize: type(21),
           lineHeight: 1.4,
           color: C.onLapisFaint,
           textAlign: 'center',
@@ -304,7 +312,7 @@ const Outro: React.FC = () => {
         2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All
         rights reserved.
       </div>
-    </AbsoluteFill>
+    </SafeFill>
   );
 };
 

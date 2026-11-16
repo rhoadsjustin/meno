@@ -11,6 +11,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 
+import { ReelFoot, useLayout } from './layout';
 import { C, SANS, SERIF } from './theme';
 
 export type Theme = 'vellum' | 'lapis';
@@ -43,6 +44,7 @@ export const Scene: React.FC<{
     <AbsoluteFill style={{ opacity }}>
       <Background theme={theme} />
       {children}
+      <ReelFoot color={theme === 'vellum' ? C.lapisWash : C.lapisDeep} />
     </AbsoluteFill>
   );
 };
@@ -56,11 +58,12 @@ export const Headline: React.FC<{ theme: Theme; title: string; sub?: string; top
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { y } = useLayout();
   const rise = (delay: number) => spring({ frame: frame - delay, fps, config: { damping: 200 } });
   const t = rise(4);
   const s = rise(12);
   return (
-    <div style={{ position: 'absolute', top, left: 60, right: 60, textAlign: 'center' }}>
+    <div style={{ position: 'absolute', top: y(top), left: 60, right: 60, textAlign: 'center' }}>
       <div
         style={{
           fontFamily: SERIF,
@@ -103,6 +106,8 @@ const SCREEN_H = 2868;
  * A phone that slides up and bleeds off the bottom of the frame. The bottom of
  * the screen stays out of view, which also hides the recorder's corner mark.
  * `zoom` scales the whole phone from its top edge (used to push into a detail).
+ * `width` and `top` are given for the 4:5 shape; the 9:16 shape draws the phone
+ * larger and lower, and still runs it off the bottom edge.
  */
 export const Phone: React.FC<{
   width?: number;
@@ -110,25 +115,27 @@ export const Phone: React.FC<{
   zoom?: number;
   cleanStatusBar?: boolean;
   children: React.ReactNode;
-}> = ({ width = 640, top = 420, zoom = 1, cleanStatusBar = true, children }) => {
+}> = ({ width: feedWidth = 640, top = 420, zoom = 1, cleanStatusBar = true, children }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { phoneScale: k, y } = useLayout();
   const enter = spring({ frame: frame - 2, fps, config: { damping: 200 } });
-  const bezel = 14;
+  const width = feedWidth * k;
+  const bezel = 14 * k;
   const screenH = (width * SCREEN_H) / SCREEN_W;
   return (
     <div
       style={{
         position: 'absolute',
         left: '50%',
-        top: top + (1 - enter) * 160,
+        top: y(top) + (1 - enter) * 160,
         width: width + bezel * 2,
         height: screenH + bezel * 2,
         marginLeft: -(width / 2 + bezel),
         transform: `scale(${zoom})`,
         transformOrigin: '50% 0%',
         background: '#0B0C10',
-        borderRadius: 78,
+        borderRadius: 78 * k,
         padding: bezel,
         boxShadow: '0 40px 90px rgba(10, 15, 40, 0.35)',
       }}
@@ -138,7 +145,7 @@ export const Phone: React.FC<{
           position: 'relative',
           width,
           height: screenH,
-          borderRadius: 64,
+          borderRadius: 64 * k,
           overflow: 'hidden',
           background: C.vellum,
         }}
@@ -183,6 +190,7 @@ export const Clip: React.FC<{
 export const Widgets: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { reel, y } = useLayout();
   const card = (src: string, delay: number, angle: number, top: number) => {
     const t = spring({ frame: frame - delay, fps, config: { damping: 16, mass: 0.9 } });
     return (
@@ -191,7 +199,7 @@ export const Widgets: React.FC = () => {
         style={{
           position: 'absolute',
           left: 140,
-          top: top + (1 - t) * 260,
+          top: y(top) + (1 - t) * 260,
           width: 800,
           borderRadius: 48,
           opacity: Math.min(1, t * 1.4),
@@ -203,7 +211,7 @@ export const Widgets: React.FC = () => {
   };
   return (
     <>
-      {card('img/lock-screen.png', 6, 2.5, 420)}
+      {card('img/lock-screen.png', 6, 2.5, reel ? 410 : 420)}
       {card('img/widget-home-light.png', 16, -2.5, 910)}
     </>
   );

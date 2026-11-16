@@ -1,8 +1,31 @@
 # Meno promo videos
 
-Two 1080×1350 (4:5) social cuts built with [Remotion](https://remotion.dev), sharing
-the phone frame, clips and widget cards in `src/parts.tsx`, the brand colors and
-fonts in `src/theme.ts`, and a piano soundtrack from `public/music/` (see Assets).
+Social cuts built with [Remotion](https://remotion.dev), sharing the phone frame, clips
+and widget cards in `src/parts.tsx`, the brand colors and fonts in `src/theme.ts`, and a
+piano soundtrack from `public/music/` (see Assets).
+
+## Two shapes
+
+Promo and Abide render in two shapes from one scene list: 1080×1350 (4:5, the feed post)
+under the cut's own name, and 1080×1920 (9:16, Reels and Shorts) as `<name>-9x16`.
+`src/layout.tsx` holds both sizes and the rows a Reel covers with its own controls: the
+top 250px and the bottom 340px. Rules for a scene, so it works in both:
+
+- Centre text in `SafeFill`, not `AbsoluteFill`; anything pinned to an edge inside it
+  (a footnote, a small title) then stays clear of the covered rows.
+- Give `Headline`, `Phone` and `Widgets` their 4:5 positions. They move themselves for
+  9:16 through `useLayout().y()`, and the phone is drawn larger there.
+- Backgrounds and the phone frame may run under the covered rows; words may not.
+  `Scene` fades the bottom covered row into the background in 9:16 (`ReelFoot`), so a
+  phone that runs off the bottom leaves no half-hidden app buttons behind the caption.
+- Size the type of a words-only scene with `useLayout().type()`: 9:16 is no wider than
+  4:5, so the type grows 15% and takes more lines.
+- Never read the composition size in a scene. Add what you need to `useLayout()`.
+
+Duo is laid out by hand for 4:5 and has no 9:16 version. A new cut gets both shapes by
+adding one line to `CUTS` in `src/Root.tsx`.
+
+## Cuts
 
 - **Promo** (`src/Promo.tsx`, ~30s): the feature tour — six practice modes, the
   dissolve, word-by-word checking, reviews, the shield, widgets.
@@ -31,6 +54,9 @@ npm run studio         # preview and scrub in the browser
 npm run render         # -> out/meno-promo.mp4
 npm run render:abide   # -> out/meno-abide.mp4
 npm run render:duo     # -> out/meno-duo.mp4
+npm run render:reel        # -> out/meno-promo-9x16.mp4
+npm run render:abide:reel  # -> out/meno-abide-9x16.mp4
+npm run typecheck
 ```
 
 ## Assets (not committed)
