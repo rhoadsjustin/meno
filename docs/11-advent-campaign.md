@@ -308,7 +308,7 @@ Claude can draft, render and prepare; these need the owner's hands:
 | Q1 | Luke 2:1–14 as the main range and 2:8–14 as the short one? | The owner chose Luke 2; the ranges and the week split are a proposal. 2:1–20 is the longer option. |
 | Q2 | If 1.8.1 is rejected or delayed past Nov 22, also send the card to 1.7.0 by OTA from the 1.7.0 commit? | A second OTA line to maintain; only worth it if 1.8.1 is late. |
 | Q3 | Is a caption notice enough for ESV text in short video, per Crossway? | If not, videos show the reference and in-app screens only, or use KJV. |
-| Q4 | Handle `@menoscripture` — available on all five? | Blocks the brand kit. |
+| Q4 | Handle `@menoscripture` — available on all five? | Blocks the brand kit. Checked 2026-11-16 without signing in: YouTube free (the handle URL returns "not found"); Instagram probably free; X, Facebook and LinkedIn could not be read from outside. No web search result uses the name. The owner settles it by reserving the handle on each site. |
 | Q5 | Any pieces to camera? | Changes the shoot list, nothing else. |
 | Q6 | Spanish: post the Advent plan in Spanish too? | The app is en + es; ESV has no Spanish text, so a Spanish track needs a YouVersion version and its own cards. |
 | Q7 | November baseline for downloads and active use? | Needed to set targets in §9. |
