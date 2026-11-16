@@ -42,7 +42,7 @@ Times are targets, not limits. Pause a beat on each screen so the reviewer can r
 |---|---|---|---|
 | 0:00 | Meno → Settings tab → tap **Recite to Unlock** | Row subtitle: "Ask for a verse before your distracting apps open." | The feature is opt-in and off by default. |
 | 0:05 | Hold on the explainer, then **Continue** | Heading "Recite to unlock". Copy includes "Apple never tells Meno which apps you pick, and you can override or switch this off at any time." | States override and privacy up front. |
-| 0:12 | Tap **Grant permission**, then allow in Apple's dialog | iOS Screen Time sheet. Choose the individual option, not a child account. | Individual authorization only. |
+| 0:12 | Allow in Apple's dialog, which **Continue** opened directly | iOS Screen Time sheet. Choose the individual option, not a child account. | Individual authorization only. |
 | 0:20 | Tap **Pick apps**, choose Safari in Apple's picker, Done, then continue | Apple's FamilyActivityPicker. | App identities never reach Meno; it only holds an opaque token. |
 | 0:30 | On the configure step show the three modes, choose **Every pickup**, tap **Turn on**, then **Done** | "First pickup of the day", "Every pickup", "Evenings (9–11pm)". | The user chooses the friction. |
 | 0:40 | Go Home, open Safari | Meno's shield: the verse reference as title, a first-letters hint, buttons **Recite to unlock** and **Override**. | The shield itself. |

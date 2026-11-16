@@ -12,11 +12,9 @@ export default {
     explainerPrivacy:
       'A continuación, iOS te pedirá permiso para Tiempo en pantalla. Apple nunca le dice a Meno qué apps eliges, y puedes omitirlo o desactivarlo cuando quieras.',
     authTitle: 'Permiso de Tiempo en pantalla',
-    authBody: 'Meno usa Tiempo en pantalla de Apple para bloquear las apps que elijas.',
     authDenied:
       'Se rechazó el permiso. Inténtalo de nuevo, o permite el acceso a Tiempo en pantalla para Meno en Ajustes del iPhone.',
     openSettings: 'Abrir Ajustes del iPhone',
-    grantPermission: 'Dar permiso',
     pickTitle: 'Elige qué apps bloquear',
     pickBody: 'Elige las apps o categorías que deben pedirte un versículo primero.',
     pickApps: 'Elegir apps',
@@ -49,7 +47,6 @@ export default {
       'Las notificaciones de Meno están desactivadas, así que el bloqueo no puede traerte aquí. Cuando veas un bloqueo, abre Meno para recitar, o permite las notificaciones en Ajustes del iPhone.',
     doneEscape:
       'Omitir siempre está a un toque, y “Desactivar y quitar todos los bloqueos ahora” en Ajustes lo quita todo.',
-    cancelSetup: 'Cancelar configuración',
   },
   unlock: {
     errorNoGoal: 'Ahora mismo no hay ningún pasaje en curso que recitar.',

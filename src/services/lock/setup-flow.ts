@@ -10,19 +10,23 @@ export type LockMode = 'firstPickup' | 'everyPickup' | 'schedule';
 export type SetupStep = 'explainer' | 'authorize' | 'pick' | 'configure' | 'done';
 
 /**
- * The step an in-screen Back returns to, or `null` where there is none (the
- * first step and the confirmation). Leaving setup is the bar's back button.
- * The permission step is passed only once granted, so choosing apps goes
- * back to the explainer rather than to a permission that is already given.
+ * The step an in-screen Back returns to, or `null` where there is none.
+ * Leaving setup is the bar's back button.
+ *
+ * `authorize` is shown only after Apple's permission request was declined
+ * (the explainer's Continue opens the request itself). It has no Back: the
+ * explainer is the message before that request and must lead to it (App
+ * Review 5.1.1(iv)), so nothing returns to it while permission is not given.
+ * Choosing apps comes after the grant, so from there Back is the explainer.
  */
 export function previousStep(step: SetupStep): SetupStep | null {
   switch (step) {
-    case 'authorize':
     case 'pick':
       return 'explainer';
     case 'configure':
       return 'pick';
     case 'explainer':
+    case 'authorize':
     case 'done':
       return null;
   }

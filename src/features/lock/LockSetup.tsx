@@ -3,9 +3,15 @@
  * native app picker → mode → done. Only reachable on a physical iOS device
  * with the native module present.
  *
+ * The explainer is the message before Apple's permission request, so it
+ * follows App Review 5.1.1(iv): one button, "Continue", which opens the
+ * system request, and no way to leave the message without seeing it. The
+ * choice is made in Apple's dialog. A decline lands on its own step, which
+ * offers Try again and iPhone Settings and can be left.
+ *
  * Setup is also how a running lock is edited (Settings pushes it either
- * way), so nothing here turns the lock off: Back, Cancel and the bar's back
- * button only move or leave. Turning it off is the one explicit control in
+ * way), so nothing here turns the lock off: Back and the bar's back button
+ * only move or leave. Turning it off is the one explicit control in
  * Settings, "Turn off and clear all shields now" (04 §6).
  */
 import { SegmentedControl } from '@expo/ui/community/segmented-control';
@@ -18,6 +24,7 @@ import { closeModal } from '@/components/close-modal';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
 import { Button } from '@/components/button';
 import { ScreenHeader } from '@/components/screen-header';
+import { Stack } from 'expo-router';
 import { TextLink } from '@/components/text-link';
 import { useTranslation } from '@/i18n/react';
 import { loadLockConfig, saveLockConfig } from '@/services/db/repos/lock';
@@ -99,7 +106,8 @@ export function LockSetup() {
         if (status !== 'approved') status = 'denied';
       }
       setAuthStatus(status);
-      if (status === 'approved') setStep('pick');
+      // A decline gets its own step: what happened, Try again, Settings.
+      setStep(status === 'approved' ? 'pick' : 'authorize');
     } finally {
       // Whatever happened, the button comes back.
       setBusy(false);
@@ -157,10 +165,19 @@ export function LockSetup() {
     }
   }, [mode, relockMinutes]);
 
-  // Every step has a native way out: the bar's back chevron, which on iPhone
-  // Duo moves to the side with the status bar. The steps carry their own
+  // The steps have a native way out: the bar's back chevron, which on iPhone
+  // Duo moves to the side with the status bar. The one exception is the
+  // explainer while permission is still to be asked: a message shown before
+  // a permission request must lead to the request (App Review 5.1.1(iv)), so
+  // it has no back button and no swipe back. The steps carry their own
   // headings, so the bar has no title.
-  const header = <ScreenHeader title="" />;
+  const leadsToRequest = available && step === 'explainer' && authStatus !== 'approved';
+  const header = (
+    <>
+      <Stack.Screen options={{ gestureEnabled: !leadsToRequest }} />
+      <ScreenHeader title="" backHidden={leadsToRequest} />
+    </>
+  );
   const back = previousStep(step);
 
   if (!available) {
@@ -201,9 +218,13 @@ export function LockSetup() {
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
               {t('setup.explainerPrivacy')}
             </Text>
+            {/* Straight to Apple's request, with nothing in between. The
+                system sheet can take a while to answer: a spinner, not a
+                dimmed button. */}
             <Button
               label={t('common:continue')}
-              onPress={() => setStep(authStatus === 'approved' ? 'pick' : 'authorize')}
+              busy={busy}
+              onPress={() => (authStatus === 'approved' ? setStep('pick') : void authorize())}
               style={styles.primary}
             />
           </>
@@ -217,23 +238,19 @@ export function LockSetup() {
               {t('setup.authTitle')}
             </Text>
             <Text style={[styles.body, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-              {authStatus === 'denied' ? t('setup.authDenied') : t('setup.authBody')}
+              {t('setup.authDenied')}
             </Text>
-            {/* The system sheet can take a while to answer: a spinner, not
-                a dimmed button. */}
             <Button
-              label={authStatus === 'denied' ? t('common:retry') : t('setup.grantPermission')}
+              label={t('common:retry')}
               busy={busy}
               onPress={() => void authorize()}
               style={styles.primary}
             />
-            {authStatus === 'denied' && (
-              <Button
-                variant="secondary"
-                label={t('setup.openSettings')}
-                onPress={() => void Linking.openSettings()}
-              />
-            )}
+            <Button
+              variant="secondary"
+              label={t('setup.openSettings')}
+              onPress={() => void Linking.openSettings()}
+            />
           </>
         )}
 
@@ -408,13 +425,12 @@ export function LockSetup() {
           </>
         )}
 
-        {/* Back is the previous step; Cancel leaves and changes nothing. A
-            lock that is already on stays on (04 §6: it is turned off in
-            Settings, by name). */}
+        {/* Back is the previous step; leaving is the bar's back button and
+            changes nothing. A lock that is already on stays on (04 §6: it is
+            turned off in Settings, by name). */}
         {back && (
           <View style={styles.exits}>
             <TextLink tone="quiet" label={t('common:back')} onPress={() => setStep(back)} />
-            <TextLink tone="quiet" label={t('setup.cancelSetup')} onPress={closeModal} />
           </View>
         )}
       </ScrollView>
@@ -443,12 +459,5 @@ const styles = StyleSheet.create({
   primary: { marginTop: spacing.md },
   field: { gap: spacing.sm },
   fieldLabel: { fontSize: 15, fontWeight: '600' },
-  // Side by side, and one under the other when large text needs the width.
-  exits: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    columnGap: spacing.xxl,
-    marginTop: spacing.sm,
-  },
+  exits: { alignItems: 'center', marginTop: spacing.sm },
 });

@@ -50,7 +50,7 @@ Extensions can't touch the app's SQLite. Share via **App Group** UserDefaults: c
 ## 5. Setup UX (lock-setup flow)
 
 1. Explainer: what it does, what Apple's permission dialog will say, privacy note ("Apple never tells us which apps you pick").
-2. Screen Time authorization request.
+2. Screen Time authorization request. The explainer's one button, "Continue", opens Apple's dialog directly: no second screen, no "Grant"/"Allow" wording, and no Cancel, back button or swipe back on the explainer while permission is still to be asked (App Review 5.1.1(iv): a message before a permission request must lead to the request; the user decides in Apple's dialog). A decline shows its own step with Try again and a link to iPhone Settings, which can be left.
 3. Native app picker.
 4. Mode + verse source + override style.
 5. Test run: simulated shield preview + one practice recitation so the first real shield isn't a surprise.
