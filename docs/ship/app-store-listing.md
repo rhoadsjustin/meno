@@ -102,6 +102,9 @@ Fallback if collision: "Meno: Hide the Word".)
   set `apple.version` to the new version and run `eas metadata:push`. Do not push
   while `apple.version` is a version that is already live — eas-cli tries to
   create that version again and the push fails.
+  `store.config.json` is at 1.9.0 since 2026-11-16, with release notes for what
+  changed since 1.8.1 (en-US, es-MX, es-ES), pushed and checked with a pull the same day. The 1.8.1 notes were
+  pushed from a worktree and never committed.
 - EAS Metadata quirks seen on the 1.5.0 push (eas-cli 27.2.0):
   - A locale that is new to a version (es-MX, es-ES on 1.5.0) is created empty;
     a second `eas metadata:push` fills its description, keywords, promo text,

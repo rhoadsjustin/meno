@@ -53,6 +53,15 @@ adding one line to `CUTS` in `src/Root.tsx`.
   beside the reference and the full notice on the outro. Its cue is the first four bars of
   the piano phrase (`advent.wav`).
 
+- **WhatsNew** (`src/WhatsNew.tsx`, 19s): the 1.9 release. An opening card, four screens
+  from the release with one line each (Today, the reader, Arrange, Stats), then the update
+  line. The screens are captures of the 1.9 build on the iPhone 17 Pro simulator after
+  `python3 scripts/seed-screenshots.py --udid <udid>`, with the status bar pinned
+  (`public/img/v19/`, committed). The seeded passages are WEB, so no notice is needed. Same
+  length and shape as Advent, so it plays over `advent.wav`. **WhatsNewCard** in the same
+  file is the still for a feed post and a Story; `npm run still:whatsnew` renders its last
+  frame in both shapes.
+
 ```bash
 npm install
 npm run music          # build the soundtracks first (see Assets)
@@ -64,6 +73,9 @@ npm run render:reel        # -> out/meno-promo-9x16.mp4
 npm run render:abide:reel  # -> out/meno-abide-9x16.mp4
 npm run render:advent      # -> out/meno-advent.mp4
 npm run render:advent:reel # -> out/meno-advent-9x16.mp4
+npm run render:whatsnew      # -> out/meno-1.9.mp4
+npm run render:whatsnew:reel # -> out/meno-1.9-9x16.mp4
+npm run still:whatsnew       # -> out/meno-1.9-post.png, out/meno-1.9-story.png
 npm run typecheck
 ```
 

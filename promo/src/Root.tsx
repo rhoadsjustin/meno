@@ -6,6 +6,7 @@ import { Advent, ADVENT_FRAMES } from './Advent';
 import { Duo, DUO_FRAMES } from './Duo';
 import { FEED, FPS, REEL } from './layout';
 import { Promo, TOTAL_FRAMES } from './Promo';
+import { WHATS_NEW_CARD_FRAMES, WHATS_NEW_FRAMES, WhatsNew, WhatsNewCard } from './WhatsNew';
 import './theme';
 
 // Each cut that is built on the shared layout is registered twice: under its
@@ -16,6 +17,9 @@ const CUTS: { id: string; component: React.FC; frames: number; reel: boolean }[]
   { id: 'Duo', component: Duo, frames: DUO_FRAMES, reel: false },
   { id: 'Abide', component: Abide, frames: ABIDE_FRAMES, reel: true },
   { id: 'Advent', component: Advent, frames: ADVENT_FRAMES, reel: true },
+  { id: 'WhatsNew', component: WhatsNew, frames: WHATS_NEW_FRAMES, reel: true },
+  // A still: render its last frame (`npm run still:whatsnew`).
+  { id: 'WhatsNewCard', component: WhatsNewCard, frames: WHATS_NEW_CARD_FRAMES, reel: true },
 ];
 
 export const RemotionRoot: React.FC = () => (
