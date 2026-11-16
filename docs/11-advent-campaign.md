@@ -120,9 +120,25 @@ and a future board (M8) can attach to it.
 ### 3.3 App Store
 
 - **In-App Event** "Advent: Good News of Great Joy", Nov 29 – Dec 25, deep
-  link to the challenge. Art 1920×1080 and 3000×2000. Submit by **Nov 18**;
-  it is reviewed separately from the binary. The Year in the Word event
-  (Dec 1 – Jan 31) is already planned in 10 §9.
+  link to the challenge. Submit by **Nov 18**; it is reviewed separately
+  from the binary. The Year in the Word event (Dec 1 – Jan 31) is already
+  planned in 10 §9.
+  - Art: `store/events/advent-card.png` (16:9, 3840×2160, the event card)
+    and `store/events/advent-details.png` (9:16, 2160×3840, the event
+    details page). Apple's sizes are 1920×1080 to 3840×2160 and 1080×1920
+    to 2160×3840 (developer.apple.com/app-store/in-app-events, read
+    2026-11-15); an earlier draft of this plan had them wrong. Apple asks
+    for no text, logos, borders or overlay gradients and lays the badge and
+    event name over the lower part itself, so the picture is wordless: the
+    field at night and one star, in lapis and vellum. Rebuild with
+    `python3 scripts/store-event.py`.
+  - Copy, inside Apple's limits (name 30, short 50, long 120):
+    - Name: `Advent: Good News of Great Joy` (30)
+    - Short description: `Memorize the Christmas story by Christmas.` (42)
+    - Long description: `Learn Luke 2:1–14 a few verses a week through
+      Advent, then recite the Christmas story from memory on Christmas
+      morning.` (119, as one line)
+    - Badge: Challenge.
 - **Promotional text** (editable without review): "Memorize the Christmas story, Luke 2:1–14,
   by Christmas. The Advent plan starts November 29."
 - Keywords: test `advent` in place of the weakest current keyword for the
