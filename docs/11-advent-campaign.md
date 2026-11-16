@@ -143,11 +143,100 @@ The site and store art already set the look; the campaign uses it unchanged.
   it is the product explained in three frames.
 - **Voice:** quiet and plain. Invitations, not challenges to beat. No
   streak-shaming, no superlatives, no counting other users.
-- **Handles:** `@menoscripture` everywhere, matching meno-scripture.org.
-  Availability not yet checked (§11).
+- **Handles:** `meno.scripture` (decided 2026-11-15, replacing the
+  `@menoscripture` first proposed). Instagram is live as
+  [@meno.scripture](https://www.instagram.com/meno.scripture) and linked to
+  the Facebook Page "Meno"
+  (https://www.facebook.com/profile.php?id=61596491916315), so Business
+  Suite can schedule to both. X handles take only letters, numbers and
+  underscores, so X is `menoscripture`; YouTube handles may contain a
+  period (from memory, not checked against YouTube's help page), so try
+  `meno.scripture` there first. Accounts and copy for each channel are in
+  §4.1.
 - **Kit to produce:** avatar (Meno mark on lapis), cover images for
   Facebook, YouTube, X and LinkedIn, a Reel cover template, a verse-card
   template (4:5 and 9:16), and a one-paragraph bio with the site link.
+
+### 4.1 Profiles
+
+| Channel | Account | State (2026-11-15) |
+|---|---|---|
+| Instagram | `@meno.scripture`, professional account | Live, linked to the Page |
+| Facebook | Page "Meno", https://www.facebook.com/profile.php?id=61596491916315 | Live. A Page username (`meno.scripture`) can be set once Facebook allows it for a new Page. |
+| YouTube | — | Not created |
+| X | — | Not created |
+| LinkedIn | The owner's own profile (three founder posts, §6) | No Page planned |
+
+**Profile picture.** The app icon, `assets/images/icon.png`, unchanged
+(owner's choice, 2026-11-15), so the accounts match the App Store listing.
+It is 1024px, and the rings sit inside the circle every platform crops to.
+
+**Facebook cover.** `store/social/facebook-cover.png`, 1640×924: μένω,
+"Let the Word remain in you.", and the site, on the vellum gradient so the
+lapis profile picture stands out against it. The text sits in the middle
+1280×560, inside both the desktop crop (top and bottom trimmed) and the
+phone crop. Rebuild with `python3 scripts/social-cover.py`; `--guides`
+draws the crops. Covers for YouTube, X and LinkedIn are still to make.
+
+**Copy.** Lengths are inside each platform's limit as counted on 2026-11-15
+(Instagram bio 150, Facebook intro 101, X bio 160). The Advent line and link
+change to Year in the Word on Dec 26 and come out on Feb 1.
+
+*Instagram* — name field: `Meno · Scripture Memory`
+
+```
+Memorize Scripture, and keep it.
+μένω: to remain, to abide. John 15
+Free on iPhone. No account, no ads.
+Advent: Luke 2 by Christmas ↓
+```
+
+Link: `https://meno-scripture.org/advent` (back to
+`https://meno-scripture.org` after the season). Category: App page.
+
+*Facebook* — intro:
+
+```
+Memorize Scripture, and keep it. Free on iPhone. No account, no ads, no tracking.
+```
+
+About:
+
+```
+Meno is a Scripture memory app for iPhone. Pick a passage, from one verse to
+whole chapters, and Meno walks it from reading to reciting, then brings it
+back for review just before you would forget it. As a verse settles in
+memory its text fades from the screen: first letters, then only the
+reference.
+
+The name is the Greek μένω: to remain, to abide. "If you abide in me, and
+my words abide in you…" (John 15:7)
+
+Free. No account, no ads, no tracking. Your progress stays on your phone.
+```
+
+Website: `https://meno-scripture.org`. Email: `support@meno-scripture.org`.
+
+*X*:
+
+```
+Scripture memory for iPhone. Read it, practice it, recite it, keep it. μένω: to abide. Free, with no account, no ads and no tracking.
+```
+
+*YouTube* — channel description:
+
+```
+Meno helps you memorize Scripture, and keep it. Short videos on how it
+works, and a few verses to learn along with us through Advent: Luke 2:1–14
+by Christmas.
+
+Free on iPhone: https://meno-scripture.org
+Advent plan: https://meno-scripture.org/advent
+
+Scripture quotations are from the ESV® Bible (The Holy Bible, English
+Standard Version®), © 2001 by Crossway, a publishing ministry of Good News
+Publishers. Used by permission. All rights reserved.
+```
 
 ## 5. Video and image plan
 
