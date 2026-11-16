@@ -10,11 +10,9 @@ export default {
     explainerPrivacy:
       'Next, iOS will ask for Screen Time permission. Apple never tells Meno which apps you pick, and you can override or switch this off at any time.',
     authTitle: 'Screen Time permission',
-    authBody: 'Meno uses Apple’s Screen Time to shield the apps you choose.',
     authDenied:
       'Permission was declined. Try again, or allow Screen Time access for Meno in iPhone Settings.',
     openSettings: 'Open iPhone Settings',
-    grantPermission: 'Grant permission',
     pickTitle: 'Choose apps to shield',
     pickBody: 'Pick the apps or categories that should ask for a verse first.',
     pickApps: 'Pick apps',
@@ -45,7 +43,6 @@ export default {
       'Notifications are off for Meno, so the shield can’t bring you here. When you see a shield, open Meno to recite, or allow notifications in iPhone Settings.',
     doneEscape:
       'Override is always one tap away, and “Turn off and clear all shields now” in Settings clears everything.',
-    cancelSetup: 'Cancel setup',
   },
   unlock: {
     errorNoGoal: 'There’s no passage in progress to recite right now.',

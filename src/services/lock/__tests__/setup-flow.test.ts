@@ -65,7 +65,13 @@ describe('previousStep', () => {
   it('walks back through the steps', () => {
     expect(previousStep('configure')).toBe('pick');
     expect(previousStep('pick')).toBe('explainer');
-    expect(previousStep('authorize')).toBe('explainer');
+  });
+
+  // App Review 5.1.1(iv): the explainer is the message before Apple's
+  // permission request, so nothing leads back to it while permission is
+  // not given. A declined request is left by the bar's back button.
+  it('has no way back to the explainer from a declined permission', () => {
+    expect(previousStep('authorize')).toBeNull();
   });
 
   it('has nothing behind the first step or the confirmation', () => {
