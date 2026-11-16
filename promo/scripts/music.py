@@ -2,7 +2,7 @@
 """
 Build the soundtracks for the promo videos from GarageBand's Apple Loops.
 
-    python3 scripts/music.py            # -> public/music/promo.wav, public/music/abide.wav
+    python3 scripts/music.py            # -> public/music/{promo,abide,advent}.wav
                                         #    + out/music-previews/*.m4a to audition
 
 The bed is "Find Strength Piano" (Apple Loops, Hip Hop pack: C major, 73 BPM, an
@@ -37,9 +37,11 @@ SR = 48000
 PIANO = os.path.join(LOOPS, "Find Strength Piano.caf")
 PIANO_BARS = 8  # 32 beats at 73 BPM
 
-# Both compositions run at 30 fps; keep in sync with src/Promo.tsx and src/Abide.tsx.
+# All compositions run at 30 fps; keep in sync with src/Promo.tsx, src/Abide.tsx
+# and src/Advent.tsx.
 PROMO_SECONDS = 885 / 30  # 29.5
 ABIDE_SECONDS = 1385 / 30  # 46.17
+ADVENT_SECONDS = 570 / 30  # 19.0
 
 
 def sh(*args, **kw):
@@ -172,6 +174,9 @@ def main():
         # then one more pass of the first four bars: 12 bars end at 42.95s, as the
         # outro begins (42.17s), and ring through it.
         "abide": (ABIDE_SECONDS, [(3.5, 8), (3.5 + bar * 8, 4)], 2.8),
+        # The first four bars only: they resolve at 13.45s, just after the
+        # invitation lands (13.0s), and the reverb carries the chord out.
+        "advent": (ADVENT_SECONDS, [(0.3, 4)], 2.6),
     }
     for name, (length, passes, tail) in cues.items():
         mix = cue(length, passes, tail, ir, piano)
