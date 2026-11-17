@@ -11,15 +11,15 @@ Paste this one as-is. The expanded version below is the same content with more d
 for follow-up questions.
 
 ```
-1. VIDEO: Recorded on a physical iPhone 15 Pro Max (iOS 27) from a fresh install. It starts at launch: onboarding (welcome, notifications, widgets, lock preview), creating a first goal, a practice session through the modes (Read, First letters, Blanks, Arrange, Type, Speak), the main tabs, then the full Recite to Unlock loop: individual Screen Time authorization, Apple's app picker, the shield, Override (instant), "Recite to unlock", and the kill switch. Meno has no accounts (no registration, login or deletion), no paid content or IAP, and no hosted user-generated content. The only sharing is a "challenge link" sent via the iOS share sheet; it carries just a Scripture reference, translation, date and title, and the recipient previews it before accepting. Nothing is uploaded to us.
+1. VIDEO: Recorded on a physical iPhone 15 Pro Max (iOS 27), fresh install, from launch: onboarding (welcome, notifications, widgets, lock preview), creating a first goal, a practice session through the modes (Read, First letters, Blanks, Arrange, Type, Speak), the main tabs, then the full Recite to Unlock loop: individual Screen Time authorization, Apple's app picker, the shield, Override (instant), "Recite to unlock", and the kill switch. Meno has no accounts (no registration, login or deletion), no paid content or IAP, and no hosted user-generated content. The only sharing is a "challenge link" sent via the iOS share sheet; it carries just a Scripture reference, translation, date and title, and the recipient previews it before accepting. Nothing is uploaded to us.
 
 2. PURPOSE: Meno helps Christians (individuals, students, small groups, families; rated 4+) memorize Scripture and keep it. Rote memorization is tedious, verses are forgotten without review, and the phone is the distraction. Meno splits any passage into day-sized pieces, walks each up a ladder of practice modes while the text visibly dissolves as it is learned, brings memorized verses back for spaced-repetition review and pop quizzes (max 2/day), shows the current verse on widgets, and can optionally ask for a recitation before opening apps the user restricts, always with a one-tap override. Free, no ads, no account, no tracking; all progress stays on the device.
 
-3. SETUP: No credentials or sample files. Launch > onboarding (notifications optional) > Today > swipe to a starter verse and tap "Practice this verse", or "Choose my own passage" to pick a translation, book, chapter and verses (WEB, KJV, ASV are built in and offline; ESV downloads once per chapter) > the practice session opens. Speak mode asks for mic/speech permission (processed on-device); a Type toggle is always available instead. Recite to Unlock (physical iPhone only): Settings > Recite to Unlock > Continue > allow in Apple's Screen Time dialog > Pick apps > choose "Every pickup" > Turn on > Done. Open that app: the shield offers "Override" (clears instantly) and "Recite to unlock" (a notification opens Meno; recite or type at 85%+ to clear). Settings > "Turn off and clear all shields now" disables everything; deleting the app removes all restrictions. Widgets: long-press the Home or Lock Screen and add Meno.
+3. SETUP: No credentials or sample files. Launch > onboarding (notifications optional) > Today > swipe to a starter verse and tap "Practice this verse", or "Choose my own passage" to pick a translation, book, chapter and verses (WEB, KJV, ASV are built in and offline; ESV downloads once per chapter). Speak mode asks for mic/speech permission (processed on-device); a Type toggle is always available instead. Recite to Unlock (physical iPhone only): Settings > Recite to Unlock > Continue > allow Apple's Screen Time request > Pick apps > choose "Every pickup" > Turn on > Done. Open that app: the shield offers "Override" (clears instantly) and "Recite to unlock" (a notification opens Meno; recite or type at 85%+ to clear). Settings > "Turn off and clear all shields now" disables everything; deleting the app removes all restrictions. Widgets: long-press the Home or Lock Screen and add Meno.
 
 4. EXTERNAL SERVICES: Crossway ESV API (api.esv.org) for ESV text; requests carry only the passage reference and our API key. YouVersion Platform (api.youversion.com) for other translations; requests carry our app key, device language, language browsed, version and chapter (text held in memory only). Expo EAS Observe: anonymous crash/performance diagnostics. Expo EAS Update: JS fixes between releases (app version, update ID, random install ID). Apple frameworks, all on-device: Speech, Screen Time, WidgetKit, local notifications. No auth, payments, ads, analytics SDK, AI or own backend.
 
-5. REGIONS: Meno functions identically in all regions. English interface and translations, free everywhere, no region-gated content or features. Built-in translations work offline anywhere; ESV download needs internet but is not region-restricted. Where on-device English speech recognition is unavailable, the Type alternative is offered.
+5. REGIONS: Identical in all regions. Interface in English and Spanish, following the device language. Free everywhere, nothing region-gated. Built-in translations (English) work offline; ESV and YouVersion translations (English, Spanish and more) need internet but are not region-restricted. Where a language has no on-device speech recognition, Type is offered.
 
 6. REGULATED/PROTECTED MATERIAL: Not a regulated industry. The ESV text is copyright 2001 by Crossway and is accessed only through Crossway's official ESV API under its license (free non-commercial key; the app is free). Per the license, Meno shows the required Crossway attribution wherever ESV text appears, respects per-request verse limits, caches only passages the user added to a goal, purges them when the goal is deleted, and never caches the full Bible. API registration details available on request. WEB, KJV and ASV are public domain. Apple has granted Family Controls (Distribution) for com.rhoadsdev.meno and its three Screen Time extensions, and the build is signed with it.
 ```
@@ -57,7 +57,7 @@ Meno is a Scripture memorization app. Its users are Christians who want to
 commit Bible passages to memory: individuals in personal devotion, students,
 small-group and church members memorizing together, and families. It is rated
 4+ and contains nothing unsuitable for any age, but it is designed for teens and
-adults who can read and recite English text.
+adults who can read and recite the text they choose.
 
 The problem it solves: memorizing Scripture by rote is tedious, verses learned
 once are forgotten without review, and the phone that could help is usually the
@@ -98,8 +98,8 @@ available immediately after install.
    verses, streak, and badges. Settings holds notification preferences,
    translation, and the Recite to Unlock feature.
 5. Recite to Unlock (requires a physical iPhone; Screen Time APIs are not
-   available in the simulator): Settings → Recite to Unlock → Continue → Grant
-   permission (Apple's individual Screen Time authorization) → Pick apps (Apple's
+   available in the simulator): Settings → Recite to Unlock → Continue, which
+   opens Apple's individual Screen Time authorization → allow → Pick apps (Apple's
    FamilyActivityPicker; choose any app, for example Safari) → choose a mode
    ("Every pickup" is the fastest to test) → Turn on → Done. Open the chosen app:
    Meno's shield appears with the current verse reference and two buttons.
@@ -158,14 +158,16 @@ no push-notification service, and no backend of our own. There are no accounts.
 
 ### 5. Regional differences
 
-Meno functions identically in every region. The interface and all four
-translations are in English; there is no region-specific content, feature
-gating, or pricing (the app is free everywhere). The three built-in
-translations work fully offline anywhere. Downloading ESV text requires an
-internet connection but is not region-restricted. The Speak practice mode uses
-Apple's on-device English speech recognition, which is available on supported
-iPhones regardless of region; where it is unavailable, the Type alternative is
-always offered. Recite to Unlock relies on iOS Screen Time, which is available
+Meno functions identically in every region. The interface is in English and
+Spanish and follows the device language; there is no region-specific content,
+feature gating, or pricing (the app is free everywhere). The three built-in
+translations are English and work fully offline anywhere. ESV text and the
+translations from the YouVersion Platform (English, Spanish and other
+languages, as licensed by their publishers) require an internet connection but
+are not region-restricted. The Speak practice mode uses Apple's on-device
+speech recognition in the translation's language, regardless of region; where
+the device has no on-device recognition for that language, the Type
+alternative is always offered. Recite to Unlock relies on iOS Screen Time, which is available
 on iPhone in all regions.
 
 ### 6. Regulated industry and protected third-party material
