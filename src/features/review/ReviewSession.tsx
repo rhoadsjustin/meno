@@ -21,7 +21,12 @@ import { useTranslation } from '@/i18n/react';
 import { formatRange, getPassage, getTranslation } from '@/services/bible';
 import { db, tables } from '@/services/db';
 import { recordAttempt } from '@/services/db/repos/attempts';
-import { dueReviewItems, recordReviewResult, type ReviewItem } from '@/services/db/repos/reviews';
+import {
+  dueReviewItems,
+  recordReviewResult,
+  reviewItemById,
+  type ReviewItem,
+} from '@/services/db/repos/reviews';
 import { secureToday } from '@/services/db/repos/streaks';
 import { rescheduleAll } from '@/services/notifications';
 import { gradeBandAtLine, type GradeResult } from '@/services/grading';
@@ -59,7 +64,9 @@ type Phase =
   | { kind: 'feedback'; index: number; accuracy: number; held: boolean; result: GradeResult }
   | { kind: 'summary'; held: number; reset: number; averageAccuracy: number };
 
-export function ReviewSession() {
+/** `itemId`: review that one verse (picked from the Due for review list)
+ * instead of the queue of the most overdue. */
+export function ReviewSession({ itemId }: { itemId?: string }) {
   const colors = useThemeColors();
   const { t } = useTranslation(['review', 'practice', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
@@ -81,7 +88,8 @@ export function ReviewSession() {
     let cancelled = false;
     void (async () => {
       try {
-        const items = await dueReviewItems();
+        const one = itemId ? await reviewItemById(itemId) : undefined;
+        const items = itemId ? (one ? [one] : []) : await dueReviewItems();
         const entries: QueueEntry[] = [];
         for (const item of items) {
           const chunkRows = await db
@@ -132,7 +140,7 @@ export function ReviewSession() {
     return () => {
       cancelled = true;
     };
-  }, [attempt]);
+  }, [attempt, itemId]);
 
   const retryLoad = useCallback(() => {
     setPhase({ kind: 'loading' });

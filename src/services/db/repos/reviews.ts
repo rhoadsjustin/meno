@@ -47,6 +47,37 @@ export async function dueReviewItems(limit = 5, now = new Date()): Promise<Revie
     .limit(limit);
 }
 
+/** One due review with what a list needs to name it. */
+export type DueReview = {
+  item: ReviewItem;
+  chunk: typeof tables.chunks.$inferSelect;
+  translationId: string;
+};
+
+/** Every due review, most overdue first: the Due for review list. */
+export async function dueReviewList(now = new Date()): Promise<DueReview[]> {
+  return db
+    .select({
+      item: tables.reviewItems,
+      chunk: tables.chunks,
+      translationId: tables.goals.translationId,
+    })
+    .from(tables.reviewItems)
+    .innerJoin(tables.chunks, eq(tables.chunks.id, tables.reviewItems.chunkId))
+    .innerJoin(tables.goals, eq(tables.goals.id, tables.chunks.goalId))
+    .where(lte(tables.reviewItems.dueAt, now))
+    .orderBy(asc(tables.reviewItems.dueAt));
+}
+
+export async function reviewItemById(id: string): Promise<ReviewItem | undefined> {
+  const rows = await db
+    .select()
+    .from(tables.reviewItems)
+    .where(eq(tables.reviewItems.id, id))
+    .limit(1);
+  return rows[0];
+}
+
 export async function countDueReviews(now = new Date()): Promise<number> {
   const rows = await db
     .select({ id: tables.reviewItems.id })
