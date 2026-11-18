@@ -24,6 +24,7 @@ Two things ship together:
 | Translation | **ESV** | Crossway's quoting rules shape what videos and images may show (§2). |
 | Passage | **Luke 2** | Main track Luke 2:1–14, short track Luke 2:8–14 (§3.1). The exact ranges are Claude's proposal; the owner chose the chapter. |
 | Today card | **In scope** | Built JS-only and shipped over the air to 1.8.1 (§3.2). |
+| Publishing | **Desktop only** (decided 2026-11-16) | The owner keeps no social apps on the phone. Every post is scheduled from a laptop browser in one weekly session (§6.1). |
 | Release state | 1.7.0 live; **1.8.1 in review from Nov 11** (Siri intents) | The card cannot ride in the 1.8.1 binary. It reaches 1.8.1 users by OTA once 1.8.1 is approved; 1.7.0 users get the web page. |
 
 ## 2. Constraints
@@ -287,7 +288,7 @@ depends on it.
 
 | Channel | Role | Rhythm |
 |---|---|---|
-| Instagram | Main channel: Reels, weekly verse card, Stories for Year in the Word reshares | 3 posts a week, Stories as shares arrive |
+| Instagram | Main channel: Reels, weekly verse card, Stories for Year in the Word recap images (reposted with permission, §6.1) | 3 posts a week, Stories as images arrive |
 | Facebook | Page mirrors Instagram; the real value is posting the Advent link into church and small-group groups the owner belongs to | Mirror, plus group posts in weeks of Nov 16 and Nov 23 |
 | YouTube Shorts | Every vertical video, reposted; long shelf life through search ("memorize Luke 2") | Same day as Instagram |
 | X | Build-in-public notes, the Advent link, replies in the Christian and indie-dev circles | 3–4 posts a week |
@@ -296,6 +297,46 @@ depends on it.
 A fixed weekly shape through Advent: **Sunday** the week's video and verse
 card, **Wednesday** an evergreen piece (V2–V4, V10), **Friday** a text or
 carousel post (a memorization tip, a tester's line used with permission).
+
+### 6.1 Desktop-only publishing
+
+No social app is installed on the owner's phone. Everything is published
+from a laptop browser. The tool details were checked by web search on
+2026-11-16, mostly against third-party guides rather than the platforms'
+own help pages; the two items marked *unconfirmed* need a test on the
+real accounts.
+
+| Channel | Published from | Checked |
+|---|---|---|
+| Instagram + Facebook | Meta Business Suite in the browser (business.facebook.com): schedules Reels, feed posts, carousels and Stories for both. The Instagram account must be a professional account (business or creator) connected to the Facebook Page. | Confirmed; Meta's overview page says Business Suite publishes or schedules posts and stories for both. Reel editing and audio tools are thinner than in the app, which does not matter for finished Remotion renders. |
+| YouTube Shorts | YouTube Studio upload. A vertical or square video of 3 minutes or less is classified as a Short automatically. | Classification confirmed. Scheduling a Short from Studio is *unconfirmed* by search; test with V1. |
+| X | The clock icon in the composer on x.com. Free accounts can schedule; the scheduler exists only on the website, not in the phone apps. | Confirmed. Single posts only: a thread cannot be scheduled natively, so build-in-public threads are posted live in a reply window or kept to one post. |
+| LinkedIn | The schedule option in the post composer, free, for profiles and Pages. | Confirmed. |
+
+- **Weekly batch, Mondays.** Alongside the metrics check (§9), schedule
+  that week's Sunday, Wednesday and Friday posts on every channel. Claude
+  prepares a folder per week with the rendered videos, verse cards and
+  captions (ESV notice included), so the session is upload and schedule
+  only.
+- **Replies twice a week.** Two short browser sessions for comments and
+  messages, then the tab is closed. No notifications on the phone.
+- **Accounts and sign-in.** All five accounts are created in a browser.
+  Security codes come from an authenticator app or SMS, not the social
+  apps.
+- **Recap reshares.** The one-tap reshare of a Story that mentions the
+  account is described only for the phone app (no source shows it on the
+  web), and it lasts only the 24 hours the Story is live. Instead: ask the person for the image and their
+  permission, then post it as Meno's own Story or feed post from Business
+  Suite. If that proves fiddly, drop it; nothing else depends on it.
+- **Links in Stories.** Whether Business Suite on desktop can add a link
+  sticker is *unconfirmed*: sources conflict, and interactive stickers are
+  reported as app-only. The plan assumes it cannot; the Advent link goes
+  in the bio and the caption. If the first desktop Story shows a link
+  option, use it.
+- **V3 recording** is a screen recording on the iPhone, AirDropped to the
+  Mac. It needs no social app.
+- **If four websites become a chore**, a scheduler such as Buffer gives
+  one queue for all five channels. Start with the free native tools.
 
 ## 7. Reach without spend
 
@@ -330,7 +371,7 @@ keywords is the only test worth running first; not part of this plan.
 | **Nov 21–28** | Pre-launch: V1 on Nov 21, V2 pinned, a "starts Sunday" post Nov 27, a reminder Nov 28. Render V6–V8, V9. Promotional text switched. |
 | **Sun Nov 29** | Advent opens. V5, week 1 card, LinkedIn post. |
 | **Dec 1** | Year in the Word opens. V9, example images, second LinkedIn post. |
-| **Dec 6, 13, 20** | V6, V7, V8 with the weekly card. Wednesdays: V3, V10, V4. Reshare user recap images to Stories as they appear (with permission). |
+| **Dec 6, 13, 20** | V6, V7, V8 with the weekly card. Wednesdays: V3, V10, V4. Repost user recap images to Stories as they arrive (with permission, from desktop — §6.1). |
 | **Dec 24–25** | V11. One quiet Christmas post. |
 | **Dec 28 – Jan 10** | New Year: V12, "pick one passage for 2027", the summary card's "Start 2027 with me" links. Third LinkedIn post. |
 | **Jan 11–31** | Two posts a week. Season review (§9). Restore keywords. Year in the Word closes Jan 31. |
@@ -355,11 +396,14 @@ Targets are set once the baseline is read (§11); no number is assumed here.
 
 Claude can draft, render and prepare; these need the owner's hands:
 
-- Create the social accounts and reserve handles.
+- Create the social accounts and reserve handles, in a browser (§6.1).
+  Switch Instagram to a professional account and link it to the Facebook
+  Page so Business Suite can schedule to both.
 - Get the `pt` campaign token from App Store Connect.
 - Submit the In-App Events and any store build.
 - Record recite-to-unlock on the physical iPhone (V3).
-- Send the church and newsletter emails, and publish every post.
+- Send the church and newsletter emails, and schedule every post in the
+  Monday desktop session (§6.1).
 - Approve the site deploy.
 
 ## 11. Open questions
@@ -369,7 +413,7 @@ Claude can draft, render and prepare; these need the owner's hands:
 | Q1 | Luke 2:1–14 as the main range and 2:8–14 as the short one? | The owner chose Luke 2; the ranges and the week split are a proposal. 2:1–20 is the longer option. |
 | Q2 | If 1.8.1 is rejected or delayed past Nov 22, also send the card to 1.7.0 by OTA from the 1.7.0 commit? | A second OTA line to maintain; only worth it if 1.8.1 is late. |
 | Q3 | Is a caption notice enough for ESV text in short video, per Crossway? | If not, videos show the reference and in-app screens only, or use KJV. |
-| Q4 | Handle `@menoscripture` — available on all five? | Blocks the brand kit. |
+| Q4 | Handle `@menoscripture` — available on all five? | Blocks the brand kit. Checked 2026-11-16 without signing in: YouTube free (the handle URL returns "not found"); Instagram probably free; X, Facebook and LinkedIn could not be read from outside. No web search result uses the name. The owner settles it by reserving the handle on each site. |
 | Q5 | Any pieces to camera? | Changes the shoot list, nothing else. |
 | Q6 | Spanish: post the Advent plan in Spanish too? | The app is en + es; ESV has no Spanish text, so a Spanish track needs a YouVersion version and its own cards. |
 | Q7 | November baseline for downloads and active use? | Needed to set targets in §9. |
