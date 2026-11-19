@@ -132,5 +132,7 @@ export default {
   share: {
     footer: 'meno-scripture.org',
     dialogTitle: 'Share your Year in the Word',
+    /** Sent with the image where the share sheet takes text (iOS). */
+    text: 'My {{year}} in the Word, with Meno: {{link}}',
   },
 } as const;

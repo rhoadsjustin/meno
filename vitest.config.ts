@@ -18,6 +18,8 @@ export default defineConfig({
       'src/components/**/__tests__/**/*.test.ts',
       // The Reader's pagination, chapter stepping and text size are pure.
       'src/features/reader/__tests__/**/*.test.ts',
+      // The recap's share text is pure: one line and the campaign link.
+      'src/features/wrapped/__tests__/**/*.test.ts',
       'scripts/**/__tests__/**/*.test.ts'],
   },
 });

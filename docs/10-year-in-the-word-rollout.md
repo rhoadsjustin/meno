@@ -158,7 +158,10 @@ and becomes a "Past years" row on Stats.
 - The summary image is the hero: it should look good as a phone wallpaper
   and as a story.
 - Share sheet text: one line + App Store link with an Apple campaign token
-  (`?pt=118737961&ct=wrapped2026&mt=8`) — see §8.
+  (`?pt=118737961&ct=wrapped2026&mt=8`) — see §8. iOS only
+  (`features/wrapped/share-text.ts`): the text is a second share item, so
+  Messages and Mail carry it and image-only targets such as Stories drop
+  it. Android shares the image alone.
 - **"Start 2027 with me"** on the summary card attaches a challenge link for
   the passage of the year (`services/challenges`), turning a brag into an
   invitation, as an https universal link that falls back to a web page for
@@ -191,7 +194,7 @@ layout (cards + share pane around the crease), universal-link files.
 The Maestro flow covers the fresh-install "not yet" state
 (`.maestro/manual/10-wrapped-not-yet.yml`); the full card path can't be
 seeded from a flow, so it is checked by hand with `scripts/seed-wrapped.py`.
-Still open: App Store campaign token, Split View
+Still open: Split View
 by hand in Device Hub, physical-iPhone pass, site deploy before merge,
 then the PR and the 1.7.0 store build.
 

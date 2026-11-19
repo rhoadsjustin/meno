@@ -4,16 +4,22 @@
  * handed to the system share sheet. Nothing is uploaded or kept: the image
  * goes wherever the user sends it, and the temp file is the OS's to clear.
  *
+ * On iOS a line of text with the App Store link rides along (share-text.ts);
+ * apps that take only an image, like Stories, drop it. expo-sharing shares a
+ * file and nothing else, so iOS goes through React Native's Share, which
+ * takes both. Android's Share takes no file, so there the image goes alone.
+ *
  * The canvas is sized in points so the capture comes out exactly 1080px
  * wide at the device's pixel ratio, whatever the window or Duo pose.
  */
 import * as Sharing from 'expo-sharing';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { PixelRatio, StyleSheet, View, type ViewInstance } from 'react-native';
+import { PixelRatio, Platform, Share, StyleSheet, View, type ViewInstance } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 import { CANVAS, RecapCard } from '@/features/wrapped/RecapCard';
 import type { RecapView } from '@/features/wrapped/recap-view';
+import { recapShareText } from '@/features/wrapped/share-text';
 import { t } from '@/i18n';
 import type { CardId } from '@/services/wrapped';
 import type { ColorScheme } from '@/theme';
@@ -61,11 +67,15 @@ export const ShareStage = forwardRef<ShareStageHandle, { view: RecapView; scheme
             width: OUTPUT_WIDTH / ratio,
             height: (OUTPUT_WIDTH * canvas.height) / canvas.width / ratio,
           });
-          await Sharing.shareAsync(uri, {
-            mimeType: 'image/png',
-            UTI: 'public.png',
-            dialogTitle: t('wrapped:share.dialogTitle'),
-          });
+          if (Platform.OS === 'ios') {
+            await Share.share({ url: uri, message: recapShareText(year) });
+          } else {
+            await Sharing.shareAsync(uri, {
+              mimeType: 'image/png',
+              UTI: 'public.png',
+              dialogTitle: t('wrapped:share.dialogTitle'),
+            });
+          }
         } finally {
           setJob(null);
         }
