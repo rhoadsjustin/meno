@@ -11,6 +11,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { closeModal } from '@/components/close-modal';
 import { ActionFooter } from '@/components/action-footer';
 import { contentColumn, useContentLayout } from '@/components/content-layout';
+import { FoldAwareRow } from '@/components/fold-aware-row';
 import { KeyboardScroll } from '@/components/keyboard-scroll';
 import { useBarIcon } from '@/components/bar-icon';
 import { ScreenHeader } from '@/components/screen-header';
@@ -70,7 +71,7 @@ export function ReviewSession({ itemId }: { itemId?: string }) {
   const colors = useThemeColors();
   const { t } = useTranslation(['review', 'practice', 'common']);
   const closeIcon = useBarIcon('xmark', 'close');
-  const { sides } = useContentLayout();
+  const { sides, foldAxis } = useContentLayout();
   // Close, the edge swipe and Android's back ask first while a round holds
   // typed or spoken words: a review in progress is not saved.
   const reportUnsaved = useLeaveGuard();
@@ -266,153 +267,162 @@ export function ReviewSession({ itemId }: { itemId?: string }) {
         </Stack.Toolbar>
       </ScreenHeader>
 
-      <View style={styles.flex}>
-        <KeyboardScroll contentContainerStyle={[styles.content, contentColumn]}>
-          {/* Blank for a moment, then a spinner: licensed text is fetched. */}
-          {phase.kind === 'loading' && <LoadingState layout="inline" />}
+      {/* Half-open on iPhone Duo the crease would run through the answer
+          chips and the footer button, so the round moves into the leading
+          half (as the Due for review list does): an empty second pane makes
+          the row size the first one up to the crease. Flat, the one pane
+          stays at full width in the same place in the tree, so folding
+          mid-round remounts nothing. */}
+      <FoldAwareRow fill>
+        <View style={styles.flex}>
+          <KeyboardScroll contentContainerStyle={[styles.content, contentColumn]}>
+            {/* Blank for a moment, then a spinner: licensed text is fetched. */}
+            {phase.kind === 'loading' && <LoadingState layout="inline" />}
 
-          {phase.kind === 'empty' && (
-            <Unavailable
-              kind="empty"
-              symbol={{ ios: 'checkmark.circle', android: 'check_circle' }}
-              title={t('emptyTitle')}
-              message={t('emptyBody')}
-              action={{ label: t('common:done'), onPress: closeModal }}
-            />
-          )}
+            {phase.kind === 'empty' && (
+              <Unavailable
+                kind="empty"
+                symbol={{ ios: 'checkmark.circle', android: 'check_circle' }}
+                title={t('emptyTitle')}
+                message={t('emptyBody')}
+                action={{ label: t('common:done'), onPress: closeModal }}
+              />
+            )}
 
-          {phase.kind === 'failed' && (
-            <Unavailable
-              kind="failed"
-              title={t('loadFailedTitle')}
-              message={t('loadFailedBody')}
-              action={{ label: t('common:retry'), onPress: retryLoad }}
-              secondaryAction={{ label: t('common:done'), onPress: closeModal }}
-            />
-          )}
+            {phase.kind === 'failed' && (
+              <Unavailable
+                kind="failed"
+                title={t('loadFailedTitle')}
+                message={t('loadFailedBody')}
+                action={{ label: t('common:retry'), onPress: retryLoad }}
+                secondaryAction={{ label: t('common:done'), onPress: closeModal }}
+              />
+            )}
 
-          {phase.kind === 'round' && queue[phase.index] && (
-            <UnsavedInputProvider value={reportUnsaved}>
-              {/* Where this verse is in the queue. Speak prints the
+            {phase.kind === 'round' && queue[phase.index] && (
+              <UnsavedInputProvider value={reportUnsaved}>
+                {/* Where this verse is in the queue. Speak prints the
                   reference itself, large, so it is not said twice there. */}
-              <Text
-                accessibilityLabel={
-                  queue[phase.index].mode === 'speak'
-                    ? positionLabel
-                    : `${positionLabel}, ${queue[phase.index].reference}`
-                }
-                style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {queue[phase.index].mode === 'speak'
-                  ? position
-                  : t('roundHeader', { position, reference: queue[phase.index].reference })}
-              </Text>
-              {queue[phase.index].mode === 'blanks75' ? (
-                <BlanksRound
-                  key={phase.index}
-                  text={queue[phase.index].text}
-                  density={0.75}
-                  chunkId={queue[phase.index].chunkId}
-                  attemptNo={phase.index}
-                  onDone={(o) =>
-                    void finishRound(phase.index, {
-                      accuracy: o.accuracy,
-                      missedWords: o.missedWords,
-                      result: {
-                        words: [],
-                        insertions: [],
+                <Text
+                  accessibilityLabel={
+                    queue[phase.index].mode === 'speak'
+                      ? positionLabel
+                      : `${positionLabel}, ${queue[phase.index].reference}`
+                  }
+                  style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {queue[phase.index].mode === 'speak'
+                    ? position
+                    : t('roundHeader', { position, reference: queue[phase.index].reference })}
+                </Text>
+                {queue[phase.index].mode === 'blanks75' ? (
+                  <BlanksRound
+                    key={phase.index}
+                    text={queue[phase.index].text}
+                    density={0.75}
+                    chunkId={queue[phase.index].chunkId}
+                    attemptNo={phase.index}
+                    onDone={(o) =>
+                      void finishRound(phase.index, {
                         accuracy: o.accuracy,
-                        unitCount: o.unitCount,
-                      },
-                    })
+                        missedWords: o.missedWords,
+                        result: {
+                          words: [],
+                          insertions: [],
+                          accuracy: o.accuracy,
+                          unitCount: o.unitCount,
+                        },
+                      })
+                    }
+                  />
+                ) : queue[phase.index].mode === 'speak' ? (
+                  <SpeakRound
+                    key={phase.index}
+                    text={queue[phase.index].text}
+                    reference={queue[phase.index].reference}
+                    translationId={queue[phase.index].translationId}
+                    onDone={(o) => void finishRound(phase.index, o)}
+                  />
+                ) : (
+                  <TypeRound
+                    key={phase.index}
+                    text={queue[phase.index].text}
+                    reference={queue[phase.index].reference}
+                    translationId={queue[phase.index].translationId}
+                    onDone={(o) => void finishRound(phase.index, o)}
+                  />
+                )}
+              </UnsavedInputProvider>
+            )}
+
+            {phase.kind === 'feedback' && (
+              <>
+                <Text
+                  accessibilityLabel={`${positionLabel}, ${queue[phase.index].reference}`}
+                  style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                  {t('roundHeader', { position, reference: queue[phase.index].reference })}
+                </Text>
+                <ScoreHeadline
+                  accuracy={phase.accuracy}
+                  label={accuracyLabel ?? ''}
+                  countUp={phase.held && tone === 'pass'}
+                  // Red only for a review the schedule reset; one that held
+                  // below the pass line reads amber, like an almost.
+                  color={
+                    !phase.held ? colors.error : tone === 'pass' ? colors.success : colors.amber
                   }
                 />
-              ) : queue[phase.index].mode === 'speak' ? (
-                <SpeakRound
-                  key={phase.index}
-                  text={queue[phase.index].text}
-                  reference={queue[phase.index].reference}
-                  translationId={queue[phase.index].translationId}
-                  onDone={(o) => void finishRound(phase.index, o)}
-                />
-              ) : (
-                <TypeRound
-                  key={phase.index}
-                  text={queue[phase.index].text}
-                  reference={queue[phase.index].reference}
-                  translationId={queue[phase.index].translationId}
-                  onDone={(o) => void finishRound(phase.index, o)}
-                />
-              )}
-            </UnsavedInputProvider>
-          )}
-
-          {phase.kind === 'feedback' && (
-            <>
-              <Text
-                accessibilityLabel={`${positionLabel}, ${queue[phase.index].reference}`}
-                style={[styles.reference, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                {t('roundHeader', { position, reference: queue[phase.index].reference })}
-              </Text>
-              <ScoreHeadline
-                accuracy={phase.accuracy}
-                label={accuracyLabel ?? ''}
-                countUp={phase.held && tone === 'pass'}
-                // Red only for a review the schedule reset; one that held
-                // below the pass line reads amber, like an almost.
-                color={
-                  !phase.held ? colors.error : tone === 'pass' ? colors.success : colors.amber
-                }
-              />
-              <Text
-                accessibilityRole="header"
-                style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {outcome}
-              </Text>
-              <WordFeedback
-                result={phase.result}
-                text={queue[phase.index].text}
-                language={getTranslation(queue[phase.index].translationId).languageCode}
-                tone={tone === 'almost' ? 'almost' : 'error'}
-              />
-            </>
-          )}
-
-          {phase.kind === 'summary' && (
-            <>
-              <ScoreHeadline
-                accuracy={phase.averageAccuracy}
-                label={t('averageAccuracyLabel', {
-                  value: Math.round(phase.averageAccuracy * 100),
-                })}
-                color={colors.lapis}
-              />
-              <Text
-                accessibilityRole="header"
-                style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
-                {t('keptFresh', { count: phase.held })}
-              </Text>
-              {phase.reset > 0 && (
                 <Text
-                  style={[styles.summaryNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
-                  {t('comeBack', { count: phase.reset })}
+                  accessibilityRole="header"
+                  style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                  {outcome}
                 </Text>
-              )}
-            </>
-          )}
-        </KeyboardScroll>
-        {/* Pinned under the marked verse: the way on stays on screen without
+                <WordFeedback
+                  result={phase.result}
+                  text={queue[phase.index].text}
+                  language={getTranslation(queue[phase.index].translationId).languageCode}
+                  tone={tone === 'almost' ? 'almost' : 'error'}
+                />
+              </>
+            )}
+
+            {phase.kind === 'summary' && (
+              <>
+                <ScoreHeadline
+                  accuracy={phase.averageAccuracy}
+                  label={t('averageAccuracyLabel', {
+                    value: Math.round(phase.averageAccuracy * 100),
+                  })}
+                  color={colors.lapis}
+                />
+                <Text
+                  accessibilityRole="header"
+                  style={[styles.heading, { color: colors.ink, fontFamily: fonts?.ui }]}>
+                  {t('keptFresh', { count: phase.held })}
+                </Text>
+                {phase.reset > 0 && (
+                  <Text
+                    style={[styles.summaryNote, { color: colors.inkFaint, fontFamily: fonts?.ui }]}>
+                    {t('comeBack', { count: phase.reset })}
+                  </Text>
+                )}
+              </>
+            )}
+          </KeyboardScroll>
+          {/* Pinned under the marked verse: the way on stays on screen without
             scrolling past it. Only in the phases without a text field. */}
-        {phase.kind === 'feedback' && (
-          <ActionFooter>
-            <Button label={t('common:continue')} onPress={advance} />
-          </ActionFooter>
-        )}
-        {phase.kind === 'summary' && (
-          <ActionFooter>
-            <Button label={t('common:done')} onPress={closeModal} />
-          </ActionFooter>
-        )}
-      </View>
+          {phase.kind === 'feedback' && (
+            <ActionFooter>
+              <Button label={t('common:continue')} onPress={advance} />
+            </ActionFooter>
+          )}
+          {phase.kind === 'summary' && (
+            <ActionFooter>
+              <Button label={t('common:done')} onPress={closeModal} />
+            </ActionFooter>
+          )}
+        </View>
+        {foldAxis === 'vertical' ? <View /> : null}
+      </FoldAwareRow>
     </View>
   );
 }
