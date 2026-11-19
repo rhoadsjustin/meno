@@ -123,5 +123,6 @@ export default {
   share: {
     footer: 'meno-scripture.org',
     dialogTitle: 'Comparte tu año en la Palabra',
+    text: 'Mi {{year}} en la Palabra, con Meno: {{link}}',
   },
 } satisfies Catalog<typeof en>;

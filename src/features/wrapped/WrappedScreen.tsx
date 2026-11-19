@@ -197,10 +197,12 @@ export function WrappedScreen({ year }: { year: number }) {
       {view?.recap.eligible && (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Menu icon={shareIcon} accessibilityLabel={t('screen.shareLabel')} disabled={sharing}>
-            <Stack.Toolbar.MenuAction icon="rectangle.portrait" onPress={() => void share('story')}>
+            {/* Plain outline shapes (rectangle.portrait, square) read as empty
+                checkboxes in a menu, so the symbols picture the destination. */}
+            <Stack.Toolbar.MenuAction icon="iphone" onPress={() => void share('story')}>
               {t('screen.storyFormat')}
             </Stack.Toolbar.MenuAction>
-            <Stack.Toolbar.MenuAction icon="square" onPress={() => void share('square')}>
+            <Stack.Toolbar.MenuAction icon="photo" onPress={() => void share('square')}>
               {t('screen.postFormat')}
             </Stack.Toolbar.MenuAction>
           </Stack.Toolbar.Menu>
