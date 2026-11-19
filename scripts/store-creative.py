@@ -146,7 +146,7 @@ def preview(master, header, search):
         tiles.append((label, t))
     lf = font(SANS, 44, "Semibold")
     total_h = sum(t.height + 90 for _, t in tiles) + 40
-    sheet = Image.new("RGB", (pw + 80, total_h), "#FBFAF7")
+    sheet = Image.new("RGB", (pw + 80, total_h), "#F4F1EA")
     d = ImageDraw.Draw(sheet)
     y = 40
     for label, t in tiles:

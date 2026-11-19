@@ -8,7 +8,6 @@ export const palette = {
   light: {
     // Deep enough that a white card reads as a panel on it (1.13:1, about
     // what the system's grouped background gives), not as a blur of white.
-    // The launch screen's copy in app.config.ts follows with the next binary.
     surface: '#F4F1EA',
     surfaceRaised: '#FFFFFF',
     ink: '#1A1D26',

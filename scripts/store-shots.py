@@ -30,12 +30,12 @@ ONBOARDING = os.path.join(ROOT, "assets", "images", "onboarding")
 W, H = 1320, 2868  # APP_IPHONE_67
 
 # src/theme/palette.ts
-VELLUM = "#FBFAF7"
+VELLUM = "#F4F1EA"
 LAPIS_WASH = "#E9EEFA"
 LAPIS = "#2244AA"
 LAPIS_DEEP = "#132A6E"
 INK = "#1A1D26"
-INK_FAINT = "#6E7280"
+INK_FAINT = "#686C79"
 WHITE = "#FFFFFF"
 
 SERIF = "/System/Library/Fonts/NewYork.ttf"

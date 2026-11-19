@@ -2,7 +2,7 @@ import type { ExpoConfig } from 'expo/config';
 
 // The Expo config loader can't import sibling .ts modules, so the two
 // surface colors are duplicated from src/theme/palette.ts — keep in sync.
-const surfaceLight = '#FBFAF7'; // vellum
+const surfaceLight = '#F4F1EA'; // vellum
 const surfaceDark = '#10131A'; // night lapis-black
 
 // Bundle id decided 2026-08-26: com.rhoadsdev.meno (also the id to use for
@@ -40,7 +40,7 @@ const updatesChannel = process.env.MENO_UPDATES_CHANNEL;
 const config: ExpoConfig = {
   name: 'Meno',
   slug: 'meno',
-  version: '1.9.0',
+  version: '1.9.1',
   runtimeVersion: { policy: 'appVersion' },
   updates: {
     url: 'https://u.expo.dev/6473c486-4b56-4c2c-9365-2ca7eeef6729',
