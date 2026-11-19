@@ -339,10 +339,25 @@ keywords is the only test worth running first; not part of this plan.
 
 Meno collects nothing per user, so the numbers come from outside:
 
-- **App Store Connect campaign links** with a `ct` per source:
-  `advent-ig`, `advent-yt`, `advent-x`, `advent-li`, `advent-church`,
-  `advent-page`. The `pt` provider token comes from ASC; it is never
-  invented.
+- **App Store Connect campaign links** with a `ct` per source. The `pt`
+  provider token is `118737961` (from ASC's Generate Campaign Link,
+  2026-11-19); it is the same for every campaign and only `ct` changes.
+  Use these links, never the bare store URL, in posts, bios and emails:
+
+  | Source | Link |
+  |---|---|
+  | Instagram | `https://apps.apple.com/app/apple-store/id6806028621?pt=118737961&ct=advent-ig&mt=8` |
+  | YouTube | `https://apps.apple.com/app/apple-store/id6806028621?pt=118737961&ct=advent-yt&mt=8` |
+  | X | `https://apps.apple.com/app/apple-store/id6806028621?pt=118737961&ct=advent-x&mt=8` |
+  | LinkedIn | `https://apps.apple.com/app/apple-store/id6806028621?pt=118737961&ct=advent-li&mt=8` |
+  | Church and newsletter emails | `https://apps.apple.com/app/apple-store/id6806028621?pt=118737961&ct=advent-church&mt=8` |
+  | Advent page badge (`site/advent`) | `ct=advent-page`, already in the page |
+
+  The home page badge carries `ct=site-home` and the challenge page
+  `ct=challenge-page`. ASC shows a campaign under App Analytics →
+  Acquisition → Campaigns only once it has five first-time installs, and
+  only counts people who share analytics with developers, so a small
+  source can stay empty.
 - **In-App Event** impressions and opens.
 - **First-time downloads** per week against the Oct 9 – Nov 10 baseline.
 - Each platform's own analytics: views, saves, shares, link taps.
@@ -356,7 +371,7 @@ Targets are set once the baseline is read (§11); no number is assumed here.
 Claude can draft, render and prepare; these need the owner's hands:
 
 - Create the social accounts and reserve handles.
-- Get the `pt` campaign token from App Store Connect.
+- ~~Get the `pt` campaign token from App Store Connect.~~ Done 2026-11-19 (§9).
 - Submit the In-App Events and any store build.
 - Record recite-to-unlock on the physical iPhone (V3).
 - Send the church and newsletter emails, and publish every post.
