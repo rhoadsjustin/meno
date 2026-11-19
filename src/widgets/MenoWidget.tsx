@@ -79,8 +79,8 @@ const MenoWidgetComponent = (
   // the dark background were 2.2:1 to 3.9:1; these pass 4.5:1.
   const dark = environment.colorScheme === 'dark';
   const lapis = dark ? '#5B7FE8' : '#2244AA';
-  const gold = dark ? '#D4AF37' : '#8F6C1F';
-  const inkFaint = dark ? '#8B8F9C' : '#6E7280';
+  const gold = dark ? '#D4AF37' : '#88671E';
+  const inkFaint = dark ? '#8B8F9C' : '#686C79';
   // Tinted and clear Home Screen widgets ('accented') and the Lock Screen
   // ('vibrant') flatten fixed colours, so captions there step down with the
   // system's secondary level instead. Full colour keeps the 4.5:1 token.
@@ -88,7 +88,7 @@ const MenoWidgetComponent = (
   const faint = fullColor ? inkFaint : ({ type: 'hierarchical', style: 'secondary' } as const);
   const family = environment.widgetFamily;
   // iOS 17+ requires the containerBackground API for home screen widgets.
-  const bg = dark ? '#10131A' : '#FBFAF7';
+  const bg = dark ? '#10131A' : '#F4F1EA';
   const flame = props.streakActiveToday ? '🔥' : '·';
   // A timeline published before these props existed lasts until the app is
   // next opened; fall back to what it does carry.

@@ -40,6 +40,24 @@ describe('button colour pairs', () => {
     }
   });
 
+  // Secondary text, the memorized gold, and grading colours are set at
+  // body size on cards and on the page behind them.
+  it.each(schemes)('%s: inkFaint, gold, success and amber on both surfaces', (scheme) => {
+    const c = palette[scheme];
+    for (const surface of [c.surface, c.surfaceRaised]) {
+      for (const text of [c.inkFaint, c.gold, c.success, c.amber]) {
+        expect(contrast(text, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  // A card is `surfaceRaised` with a hairline: the fill itself has to stand
+  // off the page, or cards wash out (light mode most of all).
+  it.each(schemes)('%s: a card stands off the page', (scheme) => {
+    const c = palette[scheme];
+    expect(contrast(c.surfaceRaised, c.surface)).toBeGreaterThanOrEqual(1.08);
+  });
+
   it.each(schemes)('%s: tinted label on lapisWash', (scheme) => {
     const c = palette[scheme];
     expect(contrast(c.ink, c.lapisWash)).toBeGreaterThanOrEqual(4.5);

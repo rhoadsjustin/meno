@@ -18,17 +18,17 @@ The overall feel: a quiet, serious reading instrument that happens to be delight
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `surface` | #FBFAF7 (vellum) | #10131A (night lapis-black) | App background |
+| `surface` | #F4F1EA (vellum) | #10131A (night lapis-black) | App background. Light: 1.13:1 against a white card, so cards read as panels |
 | `surfaceRaised` | #FFFFFF | #181C26 | Cards, sheets |
 | `ink` | #1A1D26 | #E9E7E1 | Primary text |
-| `inkFaint` | #6E7280 | #8B8F9C | Secondary text, dissolved letters |
+| `inkFaint` | #686C79 | #8B8F9C | Secondary text, dissolved letters |
 | `lapis` | #2244AA | #5B7FE8 | Accent: actions, progress, selection, streak ember |
 | `onLapis` | #FFFFFF | #10131A | Labels, spinners and glyphs on a `lapis` (or `error`) fill: filled buttons. White on the dark-mode lapis is only 3.7:1 |
 | `lapisWash` | #E9EEFA | #1A2440 | Tinted fills, active states |
-| `gold` | #8F6C1F | #D4AF37 | Memorized state ONLY: medallions, memorized checkmarks, stitch-complete moments |
+| `gold` | #88671E | #D4AF37 | Memorized state ONLY: medallions, memorized checkmarks, stitch-complete moments |
 | `error` | #B3402E | #E06A56 | Wrong words in feedback |
 | `errorWash` | #F9E9E4 | #3B211C | Highlight behind missed/wrong feedback words |
-| `success` | #2E7D5B | #4CAF8E | Correct-word feedback (grading only — general success uses lapis) |
+| `success` | #2D7A59 | #4CAF8E | Correct-word feedback (grading only — general success uses lapis) |
 | `amber` | #9A5B13 | #E59A4C | The almost band (03 §3) ONLY: its score and slipped words. Warm, not an error; never decoration, never a stand-in for gold |
 | `amberWash` | #F8EEDD | #3A2C17 | Highlight behind slipped words in an almost |
 

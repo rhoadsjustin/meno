@@ -6,19 +6,23 @@
  */
 export const palette = {
   light: {
-    surface: '#FBFAF7',
+    // Deep enough that a white card reads as a panel on it (1.13:1, about
+    // what the system's grouped background gives), not as a blur of white.
+    // The launch screen's copy in app.config.ts follows with the next binary.
+    surface: '#F4F1EA',
     surfaceRaised: '#FFFFFF',
     ink: '#1A1D26',
-    inkFaint: '#6E7280',
+    // Body-size text on both light surfaces (4.6:1 on `surface`).
+    inkFaint: '#686C79',
     lapis: '#2244AA',
     // Label and glyph colour on a `lapis` (or `error`) fill: 8.5:1.
     onLapis: '#FFFFFF',
     lapisWash: '#E9EEFA',
     // Dark enough for body-size text on both light surfaces (4.6:1).
-    gold: '#8F6C1F',
+    gold: '#88671E',
     error: '#B3402E',
     errorWash: '#F9E9E4',
-    success: '#2E7D5B',
+    success: '#2D7A59',
     amber: '#9A5B13',
     amberWash: '#F8EEDD',
     separator: 'rgba(26, 29, 38, 0.12)',
