@@ -158,7 +158,7 @@ and becomes a "Past years" row on Stats.
 - The summary image is the hero: it should look good as a phone wallpaper
   and as a story.
 - Share sheet text: one line + App Store link with an Apple campaign token
-  (`?pt=…&ct=wrapped2026`) — see §8.
+  (`?pt=118737961&ct=wrapped2026&mt=8`) — see §8.
 - **"Start 2027 with me"** on the summary card attaches a challenge link for
   the passage of the year (`services/challenges`), turning a brag into an
   invitation, as an https universal link that falls back to a web page for
