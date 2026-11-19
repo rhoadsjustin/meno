@@ -548,11 +548,11 @@ export default function TodayScreen() {
         <Card>
           <NavRow
             title={t('due.title')}
-            // A count, not a list: the row is a nudge, and the session
-            // itself names the verses.
+            // A count, not a list: the row is a nudge. One verse due goes
+            // straight to its review; more open the list that names them.
             badge={dueCount}
             accessibilityLabel={`${t('due.title')}. ${t('due.body', { count: dueCount })}`}
-            onPress={() => router.push('/review')}
+            onPress={() => router.push(dueCount > 1 ? '/review/due' : '/review')}
           />
         </Card>
       )}

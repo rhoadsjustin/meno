@@ -24,4 +24,9 @@ export default {
   keptFresh_other: '{{count}} versículos siguen frescos',
   comeBack_one: '{{count}} versículo vuelve mañana',
   comeBack_other: '{{count}} versículos vuelven mañana',
+  due: {
+    title: 'Para repasar',
+    start: 'Repasar todo',
+    rowHint: 'Repasa este versículo',
+  },
 } satisfies Catalog<typeof en>;

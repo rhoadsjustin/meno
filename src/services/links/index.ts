@@ -49,3 +49,50 @@ export function normalizeLinkPath(path: string): string {
     return '/';
   }
 }
+
+/** The path of a route or URL, without query, fragment or trailing slash. */
+function pathOf(url: string): string {
+  const path = url.split(/[?#]/)[0].replace(/\/+$/, '');
+  return path === '' ? '/' : path;
+}
+
+/**
+ * The route a link from outside opens, or null to leave the app as it is.
+ * The widget's `/practice` names "the session", not a new one: tapped while
+ * a session is already in front (the app was left on it), it would push a
+ * second session over the first.
+ */
+export function resolveIncomingLink(
+  path: string,
+  state: { initial: boolean; practiceInFront: boolean },
+): string | null {
+  const route = normalizeLinkPath(path);
+  if (!state.initial && state.practiceInFront && pathOf(route) === '/practice') return null;
+  return route;
+}
+
+/** The practice session's route name in the root stack. */
+export const PRACTICE_SESSION_ROUTE = 'practice/[goalId]';
+
+/**
+ * For the `/practice` redirect, given the root stack's route names with the
+ * redirect itself last: how many screens to dismiss to get back to a session
+ * that is already open under something else (Help over a session), or null
+ * when there is none and a session should be opened.
+ */
+export function screensAboveOpenSession(routeNames: readonly string[]): number | null {
+  const at = routeNames.lastIndexOf(PRACTICE_SESSION_ROUTE);
+  return at === -1 ? null : routeNames.length - 1 - at;
+}
+
+// Whether a practice session is the screen in front. Set by the session's
+// route on focus; read where no hook can run (`+native-intent`).
+let practiceInFront = false;
+
+export function setPracticeInFront(inFront: boolean): void {
+  practiceInFront = inFront;
+}
+
+export function isPracticeInFront(): boolean {
+  return practiceInFront;
+}

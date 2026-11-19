@@ -2,7 +2,13 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { INTERNAL_ROOTS, LINKABLE_ROOTS, normalizeLinkPath } from '@/services/links';
+import {
+  INTERNAL_ROOTS,
+  LINKABLE_ROOTS,
+  normalizeLinkPath,
+  resolveIncomingLink,
+  screensAboveOpenSession,
+} from '@/services/links';
 
 const APP_DIR = fileURLToPath(new URL('../../../app', import.meta.url));
 
@@ -51,5 +57,44 @@ describe('normalizeLinkPath', () => {
 
   it('leaves unknown first segments for the router to reject', () => {
     expect(normalizeLinkPath('meno://nowhere')).toBe('meno://nowhere');
+  });
+});
+
+describe('resolveIncomingLink', () => {
+  const warm = { initial: false, practiceInFront: true };
+
+  it('drops the widget link while a practice session is in front', () => {
+    expect(resolveIncomingLink('meno:///practice', warm)).toBeNull();
+    expect(resolveIncomingLink('meno://practice', warm)).toBeNull();
+    expect(resolveIncomingLink('/practice/', warm)).toBeNull();
+  });
+
+  it('opens the session when none is in front, and on a cold start', () => {
+    expect(
+      resolveIncomingLink('meno:///practice', { initial: false, practiceInFront: false }),
+    ).toBe('/practice');
+    expect(resolveIncomingLink('meno:///practice', { initial: true, practiceInFront: true })).toBe(
+      '/practice',
+    );
+  });
+
+  it('lets every other link through from a session', () => {
+    expect(resolveIncomingLink('meno:///', warm)).toBe('/');
+    expect(resolveIncomingLink('meno://review', warm)).toBe('/review');
+    expect(resolveIncomingLink('meno://practice/12', warm)).toBe('/practice/12');
+  });
+});
+
+describe('screensAboveOpenSession', () => {
+  it('finds no session on an ordinary tap', () => {
+    expect(screensAboveOpenSession(['(tabs)', 'practice/index'])).toBeNull();
+    expect(screensAboveOpenSession(['(tabs)', 'review/index', 'practice/index'])).toBeNull();
+  });
+
+  it('counts the screens over an open session, the redirect included', () => {
+    expect(screensAboveOpenSession(['(tabs)', 'practice/[goalId]', 'practice/index'])).toBe(1);
+    expect(
+      screensAboveOpenSession(['(tabs)', 'practice/[goalId]', 'help', 'practice/index']),
+    ).toBe(2);
   });
 });

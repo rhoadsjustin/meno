@@ -264,6 +264,7 @@ function RootLayout() {
             route name flashes as a title on the way through. */}
               <Stack.Screen name="practice/index" options={{ headerShown: false }} />
               <Stack.Screen name="review/index" />
+              <Stack.Screen name="review/due" />
               <Stack.Screen name="reader/[osis]" />
               <Stack.Screen name="stitch/[goalId]" />
               {/* Lock setup shows the bar on every step (ScreenHeader in-page),

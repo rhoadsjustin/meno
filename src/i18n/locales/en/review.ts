@@ -25,4 +25,10 @@ export default {
   keptFresh_other: '{{count}} verses kept fresh',
   comeBack_one: '{{count}} verse comes back tomorrow',
   comeBack_other: '{{count}} verses come back tomorrow',
+  // The list Today's Due for review row opens when more than one is due.
+  due: {
+    title: 'Due for review',
+    start: 'Review all',
+    rowHint: 'Reviews this verse',
+  },
 } as const;
